@@ -17,7 +17,21 @@ selected_papers: false # includes a list of papers marked as "selected={true}"
 social: true  # includes social icons at the bottom of the page
 ---
 
+-----------------
+
+<div id="fb-root"></div>
+<script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_GB/sdk.js#xfbml=1&version=v14.0" nonce="yAvyOwMo"></script>
+
+-----------------
+
 Bio forthcoming.
+
+<div class="fb-video" data-href="https://www.facebook.com/theadrianbayer/videos/10211333357568703/" data-width="500" data-show-text="true"><blockquote cite="https://www.facebook.com/theadrianbayer/videos/10211333357568703/" class="fb-xfbml-parse-ignore"><a href="https://www.facebook.com/theadrianbayer/videos/10211333357568703/"></a><p>Just won $1,000 in the Berkeley Distinguished Fellows Video Contest! If you’re interested in seeing what I get up to during my PhD, or just want to know how I talked my way to the prize, check it out!
+
+Thanks to everyone who helped!</p>Posted by <a href="https://www.facebook.com/theadrianbayer">Adrian Bayer</a> on Wednesday, 6 March 2019</blockquote></div>
+
+
+
 
 <!-- Write your biography here. Tell the world about yourself. Link to your favorite [subreddit](http://reddit.com). You can put a picture in, too. The code is already in, just name your picture `prof_pic.jpg` and put it in the `img/` folder.
 
