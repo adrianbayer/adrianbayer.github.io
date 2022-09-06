@@ -4,7 +4,7 @@ title: about
 permalink: /
 subtitle: Astrophysicist @ <a href='http://bccp.berkeley.edu/'>Berkeley Center for Cosmological Physics</a>, UC Berkeley  <br><br> #Address. Contacts. Moto. Etc.
 align: right
-image: headshot.tiff
+image: headshot.jpg
 image_circular: true # crops the image to make it circular
 
 
