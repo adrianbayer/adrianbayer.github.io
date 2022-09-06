@@ -2,12 +2,13 @@
 layout: about
 title: about
 permalink: /
-subtitle: Astrophysicist @ <a href='http://bccp.berkeley.edu/'>Berkeley Center for Cosmological Physics</a>, UC Berkeley #Address. Contacts. Moto. Etc.
+subtitle: Astrophysicist @ <a href='http://bccp.berkeley.edu/'>Berkeley Center for Cosmological Physics</a>, UC Berkeley  <br><br><br><br> #Address. Contacts. Moto. Etc.
+
 
 profile:
   align: right
   image: headshot.tiff
-  image_circular: false # crops the image to make it circular
+  image_circular: true # crops the image to make it circular
   #address: >
   #  <p>Berkeley, California</p>
   #  <p>USA</p>
