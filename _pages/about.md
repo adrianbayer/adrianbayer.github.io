@@ -6,7 +6,7 @@ subtitle: Astrophysicist @ <a href='http://bccp.berkeley.edu/'>Berkeley Center f
 
 profile:
   align: right
-  image: prof_pic.jpg
+  image: headshot.tiff
   image_circular: false # crops the image to make it circular
   #address: >
   #  <p>Berkeley, California</p>
