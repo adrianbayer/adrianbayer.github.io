@@ -222,7 +222,7 @@ display_tags: ['formatting', 'images', 'links', 'math', 'code'] # this tags will
 scholar:
 
   last_name: Bayer
-  first_name: [Adrian, E.]
+  first_name: [Adrian E., A., A, Adrian]
 
   style: apa
   locale: en
