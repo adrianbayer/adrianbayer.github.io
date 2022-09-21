@@ -1,10 +1,9 @@
 ---
 layout: page
-title: Quantum Gravity
-description: Explaining Black Hole Entropy with Causal Set Theory
-img: assets/img/blackhole.jpeg
-redirect:
-importance: 3
+title: Cosmological Simulations
+description: a project with a background image
+img: assets/img/code.jpeg
+importance: 2
 category: work
 ---
 

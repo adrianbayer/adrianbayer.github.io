@@ -1,10 +1,10 @@
 ---
 layout: page
-title: The Look-Elsewhere Effect
-description: If you look hard enough you can find evidence for anything...
-img: assets/img/eyes.png
-importance: 2
-category: work
+title: Photography
+description: Snaps from around the world
+img:
+importance: 6
+category: fun
 ---
 
 Every project has a beautiful feature showcase page.

@@ -1,7 +1,7 @@
 ---
 layout: page
 title: Cosmic Neutrinos
-description: Simulating and measuring the neutrino mass using cosmology
+description: Detecting neutrino mass using cosmology
 img: assets/img/illustris.jpg
 importance: 1
 category: work

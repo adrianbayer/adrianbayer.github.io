@@ -1,9 +1,9 @@
 ---
 layout: page
-title: Particle Physics
-description: I once helped build particle detectors.
-img: assets/img/neutrino_detector.jpg
-importance: 4
+title: Look Elsewhere
+description: If you look hard enough you can find evidence for anything...
+img: assets/img/eyes.png
+importance: 3
 category: work
 ---
 
