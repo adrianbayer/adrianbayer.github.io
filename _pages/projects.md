@@ -3,10 +3,10 @@ layout: page
 title: projects
 permalink: /projects/
 description: Read more about work and fun projects I have done.
-nav: true
+nav: false
 nav_order: 2
 display_categories: [work, fun]
-horizontal: true
+horizontal: false
 ---
 
 <!-- pages/projects.md -->
