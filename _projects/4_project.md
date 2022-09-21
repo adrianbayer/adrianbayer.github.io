@@ -1,10 +1,10 @@
 ---
 layout: page
-title: project 4
-description: another without an image
-img:
-importance: 3
-category: fun
+title: Particle Physics
+description: I once helped build particle detectors.
+img: assets/img/neutrino_detector.jpg
+importance: 4
+category: work
 ---
 
 Every project has a beautiful feature showcase page.
