@@ -14,7 +14,7 @@ You describe how you toiled, sweated, *bled* for your project, and then... you r
 
 
 <div class="row justify-content-sm-center">
-    <div class="col-xl">
+    <div class="col">
         {% include figure.html path="assets/img/150813_urop_bayer_araujo_001_178131_001.jpg" title="example image" class="img-fluid rounded z-depth-1" %}
     </div>
 </div>
