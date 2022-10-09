@@ -14,18 +14,15 @@ Dark matter is the elusive substance that is theorised to comprise 85% of the ma
 
 
 <div class="row">
-    <div class="col-sm mt-3 mt-md-0">
+    <div class="col-sm-5 mt-3 mt-md-0">
         {% include figure.html path="assets/img/TPC.jpg" title="example image" class="img-fluid rounded z-depth-1" %}
     </div>
-    <div class="col-sm mt-3 mt-md-0">
+    <div class="col-sm-7 mt-3 mt-md-0">
         {% include figure.html path="assets/img/chamber_vis.png" title="example image" class="img-fluid rounded z-depth-1" %}
-    </div>
-    <div class="col-sm mt-3 mt-md-0">
-        {% include figure.html path="assets/img/analytic.png" title="example image" class="img-fluid rounded z-depth-1" %}
     </div>
 </div>
 <div class="caption">
-    (Left) Diagram of a time project chamber andc the pulse it produces. (Middle) Simulation of the detector. (Left) Calculation of electric field.
+    (Left) Diagram of a time project chamber andc the pulse it produces. (Right) Simulation of the detector.
 </div>
 
 <div class="row">
@@ -43,7 +40,7 @@ Neutrinoless double beta decay is a very rare theoretical nuclear interaction in
 
 But all is not lost, as another type of radiation, known as Cherenkov radiation, occurs when a particle travels through a medium faster than light. Cherenkov radiation is emitted in a specific direction depending only on the refractive index of the medium and the velocity of the particle. If this Cherenkov radiation were to be detectable, without being lost amongst the scintillation radiation, scientists would be able to use the directional information to help determine whether or not an interaction was indeed neutrinoless double beta decay. In order to achieve this the scintillator is doped with quantum dots, enabling control of the emission spectrum and thus separation of Cherenkov and scintillation radiation. For proof of concept, MIT have built a prototype of NuDot capable of performing the above.
 
-Again, my resaerch concerned producing simulations of the goings on inside the detector, working out what we would expect to see when performing actual experiments. We were able to determine the most ideal configuration for the experiment. After this, we brought my simulations to life by setting up multiple thousands of dollars worth of photomultiplier tubes (PMTs).
+Again, my research concerned producing simulations of the goings on inside the detector, working out what we would expect to see when performing actual experiments. We were able to determine the most ideal configuration for the experiment. After this, we brought my simulations to life by setting up multiple thousands of dollars worth of photomultiplier tubes (PMTs).
 
 <div class="row justify-content-sm-center">
     <div class="col-sm-8 mt-3 mt-md-0">
@@ -56,28 +53,3 @@ Again, my resaerch concerned producing simulations of the goings on inside the d
 <div class="caption">
     (Left) A $10,000 PMT selfie. (Right) Talking about my research at the International Research Opportunities Programme (IROP) tea upon return to Imperial.
 </div>
-
-
-<!--
-
-You can also put regular text between your rows of images.
-Say you wanted to write a little bit about your project before you posted the rest of the images.
-You describe how you toiled, sweated, *bled* for your project, and then... you reveal it's glory in the next row of images.
-
-
-<div class="row justify-content-sm-center">
-    <div class="col">
-        {% include figure.html path="assets/img/150813_urop_bayer_araujo_001_178131_001.jpg" title="example image" class="img-fluid rounded z-depth-1" %}
-    </div>
-</div>
-<div class="caption">
-    (Left) ...  (Right) 
-</div>
-
-
-The code is simple.
-Just wrap your images with `<div class="col-sm">` and place them inside `<div class="row">` (read more about the <a href="https://getbootstrap.com/docs/4.4/layout/grid/">Bootstrap Grid</a> system).
-To make images responsive, add `img-fluid` class to each; for rounded caQorners and shadows use `rounded` and `z-depth-1` classes.
-Here's the code for the last row of images above:
-
--->
