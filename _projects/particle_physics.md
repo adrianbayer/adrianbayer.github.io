@@ -43,7 +43,7 @@ But all is not lost, as another type of radiation, known as Cherenkov radiation,
 Again, my research concerned producing simulations of the goings on inside the detector, working out what we would expect to see when performing actual experiments. We were able to determine the most ideal configuration for the experiment. After this, we brought my simulations to life by setting up multiple thousands of dollars worth of photomultiplier tubes (PMTs).
 
 <div class="row justify-content-sm-center">
-    <div class="col-sm-8 mt-3 mt-md-0">
+    <div class="col-sm-8 mt-3 mt-md-0 rotate-90">
         {% include figure.html path="assets/img/pmt1.jpg" title="example image" class="img-fluid rounded z-depth-1" %}
     </div>
     <div class="col-sm-4 mt-3 mt-md-0">
