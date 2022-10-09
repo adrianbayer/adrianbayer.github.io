@@ -1,3 +1,4 @@
+<!--
 ---
 layout: page
 permalink: /photography/
@@ -8,3 +9,4 @@ nav_order: 6
 ---
 
 .....
+-->
