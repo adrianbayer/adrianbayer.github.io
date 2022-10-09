@@ -14,10 +14,10 @@ Dark matter is the elusive substance that is theorised to comprise 85% of the ma
 
 
 <div class="row">
-    <div class="col-sm-5 mt-3 mt-md-0">
+    <div class="col-sm-5.8 mt-3 mt-md-0">
         {% include figure.html path="assets/img/TPC.jpg" title="example image" class="img-fluid rounded z-depth-1" %}
     </div>
-    <div class="col-sm-7 mt-3 mt-md-0">
+    <div class="col-sm-6.2 mt-3 mt-md-0">
         {% include figure.html path="assets/img/chamber_vis.png" title="example image" class="img-fluid rounded z-depth-1" %}
     </div>
 </div>
@@ -31,7 +31,7 @@ Dark matter is the elusive substance that is theorised to comprise 85% of the ma
     </div>
 </div>
 <div class="caption">
-    I even spent some time in the lab with the detector .
+    I even spent some time in the lab with the detector.
 </div>
 
 The next summer, I was given the oppurunity to work in the Laboratory for Nuclear Science at MIT under the supervision of <a href="https://physics.mit.edu/faculty/lindley-winslow/">Professor Lindley Winslow</a>. She and her team are planning on building a prototype neutrinoless double beta decay detector, named NuDot, which will make use of quantum dot technology and Cherenkov radiation to drastically reduce the background in experimental data and in turn make any signal of discovery much more noticeable.
@@ -42,7 +42,7 @@ But all is not lost, as another type of radiation, known as Cherenkov radiation,
 
 Again, my research concerned producing simulations of the goings on inside the detector, working out what we would expect to see when performing actual experiments. We were able to determine the most ideal configuration for the experiment. After this, we brought my simulations to life by setting up multiple thousands of dollars worth of photomultiplier tubes (PMTs).
 
-<div class="row justify-content-sm-center">
+<div class="row justify-content-sm-center-rotate">
     <div class="col-sm-8 mt-3 mt-md-0 rotate-90">
         {% include figure.html path="assets/img/pmt1.jpg" title="example image" class="img-fluid rounded z-depth-1" %}
     </div>
