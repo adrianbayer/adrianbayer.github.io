@@ -38,13 +38,7 @@ The next summer, I was given the oppurunity to work in the Laboratory for Nuclea
 
 Neutrinoless double beta decay is a very rare theoretical nuclear interaction in which two neutrons simultaneously convert into two protons and two electrons, without the production of any neutrinos. If found to occur it would imply that neutrinos are their own antiparticle and lepton number is not conserved. One modern technique of searching for this interaction is by use of a scintillator. Scintillators produce light as they interact with charged particles and so can be used to detect the electrons produced in the decay. However, this scintillation light is isotropic at the energy of operation and so does not contain information regarding the electrons’ trajectories. 
 
-.rotate {
-  background-color: transparent;
-  outline: 2px dashed;
-  transform: rotate(45deg);
-}
-
-<div class="rotate">
+<div class="rotate" style="transform:rotate(90deg);">
     {% include figure.html path="assets/img/pmt1.jpg" title="example image" class="img-fluid rounded z-depth-1" %}
 </div>
 <div class="caption">
