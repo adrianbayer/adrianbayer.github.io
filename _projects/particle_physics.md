@@ -54,9 +54,9 @@ Again, my research concerned producing simulations of the goings on inside the d
 
 <!--
 <div class="row" style="transform:rotate(90deg);float:left;display:flex;height:10%;">
-    {% include figure.html path="assets/img/pmt1.jpg" title="example image" class="img-fluid rounded z-depth-1" %}
+{% include figure.html path="assets/img/pmt1.jpg" title="example image" class="img-fluid rounded z-depth-1" %}
 </div>
 <div class="caption">
-	$10,000 PMT selfie.
+$10,000 PMT selfie.
 </div>
 -->
