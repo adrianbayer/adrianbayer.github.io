@@ -14,10 +14,10 @@ Dark matter is the elusive substance that is theorised to comprise 85% of the ma
 
 
 <div class="row">
-    <div class="col-sm-5.8 mt-3 mt-md-0">
+    <div class="col-sm-6 mt-3 mt-md-0">
         {% include figure.html path="assets/img/TPC.jpg" title="example image" class="img-fluid rounded z-depth-1" %}
     </div>
-    <div class="col-sm-6.2 mt-3 mt-md-0">
+    <div class="col-sm-6 mt-3 mt-md-0">
         {% include figure.html path="assets/img/chamber_vis.png" title="example image" class="img-fluid rounded z-depth-1" %}
     </div>
 </div>
@@ -38,18 +38,23 @@ The next summer, I was given the oppurunity to work in the Laboratory for Nuclea
 
 Neutrinoless double beta decay is a very rare theoretical nuclear interaction in which two neutrons simultaneously convert into two protons and two electrons, without the production of any neutrinos. If found to occur it would imply that neutrinos are their own antiparticle and lepton number is not conserved. One modern technique of searching for this interaction is by use of a scintillator. Scintillators produce light as they interact with charged particles and so can be used to detect the electrons produced in the decay. However, this scintillation light is isotropic at the energy of operation and so does not contain information regarding the electrons’ trajectories. 
 
+<div class="align-baseline0">
+    {% include figure.html path="assets/img/pmt1.jpg" title="example image" class="img-fluid rounded z-depth-1" %}
+</div>
+<div class="caption">
+	$10,000 PMT selfie.
+</div>
+
 But all is not lost, as another type of radiation, known as Cherenkov radiation, occurs when a particle travels through a medium faster than light. Cherenkov radiation is emitted in a specific direction depending only on the refractive index of the medium and the velocity of the particle. If this Cherenkov radiation were to be detectable, without being lost amongst the scintillation radiation, scientists would be able to use the directional information to help determine whether or not an interaction was indeed neutrinoless double beta decay. In order to achieve this the scintillator is doped with quantum dots, enabling control of the emission spectrum and thus separation of Cherenkov and scintillation radiation. For proof of concept, MIT have built a prototype of NuDot capable of performing the above.
 
 Again, my research concerned producing simulations of the goings on inside the detector, working out what we would expect to see when performing actual experiments. We were able to determine the most ideal configuration for the experiment. After this, we brought my simulations to life by setting up multiple thousands of dollars worth of photomultiplier tubes (PMTs).
 
-<div class="row justify-content-sm-center-rotate">
-    <div class="col-sm-8 mt-3 mt-md-0 rotate-90">
-        {% include figure.html path="assets/img/pmt1.jpg" title="example image" class="img-fluid rounded z-depth-1" %}
-    </div>
-    <div class="col-sm-4 mt-3 mt-md-0">
+<div class="row">
+    <div class="col-sm mt-3 mt-md-0">
         {% include figure.html path="assets/img/irop.jpg" title="example image" class="img-fluid rounded z-depth-1" %}
     </div>
 </div>
 <div class="caption">
-    (Left) A $10,000 PMT selfie. (Right) Talking about my research at the International Research Opportunities Programme (IROP) tea upon return to Imperial.
+    Talking at the International Research Opportunities Programme (IROP) tea.
 </div>
+
