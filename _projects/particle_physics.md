@@ -45,10 +45,7 @@ Neutrinoless double beta decay is a very rare theoretical nuclear interaction in
 	$10,000 PMT selfie.
 </div>
 
-<figure class="figure">
-  <img src="assets/img/pmt1.jpg" class="figure-img img-fluid rounded" alt="aaa">
-  <figcaption class="figure-caption text-right">$10,000 PMT selfie.</figcaption>
-</figure>
+<img src="assets/img/pmt1.jpg" class="figure-img img-fluid rounded" alt="aaa">
 
 But all is not lost, as another type of radiation, known as Cherenkov radiation, occurs when a particle travels through a medium faster than light. Cherenkov radiation is emitted in a specific direction depending only on the refractive index of the medium and the velocity of the particle. If this Cherenkov radiation were to be detectable, without being lost amongst the scintillation radiation, scientists would be able to use the directional information to help determine whether or not an interaction was indeed neutrinoless double beta decay. In order to achieve this the scintillator is doped with quantum dots, enabling control of the emission spectrum and thus separation of Cherenkov and scintillation radiation. For proof of concept, MIT have built a prototype of NuDot capable of performing the above.
 
