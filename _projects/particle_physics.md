@@ -38,13 +38,14 @@ The next summer, I was given the oppurunity to work in the Laboratory for Nuclea
 
 Neutrinoless double beta decay is a very rare theoretical nuclear interaction in which two neutrons simultaneously convert into two protons and two electrons, without the production of any neutrinos. If found to occur it would imply that neutrinos are their own antiparticle and lepton number is not conserved. One modern technique of searching for this interaction is by use of a scintillator. Scintillators produce light as they interact with charged particles and so can be used to detect the electrons produced in the decay. However, this scintillation light is isotropic at the energy of operation and so does not contain information regarding the electrons’ trajectories. 
 
+<!--
 <div class="row" style="transform:rotate(90deg);float:left;display:flex;height:10%;">
-    {% include figure.html path="assets/img/pmt1.jpg" title="example image" class="rounded z-depth-1" %}
+    {% include figure.html path="assets/img/pmt1.jpg" title="example image" class="img-fluid rounded z-depth-1" %}
 </div>
 <div class="caption">
 	$10,000 PMT selfie.
 </div>
-
+-->
 
 But all is not lost, as another type of radiation, known as Cherenkov radiation, occurs when a particle travels through a medium faster than light. Cherenkov radiation is emitted in a specific direction depending only on the refractive index of the medium and the velocity of the particle. If this Cherenkov radiation were to be detectable, without being lost amongst the scintillation radiation, scientists would be able to use the directional information to help determine whether or not an interaction was indeed neutrinoless double beta decay. In order to achieve this the scintillator is doped with quantum dots, enabling control of the emission spectrum and thus separation of Cherenkov and scintillation radiation. For proof of concept, MIT have built a prototype of NuDot capable of performing the above.
 
