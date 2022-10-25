@@ -7,74 +7,14 @@ importance: 3
 category: work
 ---
 
-Every project has a beautiful feature showcase page.
-It's easy to include images in a flexible 3-column grid format.
-Make your photos 1/3, 2/3, or full width.
 
-To give your project a background in the portfolio page, just add the img tag to the front matter like so:
+A common problem in statistical analysis is to find evidence for a physical signal in a large, continuous parameter space, where the true position of the signal is not known. By searching over a wide parameter space one increases the probability of finding large signals caused by random statistical fluctuations, as opposed to a physical source. This is known as the look-elsewhere effect — or sometimes the “problem of multiple comparisons” in discrete cases — and must be accounted for when performing a hypothesis test. Ignoring this effect would lead to an overestimation of the statistical significance, sometimes by a considerable amount, and thus incorrectly concluding the detection of a physical signal. 
 
-    ---
-    layout: page
-    title: project
-    description: a project with a background image
-    img: /assets/img/12.jpg
-    ---
+The look-elsewhere effect is prominent throughout (astro)particle physics and cosmology. One of the most commonly known occurrences is in collider searches for new particles, for example it was a key consideration in the Higgs boson discovery. In this example, one searches a large range of masses for a resonance, without a priori knowledge of the true mass of the particle. Similarly, in astrophysical searches for particles one seeks resonances in the energy flux of various astrophysical spectra, where the true energy signature of the particle is unknown. Examples include: constraining the dark matter self-annihilation crosssection via gamma ray emission from galaxy clusters, searching for WIMPs via charged cosmic rays, searching for non-baryonic dark matter via X-ray emission from the Milky Way, and explaining the source of high energy astrophysical neutrinos. In terms of cosmology, the look-elsewhere effect occurs in searches for gravitational wave signals from black hole or neutron star mergers. Here one searches large time series for a signal, where the time and shape of the event are unknown. A further cosmological example is searching for signatures of inflation in the primordial power spectrum. The look-elsewhere effect is also prevalent in other areas of physics and beyond, for example: in astronomy it occurs when detecting exoplanets via stellar photometry, where the period and phase of the planets’ transits are unknown; in biology it occurs when considering large DNA sequences to study genetic association; in medicine it occurs when testing the effectiveness of drugs in clinical trials; and in theology it occurs when attempting to find hidden prophecies in religious texts. Therefore, given the apparent ubiquity of the look-elsewhere effect, there is much motivation for a fast method to account for it.
 
-<div class="row">
-    <div class="col-sm mt-3 mt-md-0">
-        {% include figure.html path="assets/img/1.jpg" title="example image" class="img-fluid rounded z-depth-1" %}
-    </div>
-    <div class="col-sm mt-3 mt-md-0">
-        {% include figure.html path="assets/img/3.jpg" title="example image" class="img-fluid rounded z-depth-1" %}
-    </div>
-    <div class="col-sm mt-3 mt-md-0">
-        {% include figure.html path="assets/img/5.jpg" title="example image" class="img-fluid rounded z-depth-1" %}
-    </div>
-</div>
-<div class="caption">
-    Caption photos easily. On the left, a road goes through a tunnel. Middle, leaves artistically fall in a hipster photoshoot. Right, in another hipster photoshoot, a lumberjack grasps a handful of pine needles.
-</div>
-<div class="row">
-    <div class="col-sm mt-3 mt-md-0">
-        {% include figure.html path="assets/img/5.jpg" title="example image" class="img-fluid rounded z-depth-1" %}
-    </div>
-</div>
-<div class="caption">
-    This image can also have a caption. It's like magic.
-</div>
+The Bayesian evidence is equal to the prior-weighted average of the likelihood over the parameter space, which can be considerably lower than the maximum likelihood if the prior is broad. This integration over the prior accounts for the look-elsewhere effect by penalizing large prior volumes. When considering large prior volumes, the likelihood is typically multimodal, with most of the peaks corresponding to noise fluctuations rather than physical sources. In order to estimate the location of a physical signal, and its associated statistical significance, one typically considers a point estimator, such as the maximum a posteriori (MAP) estimator which maximizes the posterior density. This only considers the hieght of the peak. By applying the Laplace approximation, we introduce a Bayesian generalization of the MAP estimator, which include botht he height and width of the peak, and is independet of the look-elsewhere effect. To read more about this check out our <a href="https://doi.org/10.1088/1475-7516/2020/10/009">publication</a>.
 
-You can also put regular text between your rows of images.
-Say you wanted to write a little bit about your project before you posted the rest of the images.
-You describe how you toiled, sweated, *bled* for your project, and then... you reveal it's glory in the next row of images.
+We also developed an alternative method to account for the look-eslewhere effect by using only the height and rank ordering of the peaks in the likleihood. This method is exceptionally quick and we showed it to be effective in the context of exoplanet data from the Kepler mission. To read more about it check out our <a href="https://doi.org/10.1093/mnras/stab2331">publication</a>.
 
+Applying these methods to discover Earth-like planets in far-away galaxies is an ongoing work.
 
-<div class="row justify-content-sm-center">
-    <div class="col-sm-8 mt-3 mt-md-0">
-        {% include figure.html path="assets/img/6.jpg" title="example image" class="img-fluid rounded z-depth-1" %}
-    </div>
-    <div class="col-sm-4 mt-3 mt-md-0">
-        {% include figure.html path="assets/img/11.jpg" title="example image" class="img-fluid rounded z-depth-1" %}
-    </div>
-</div>
-<div class="caption">
-    You can also have artistically styled 2/3 + 1/3 images, like these.
-</div>
-
-
-The code is simple.
-Just wrap your images with `<div class="col-sm">` and place them inside `<div class="row">` (read more about the <a href="https://getbootstrap.com/docs/4.4/layout/grid/">Bootstrap Grid</a> system).
-To make images responsive, add `img-fluid` class to each; for rounded corners and shadows use `rounded` and `z-depth-1` classes.
-Here's the code for the last row of images above:
-
-{% raw %}
-```html
-<div class="row justify-content-sm-center">
-    <div class="col-sm-8 mt-3 mt-md-0">
-        {% include figure.html path="assets/img/6.jpg" title="example image" class="img-fluid rounded z-depth-1" %}
-    </div>
-    <div class="col-sm-4 mt-3 mt-md-0">
-        {% include figure.html path="assets/img/11.jpg" title="example image" class="img-fluid rounded z-depth-1" %}
-    </div>
-</div>
-```
-{% endraw %}

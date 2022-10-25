@@ -1,7 +1,7 @@
 ---
 layout: page
 title: Cosmic Neutrinos
-description: Detecting neutrino mass using cosmology
+description: Using cosmological simulations to understand the effects on neutrino mass on cosmic structure
 img: assets/img/illustris.jpg
 importance: 1
 category: work
