@@ -2,7 +2,7 @@
 layout: page
 title: Quantum Gravity
 description: Explaining Black Hole Entropy with Causal Set Theory
-img: assets/img/blackhole.jpeg
+img: assets/img/f0254420-black_hole_web.png
 redirect:
 importance: 4
 category: work
