@@ -8,4 +8,4 @@ cv_pdf: CV_AdrianBayer.pdf
 cv_url: 
 ---
 
-Please click the pdf icon to view my CV.
+Click the pdf icon to view my CV.
