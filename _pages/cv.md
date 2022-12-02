@@ -7,3 +7,5 @@ nav_order: 4
 cv_pdf: CV_AdrianBayer.pdf
 cv_url: 
 ---
+
+Please click the pdf icon to view my CV.
