@@ -8,12 +8,12 @@
     #- name: Languages
     #  value: English, German
 
-- title: Education
-  type: time_table
-  contents:
-    - title: PhD, Physics
-      institution: University of California, Berkeley, USA
-      year: 2018 - 202?
+#- title: Education
+#  type: time_table
+#  contents:
+#    - title: PhD, Physics
+#      institution: University of California, Berkeley, USA
+#      year: 2018 - 202?
       #description:
       #  - Description 1.
       #  - Description 2.
@@ -21,25 +21,25 @@
       #    contents:
       #      - Sub-description 1.
       #      - Sub-description 2.
-    - title: Master of Advanced Study, Mathematics
-      institution: University of Cambridge, UK
-      year: 2017 - 2018
+#    - title: Master of Advanced Study, Mathematics
+#      institution: University of Cambridge, UK
+#      year: 2017 - 2018
       #description:
       #  - Description 1.
       #  - Description 2.
-    - title: MSci Physics with Theoretical Physics
-      institution: Imperial College London, UK
-      year: 2013 - 2017
+#    - title: MSci Physics with Theoretical Physics
+#      institution: Imperial College London, UK
+#     year: 2013 - 2017
       #description:
       #  - Description 1.
       #  - Description 2.
 
-- title: Experience
-  type: time_table
-  contents:
-    - title: Visiting Researcher
-      institution: Kavli Institute for the Physics and Mathematics of the Universe, The University of Tokyo, Japan
-      year: 2022
+#- title: Experience
+#  type: time_table
+#  contents:
+#    - title: Visiting Researcher
+#      institution: Kavli Institute for the Physics and Mathematics of the Universe, The University of Tokyo, Japan
+#      year: 2022
       #description:
       #  - Description 1.
       #  - Description 2.
@@ -47,16 +47,16 @@
       #    contents:
       #      - Sub-description 1.
       #      - Sub-description 2.
-    - title: Undergraduate Researcher
-      institution: Massachusetts Institute of Technology, USA
-      year: 2016
+#    - title: Undergraduate Researcher
+#      institution: Massachusetts Institute of Technology, USA
+#      year: 2016
       #description:
       #  - Description 1.
       #  - Description 2.
 
-    - title: Undergraduate Researcher
-      institution: Imperial College London, UK
-      year: 2015
+#    - title: Undergraduate Researcher
+#      institution: Imperial College London, UK
+#      year: 2015
 
 
 #- title: Open Source Projects
