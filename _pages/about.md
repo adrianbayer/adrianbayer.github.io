@@ -2,7 +2,7 @@
 layout: about
 title: about
 permalink: /
-subtitle: Astrophysicist @ <a href='http://bccp.berkeley.edu/'>Berkeley Center for Cosmological Physics</a>, UC Berkeley  <br><br> #Address. Contacts. Moto. Etc.
+subtitle: Astrophysicist @ Princeton University and Simons Foundation <br><br> #Address. Contacts. Moto. Etc.
 align: right
 image: headshot.jpg
 image_circular: true # crops the image to make it circular
@@ -24,7 +24,7 @@ In the process of understanding the mysteries of our Universe.
 
 As an undergraduate I worked in experimental high energy physics, developing particle detectors to uncover the nature of dark matter and neutrinos. For my Masters degree I worked in theoretical physics, to understand the quantum nature of gravity and black hole entropy. Now, my research lies at the intersection of astrophysics, particle physics, and data science. During my PhD I have contributed to developing fast simulations of cosmic structure and utilizing these to unlock information about neutrinos and dark energy in the nonlinear regime. I have also developed innovative statistical tools that can be used for Bayesian inference in fields such as exoplanet detection, genomics, and machine learning. I am continuing to create and apply novel data analysis tools to maximally extract information from ongoing and upcoming cosmological surveys. I also greatly value interdisciplinary work and aim to continue developing tools that can be used in fields beyond Astrophysics.
 
-If you'd like to read more about my projects, please check out the 'projects' tab above. Alternatively, check out this two minute video for which I was awarded $1,000 in the Berkeley Distinguished Fellows Video Contest!
+If you'd like to read more about my projects, please check out the 'projects' tab above. Alternatively, check out this two minute video for which I was awarded $1,000 during my time as a PhD student at the University of California, Berkeley!
 
 <div id="fb-root"></div>
 <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_GB/sdk.js#xfbml=1&version=v14.0" nonce="yAvyOwMo"></script>
