@@ -1,4 +1,7 @@
 "Seljak":
-  - firstname: ["Uros", "Uro\v{s}", "U.", "U"]
+  - firstname: ["Uros", "Uro\v{s}", "U.", "U", "Uro{\v{s}}"]
     url: https://en.wikipedia.org/wiki/Uro%C5%A1_Seljak
 
+"Liu"
+  - firstname: ["Jia"]
+    url: https://liuxx479.github.io/
