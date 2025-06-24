@@ -9,13 +9,13 @@ nav_order: 1
 ---
 <!-- _pages/publications.md -->
 
-For a list of my publications on ADS, click <a href="https://ui.adsabs.harvard.edu/public-libraries/WFVqdmu0SICtE0ecgKoKYg">here</a>.
+For a list of my publications see:  <a href="https://ui.adsabs.harvard.edu/public-libraries/WFVqdmu0SICtE0ecgKoKYg">ADS</a> or <a href="https://scholar.google.com/citations?user=APEnDHcAAAAJ&hl=en">Google Scholar</a>.
 
+<!-- 
 <div class="publications">
-
 {%- for y in page.years %}
   <h2 class="year">{{y}}</h2>
   {% bibliography -f papers -q @*[year={{y}}]* %}
 {% endfor %}
-
 </div>
+-->
