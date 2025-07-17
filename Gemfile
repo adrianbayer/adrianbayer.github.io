@@ -17,7 +17,6 @@ group :jekyll_plugins do
     gem 'unicode_utils'
     gem 'webrick'
     gem 'ffi', '< 1.17'
-    gem 'sass-embedded', '< 1.69'
 end
 group :other_plugins do
     gem 'httparty'
