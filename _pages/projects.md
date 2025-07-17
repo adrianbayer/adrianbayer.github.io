@@ -2,7 +2,7 @@
 layout: page
 title: projects
 permalink: /projects/
-description: Click on the boxes below to read more about my work
+description: Click on the boxes below to read more about my work. To be updated with new projects soon!
 nav: true
 nav_order: 2
 display_categories:
