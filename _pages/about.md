@@ -17,4 +17,8 @@ If you'd like to read more about my projects, please check out the 'Projects' ta
 
 <div class="feature-card"><a href="https://www.simonsfoundation.org/2026/01/21/unveiling-the-universes-origins-and-current-state-by-modeling-its-many-faces/" target="_blank" style="display:flex;text-decoration:none;color:inherit"><img src="https://simonsfoundation.imgix.net/wp-content/uploads/2026/01/14093733/Lede_AdrianBayerQA_c.Michael-Lisnet_Simons-Foundation.jpg?auto=format&w=400&q=80" alt="Simons Foundation Interview"><div class="feature-card__text"><h3>Interview with the Simons Foundation</h3><p>Unveiling the universe's origins and current state by modeling its many faces.</p></div></a></div>
 
-<div class="feature-card"><a href="https://www.facebook.com/theadrianbayer/videos/10211333357568703/" target="_blank" style="display:flex;text-decoration:none;color:inherit"><img src="/assets/img/headshot.jpg" alt="Berkeley Video"><div class="feature-card__text"><h3>Berkeley Distinguished Fellows Video Contest</h3><p>I won $1,000 for this two minute video about my PhD research at UC Berkeley!</p></div></a></div>
+<div class="feature-card"><div class="feature-card__text"><h3>Berkeley Distinguished Fellows Video Contest</h3><p>I won $1,000 for this two minute video about my PhD research at UC Berkeley!</p></div></div>
+
+<div id="fb-root"></div>
+<script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_GB/sdk.js#xfbml=1&version=v14.0" nonce="yAvyOwMo"></script>
+<div class="fb-video" data-href="https://www.facebook.com/theadrianbayer/videos/10211333357568703/" data-width="500" data-show-text="true"><blockquote cite="https://www.facebook.com/theadrianbayer/videos/10211333357568703/" class="fb-xfbml-parse-ignore"><a href="https://www.facebook.com/theadrianbayer/videos/10211333357568703/">Watch the video</a></blockquote></div>
