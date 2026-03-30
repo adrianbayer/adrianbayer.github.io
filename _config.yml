@@ -65,6 +65,10 @@ plugins:
   - jekyll-include-cache
   - jekyll-remote-theme
 
+# Include
+include:
+  - _pages
+
 # Exclude
 exclude:
   - Gemfile
