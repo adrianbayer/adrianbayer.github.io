@@ -4,7 +4,7 @@ title: "Particle Physics"
 description: "I once helped build particle detectors"
 header:
   teaser: /assets/img/neutrino_detector.jpg
-importance: 5
+importance: 7
 excerpt: ""
 ---
 

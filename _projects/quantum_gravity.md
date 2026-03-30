@@ -4,7 +4,7 @@ title: "Quantum Gravity"
 description: "Explaining Black Hole Entropy with Causal Set Theory"
 header:
   teaser: /assets/img/f0254420-black_hole_web.png
-importance: 4
+importance: 6
 excerpt: ""
 ---
 

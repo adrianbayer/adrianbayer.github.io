@@ -4,7 +4,7 @@ title: "Look Elsewhere"
 description: "If you look hard enough you can find evidence for anything..."
 header:
   teaser: /assets/img/eyes.png
-importance: 3
+importance: 5
 excerpt: ""
 ---
 
