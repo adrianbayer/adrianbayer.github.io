@@ -24,10 +24,6 @@ A key challenge is that the likelihood of the full field is intractable --- we c
 
 Standard analyses compress the rich information in weak lensing maps into the power spectrum. However, in the nonlinear regime, significant information is encoded in the higher-order structure of the fields. I have developed <a href="https://doi.org/10.48550/arXiv.2406.03076">convolutional neural network (CNN) architectures</a> that operate directly on weak lensing convergence maps to constrain the neutrino mass. By learning to extract non-Gaussian features that are invisible to two-point statistics, these networks can substantially tighten neutrino mass constraints beyond what is achievable with traditional methods.
 
-### CHARM: Creating Halos with Auto-Regressive Models
-
-Populating dark matter simulations with realistic galaxies is a major bottleneck in cosmological analysis. The connection between dark matter halos and the galaxies they host is complex and stochastic. <a href="https://doi.org/10.48550/arXiv.2406.02149">CHARM</a> is a generative machine learning model that learns this mapping directly from high-fidelity simulations. Using auto-regressive networks, CHARM can rapidly generate realistic halo catalogs conditioned on the underlying dark matter field, capturing the full statistical properties of the halo--matter connection including assembly bias and environmental effects. This enables the fast production of mock galaxy catalogs for survey analysis at a fraction of the computational cost.
-
 ### Velocity Reconstruction
 
 Galaxy peculiar velocities contain a wealth of cosmological information that is complementary to galaxy positions alone. I have developed methods for <a href="https://doi.org/10.48550/arXiv.2210.15657">joint velocity and density reconstruction</a>, combining galaxy clustering and peculiar velocity data to tighten constraints on cosmological parameters. Peculiar velocities are particularly powerful for breaking degeneracies between parameters like the growth rate of structure and the amplitude of matter fluctuations.
