@@ -22,3 +22,10 @@ html {
 .archive .grid__item .archive__item-excerpt {
   display: none;
 }
+
+.author__avatar img {
+  border-radius: 50%;
+  filter: none !important;
+  -webkit-filter: none !important;
+  opacity: 1 !important;
+}
