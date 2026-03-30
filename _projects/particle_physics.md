@@ -5,6 +5,7 @@ description: "I once helped build particle detectors"
 header:
   teaser: /assets/img/neutrino_detector.jpg
 importance: 5
+excerpt: ""
 ---
 
 It all began on the London Underground in 2015 when I saw one of my professors,

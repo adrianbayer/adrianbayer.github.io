@@ -5,6 +5,7 @@ description: "Explaining Black Hole Entropy with Causal Set Theory"
 header:
   teaser: /assets/img/f0254420-black_hole_web.png
 importance: 4
+excerpt: ""
 ---
 
 Recent works of science-fiction have attributed all manner of mystical effects to black holes, but what if some of this science-fiction was in fact reality?

@@ -5,6 +5,7 @@ description: "If you look hard enough you can find evidence for anything..."
 header:
   teaser: /assets/img/eyes.png
 importance: 3
+excerpt: ""
 ---
 
 A common problem in statistical analysis is to find evidence for a physical signal in a large, continuous parameter space, where the true position of the signal is not known. By searching over a wide parameter space one increases the probability of finding large signals caused by random statistical fluctuations, as opposed to a physical source. This is known as the look-elsewhere effect — or sometimes the "problem of multiple comparisons" in discrete cases — and must be accounted for when performing a hypothesis test. Ignoring this effect would lead to an overestimation of the statistical significance, sometimes by a considerable amount, and thus incorrectly concluding the detection of a physical signal.

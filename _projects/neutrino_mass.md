@@ -5,6 +5,7 @@ description: "Using cosmological simulations to understand the effects on neutri
 header:
   teaser: /assets/img/illustris.jpg
 importance: 1
+excerpt: ""
 ---
 
 The Nobel prize winning discovery of neutrino oscillations gave evidence for neutrino mass, a phenomenon beyond the Standard Model of particle physics. Measuring the neutrino mass is an integral step towards understanding the underlying mass generation mechanism. Neutrinos leave signatures on the expansion history of the Universe and on the growth of cosmic structure on small scales. With the rapid ongoing progress in observational cosmology, we can hope to measure the neutrino mass and significantly improve our understanding of dark energy over the next decade. In fact, the forecasted neutrino mass sensitivity of upcoming cosmological surveys is almost an order of magnitude tighter than from beta-decay particle experiments.
