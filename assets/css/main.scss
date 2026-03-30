@@ -81,3 +81,12 @@
 .author__name {
   font-size: 1.4em;
 }
+
+.author__content,
+.author__urls-wrapper,
+.author__avatar,
+.sidebar {
+  opacity: 1 !important;
+  -webkit-animation: none !important;
+  animation: none !important;
+}
