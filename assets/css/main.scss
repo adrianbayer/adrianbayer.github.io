@@ -4,6 +4,146 @@
 @import "minimal-mistakes/skins/{{ site.minimal_mistakes_skin | default: 'default' }}";
 @import "minimal-mistakes";
 
+/* Dark mode toggle button */
+.theme-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 0.5em;
+  color: $masthead-link-color;
+  font-size: 1em;
+  line-height: 1;
+
+  .fa-sun { display: none; }
+  .fa-moon { display: inline; }
+}
+
+[data-theme="dark"] .theme-toggle {
+  .fa-sun { display: inline; }
+  .fa-moon { display: none; }
+}
+
+/* Dark mode overrides */
+[data-theme="dark"] {
+  background-color: #252a34;
+  color: #eaeaea;
+
+  .page,
+  .initial-content,
+  .page__content,
+  .archive__item,
+  .sidebar,
+  .masthead {
+    background-color: #252a34;
+    color: #eaeaea;
+  }
+
+  .masthead {
+    border-bottom-color: mix(#fff, #252a34, 20%);
+  }
+
+  .greedy-nav {
+    background: #252a34;
+
+    a {
+      color: #eaeaea;
+
+      &:hover {
+        color: mix(#000, #eaeaea, 20%);
+      }
+    }
+
+    .visible-links a:before {
+      background: #00adb5;
+    }
+  }
+
+  a {
+    color: mix(#00adb5, #eaeaea, 40%);
+
+    &:hover {
+      color: mix(#fff, mix(#00adb5, #eaeaea, 40%), 25%);
+    }
+
+    &:visited {
+      color: mix(#000, mix(#00adb5, #eaeaea, 40%), 25%);
+    }
+  }
+
+  .author__name,
+  .author__bio,
+  .author__urls-wrapper a,
+  .author__urls.social-icons .svg-inline--fa,
+  .author__urls.social-icons i {
+    color: inherit;
+  }
+
+  .sidebar {
+    background-color: #252a34;
+  }
+
+  .page__footer {
+    background-color: mix(#000, #252a34, 30%);
+    color: #eaeaea;
+  }
+
+  .page__footer-follow .social-icons .svg-inline--fa,
+  .page__footer-follow .social-icons i {
+    color: inherit;
+  }
+
+  .archive__item-teaser {
+    border-color: mix(#fff, #252a34, 20%);
+  }
+
+  .feature-card {
+    border-color: mix(#fff, #252a34, 20%);
+
+    .feature-card__text p {
+      color: #aaa;
+    }
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: #eaeaea;
+  }
+
+  code {
+    background-color: mix(#000, #252a34, 15%);
+    color: #eaeaea;
+  }
+
+  pre {
+    background-color: mix(#000, #252a34, 20%);
+  }
+
+  .notice,
+  .notice--info,
+  .notice--warning {
+    background-color: mix(#000, #252a34, 15%);
+    color: #eaeaea;
+  }
+
+  .btn--primary {
+    background-color: #00adb5;
+  }
+
+  .nav__list .nav__items a {
+    color: #eaeaea;
+  }
+
+  .toc .nav__title {
+    background: mix(#000, #252a34, 20%);
+    color: #eaeaea;
+  }
+
+  input, textarea, select {
+    background-color: mix(#000, #252a34, 15%);
+    color: #eaeaea;
+    border-color: mix(#fff, #252a34, 20%);
+  }
+}
+
 .page__content,
 .archive__item-excerpt {
   font-size: 16.5px;
