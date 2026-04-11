@@ -259,10 +259,18 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
       Relative variance: <span id="skyVar">&mdash;</span>
     </div>
     <div class="control-group" style="margin-top:8px;">
+      <label>Map component</label>
       <div class="btn-row">
-        <button class="sm-btn sky-btn active" data-sky="dT_cmblens_143">CMB 143</button>
-        <button class="sm-btn sky-btn" data-sky="T_tot_143">Total 143</button>
-        <button class="sm-btn sky-btn" data-sky="T_tot_353">Total 353</button>
+        <button class="sm-btn sky-comp-btn active" data-skycomp="dT_cmblens">CMB</button>
+        <button class="sm-btn sky-comp-btn" data-skycomp="dT_tsz">tSZ</button>
+        <button class="sm-btn sky-comp-btn" data-skycomp="dT_cib">CIB</button>
+        <button class="sm-btn sky-comp-btn" data-skycomp="T_tot">Total</button>
+      </div>
+      <label style="margin-top:4px;">Map frequency</label>
+      <div class="btn-row">
+        <button class="sm-btn sky-freq-btn" data-skyfreq="93">93 GHz</button>
+        <button class="sm-btn sky-freq-btn active" data-skyfreq="143">143 GHz</button>
+        <button class="sm-btn sky-freq-btn" data-skyfreq="353">353 GHz</button>
       </div>
     </div>
   </div>
@@ -299,7 +307,7 @@ const S = {
   buildup: false, buildupPhase: 0,  // 0=CMB, 1=+tSZ, 2=+CIB
   freqSweep: false, freqSweepPos: 0,
   skyVarScale: 1.0,
-  skySource: 'dT_cmblens_143',
+  skySource: 'dT_cmblens_143', skyComp: 'dT_cmblens', skyFreq: '143',
   // Audio nodes
   audioCtx: null, gainNode: null, analyserNode: null,
   sourceNodes: [], _rebuildTimer: null,
@@ -837,9 +845,68 @@ function drawSpectrum() {
 }
 
 // ============================================================
-// Sky Map Drawing
+// Sky Map Drawing — 3D Sphere with orthographic projection
 // ============================================================
-function drawSkyMap(markerX, markerY) {
+
+// Sphere rotation state
+const SKY = { rotLon: 0, rotLat: 0.3, dragging: false, lastX: 0, lastY: 0,
+              clickTheta: null, clickPhi: null };
+
+// Pre-bake the texture as an ImageData once per map change
+let skyTexture = null;
+let skyTextureSrc = '';
+
+function buildSkyTexture() {
+  const mn=S.skyComp||'dT_cmblens', nu=S.skyFreq||'143';
+  const key = mn+'_'+nu;
+  if(skyTextureSrc===key && skyTexture) return;
+  skyTextureSrc = key;
+
+  const mapInfo=S.skyData?.maps[mn]?.[nu];
+  if(!mapInfo) return;
+  const mW=mapInfo.width, mH=mapInfo.height, data=mapInfo.data;
+
+  // Build a lookup: for any (theta, phi) return RGB
+  // The data is a Mollweide projection, but we need equirectangular for the sphere texture
+  // Re-use the healpy nside=32 map via patch_variance pixel lookup
+  // Actually, let's build an equirectangular texture from the raw data
+  // Since the data was Mollweide-projected, we need to invert it
+  // Simpler: use the patch_variance array which is per-healpix-pixel, and the
+  // original Mollweide data for color. But that's lossy.
+  // Best approach: build a small equirectangular texture by inverting Mollweide
+  const tW=200, tH=100;
+  skyTexture = new Uint8Array(tW*tH);
+  for(let ty=0;ty<tH;ty++){
+    for(let tx=0;tx<tW;tx++){
+      const theta_s = (ty+0.5)/tH * Math.PI;
+      const phi_s = (tx+0.5)/tW * 2*Math.PI;
+      // Mollweide forward to find source pixel in the projected data
+      const lat = Math.PI/2 - theta_s;
+      const lon = phi_s - Math.PI;
+      let aux=lat;
+      for(let it=0;it<8;it++){
+        const f=2*aux+Math.sin(2*aux)-Math.PI*Math.sin(lat);
+        const fp=2+2*Math.cos(2*aux);
+        if(Math.abs(fp)<1e-10)break;
+        aux-=f/fp;
+      }
+      const xm=(2*Math.SQRT2/Math.PI)*lon*Math.cos(aux);
+      const ym=Math.SQRT2*Math.sin(aux);
+      // Map to source pixel coords
+      const sx = Math.floor((xm/(2*Math.SQRT2)+0.5)*mW);
+      const sy = Math.floor((0.5-ym/(2*Math.SQRT2))*mH);
+      if(sx>=0&&sx<mW&&sy>=0&&sy<mH){
+        const v=data[sy][sx];
+        skyTexture[ty*tW+tx] = (v===255)?128:v;
+      } else {
+        skyTexture[ty*tW+tx] = 128;
+      }
+    }
+  }
+  S._skyMn=mn; S._skyNu=nu;
+}
+
+function drawSkyMap() {
   const canvas=document.getElementById('skyCanvas');
   const ctx=canvas.getContext('2d');
   const dpr=window.devicePixelRatio||1;
@@ -850,100 +917,123 @@ function drawSkyMap(markerX, markerY) {
   ctx.fillStyle='#0d1220';ctx.fillRect(0,0,W,H);
   if(!S.skyData)return;
 
-  let mn,nu;
-  if(S.skySource==='dT_cmblens_143'){mn='dT_cmblens';nu='143';}
-  else if(S.skySource==='T_tot_143'){mn='T_tot';nu='143';}
-  else{mn='T_tot';nu='353';}
+  buildSkyTexture();
+  if(!skyTexture)return;
 
-  const mapInfo=S.skyData.maps[mn]?.[nu];
-  if(!mapInfo)return;
+  // Sphere parameters
+  const R=Math.min(W,H)/2-10;
+  const cx=W/2, cy=H/2;
+  const tW=200, tH=100;
 
-  const mW=mapInfo.width, mH=mapInfo.height;
-  const mapData=mapInfo.data;
+  // Rotation matrix (rotate by lon around Y, then lat around X)
+  const cosLon=Math.cos(SKY.rotLon), sinLon=Math.sin(SKY.rotLon);
+  const cosLat=Math.cos(SKY.rotLat), sinLat=Math.sin(SKY.rotLat);
 
-  // Fit into canvas with 2:1 aspect ratio (Mollweide)
-  const pad=8;
-  const aspect=2; // Mollweide is 2:1
-  let drawW=W-2*pad, drawH=H-2*pad;
-  if(drawW/drawH>aspect){drawW=drawH*aspect;}else{drawH=drawW/aspect;}
-  const offX=(W-drawW)/2, offY=(H-drawH)/2;
-  const scaleX=drawW/mW, scaleY=drawH/mH;
+  // Render sphere via raycasting
+  const imgData=ctx.createImageData(Math.ceil(W),Math.ceil(H));
+  const step=2; // render every 2nd pixel for speed, then fill
 
-  // Draw the pre-projected Mollweide map
-  const iW=Math.ceil(drawW), iH=Math.ceil(drawH);
-  const imgData=ctx.createImageData(iW,iH);
+  for(let py=0;py<H;py+=step){
+    for(let px=0;px<W;px+=step){
+      const dx=(px-cx)/R, dy=(py-cy)/R;
+      const r2=dx*dx+dy*dy;
+      if(r2>1) continue;
+      const dz=Math.sqrt(1-r2);
 
-  for(let py=0;py<iH;py++){
-    for(let px=0;px<iW;px++){
-      const srcX=Math.min(Math.floor(px/scaleX), mW-1);
-      const srcY=Math.min(Math.floor(py/scaleY), mH-1);
-      const v=mapData[srcY][srcX];
-      if(v===255) continue; // outside Mollweide ellipse
-      // RdBu_r colormap
+      // 3D point on sphere (view space), then rotate
+      let sx=dx, sy=dy, sz=-dz;
+      // Rotate around X (latitude tilt)
+      let y1=sy*cosLat-sz*sinLat, z1=sy*sinLat+sz*cosLat;
+      sy=y1; sz=z1;
+      // Rotate around Y (longitude spin)
+      let x1=sx*cosLon+sz*sinLon, z2=-sx*sinLon+sz*cosLon;
+      sx=x1; sz=z2;
+
+      // Convert to theta, phi
+      const theta=Math.acos(Math.max(-1,Math.min(1,sy))); // using Y as pole
+      const phi=Math.atan2(sx,sz);
+
+      // Look up texture
+      // theta: 0=north pole, pi=south pole. Map sy->theta
+      const t_theta = Math.acos(Math.max(-1,Math.min(1,-sy))); // -sy so north is up
+      const t_phi = (Math.atan2(sx,sz)+Math.PI)%(2*Math.PI);
+      const tx=Math.floor(t_phi/(2*Math.PI)*tW)%tW;
+      const ty=Math.min(Math.floor(t_theta/Math.PI*tH), tH-1);
+      const v=skyTexture[ty*tW+tx];
+
+      // Colormap (RdBu_r)
       const t=v/254;
       let r,g,b;
       if(t<0.5){const s=t*2;r=30+s*225;g=60+s*195;b=180+s*75;}
       else{const s=(t-0.5)*2;r=255;g=255-s*200;b=255-s*220;}
-      const idx=(py*iW+px)*4;
-      imgData.data[idx]=r; imgData.data[idx+1]=g;
-      imgData.data[idx+2]=b; imgData.data[idx+3]=255;
+
+      // Simple shading: darken edges
+      const shade=0.5+0.5*dz;
+      r=Math.floor(r*shade); g=Math.floor(g*shade); b=Math.floor(b*shade);
+
+      // Fill step x step block
+      for(let fy=0;fy<step&&py+fy<H;fy++){
+        for(let fx=0;fx<step&&px+fx<W;fx++){
+          const idx=((py+fy)*Math.ceil(W)+(px+fx))*4;
+          imgData.data[idx]=r;imgData.data[idx+1]=g;imgData.data[idx+2]=b;imgData.data[idx+3]=255;
+        }
+      }
     }
   }
-  ctx.putImageData(imgData,Math.floor(offX),Math.floor(offY));
+  ctx.putImageData(imgData,0,0);
 
-  // Mollweide ellipse outline
-  ctx.strokeStyle='#2a3558';ctx.lineWidth=1.5;
-  ctx.beginPath();
-  const ecx=offX+drawW/2, ecy=offY+drawH/2, erx=drawW/2, ery=drawH/2;
-  for(let a=0;a<=2*Math.PI;a+=0.02){
-    const x=ecx+erx*Math.cos(a), y=ecy+ery*Math.sin(a);
-    if(a===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
-  }
-  ctx.closePath();ctx.stroke();
-
-  // Store geometry for clicks and halo drawing
-  S._skyGeo={offX,offY,scaleX,scaleY,drawW,drawH,mW,mH,mn,nu};
-
-  // Draw halos as small dots using Mollweide forward projection
-  if(S.halos && S._skyGeo){
-    const g = S._skyGeo;
-    ctx.fillStyle='rgba(255,159,67,0.5)';
+  // Draw halos on the sphere
+  if(S.halos){
     for(let i=0;i<S.halos.n;i++){
-      const theta_h=S.halos.theta[i]*Math.PI/180; // colatitude
-      const phi_h=S.halos.phi[i]*Math.PI/180;     // longitude [0, 2pi]
-      // Convert to lat, lon for Mollweide
-      const lat = Math.PI/2 - theta_h;          // [-pi/2, pi/2]
-      const lon = phi_h - Math.PI;              // [-pi, pi] (centered)
-      // Mollweide forward projection: solve 2*aux + sin(2*aux) = pi*sin(lat)
-      let aux = lat; // Newton's method seed
-      for(let it=0;it<8;it++){
-        const f = 2*aux + Math.sin(2*aux) - Math.PI*Math.sin(lat);
-        const fp = 2 + 2*Math.cos(2*aux);
-        if(Math.abs(fp)<1e-10) break;
-        aux -= f/fp;
-      }
-      const xm = (2*Math.SQRT2/Math.PI)*lon*Math.cos(aux); // range [-2sqrt2, 2sqrt2]
-      const ym = Math.SQRT2*Math.sin(aux);                  // range [-sqrt2, sqrt2]
-      // Normalize to canvas coords
-      const px = g.offX + g.drawW/2 + xm/(2*Math.SQRT2)*g.drawW;
-      const py = g.offY + g.drawH/2 - ym/Math.SQRT2*g.drawH/2;
-      // Check bounds
-      if(px<g.offX||px>g.offX+g.drawW||py<g.offY||py>g.offY+g.drawH) continue;
+      const ht=S.halos.theta[i]*Math.PI/180;
+      const hp=S.halos.phi[i]*Math.PI/180;
+      // 3D point on unit sphere (healpy: theta=colatitude from north, phi=longitude)
+      let hx=Math.sin(ht)*Math.sin(hp-Math.PI);
+      let hy=-Math.cos(ht); // north up
+      let hz=Math.sin(ht)*Math.cos(hp-Math.PI);
+      // Apply inverse rotation (view transform)
+      // Inverse Y rotation
+      let x1=hx*cosLon-hz*sinLon, z1=hx*sinLon+hz*cosLon;
+      hx=x1; hz=z1;
+      // Inverse X rotation
+      let y1=hy*cosLat+hz*sinLat, z2=-hy*sinLat+hz*cosLat;
+      hy=y1; hz=z2;
+      // Check if visible (facing us: z < 0 in view space)
+      if(hz>0) continue;
+      const px=cx+hx*R, py=cy+hy*R;
       const logM=S.halos.log_mass[i];
-      const sz=Math.max(1, (logM-14.5)*3);
-      ctx.globalAlpha=Math.min(0.9, (logM-14.5)*0.6+0.1);
+      const sz=Math.max(1.5,(logM-14.5)*4);
+      ctx.globalAlpha=Math.min(0.9,(logM-14.5)*0.8+0.2);
+      ctx.fillStyle='#ff9f43';
       ctx.beginPath();ctx.arc(px,py,sz,0,2*Math.PI);ctx.fill();
+      // Outline for biggest
+      if(logM>15.0){
+        ctx.strokeStyle='#fff';ctx.lineWidth=1;
+        ctx.beginPath();ctx.arc(px,py,sz+1,0,2*Math.PI);ctx.stroke();
+      }
     }
     ctx.globalAlpha=1;
   }
 
-  // Draw marker
-  if(markerX!==undefined && markerY!==undefined){
-    ctx.beginPath();ctx.arc(markerX,markerY,7,0,2*Math.PI);
-    ctx.strokeStyle='#00ff88';ctx.lineWidth=2;ctx.stroke();
-    ctx.beginPath();ctx.arc(markerX,markerY,2.5,0,2*Math.PI);
-    ctx.fillStyle='#00ff88';ctx.fill();
+  // Draw click marker
+  if(SKY.clickTheta!==null){
+    const ht=SKY.clickTheta, hp=SKY.clickPhi;
+    let hx=Math.sin(ht)*Math.sin(hp-Math.PI);
+    let hy=-Math.cos(ht);
+    let hz=Math.sin(ht)*Math.cos(hp-Math.PI);
+    let x1=hx*cosLon-hz*sinLon,z1=hx*sinLon+hz*cosLon; hx=x1;hz=z1;
+    let y1=hy*cosLat+hz*sinLat,z2=-hy*sinLat+hz*cosLat; hy=y1;hz=z2;
+    if(hz<0){
+      const px=cx+hx*R,py=cy+hy*R;
+      ctx.beginPath();ctx.arc(px,py,8,0,2*Math.PI);
+      ctx.strokeStyle='#00ff88';ctx.lineWidth=2.5;ctx.stroke();
+      ctx.beginPath();ctx.arc(px,py,3,0,2*Math.PI);
+      ctx.fillStyle='#00ff88';ctx.fill();
+    }
   }
+
+  // Store sphere geometry for click handler
+  S._skyGeo={cx,cy,R};
 }
 
 // Play a halo "ping" — pitch encodes mass, volume encodes proximity
@@ -988,26 +1078,31 @@ function handleSkyClick(e){
   const canvas=document.getElementById('skyCanvas');
   const rect=canvas.getBoundingClientRect();
   const x=e.clientX-rect.left, y=e.clientY-rect.top;
-  const g=S._skyGeo;
+  const{cx,cy,R}=S._skyGeo;
 
-  // Inverse Mollweide: canvas coords -> (lat, lon)
-  const xm = (x - g.offX - g.drawW/2) / g.drawW * 2 * Math.SQRT2;
-  const ym = -(y - g.offY - g.drawH/2) / (g.drawH/2) * Math.SQRT2;
-  // Check inside ellipse: (xm/2sqrt2)^2 + (ym/sqrt2)^2 <= 1
-  if(xm*xm/(8) + ym*ym/2 > 1) return;
-  const aux = Math.asin(Math.max(-1,Math.min(1, ym/Math.SQRT2)));
-  const lat = Math.asin(Math.max(-1,Math.min(1, (2*aux+Math.sin(2*aux))/Math.PI)));
-  const cosAux = Math.cos(aux);
-  const lon = (Math.abs(cosAux)<1e-10) ? 0 : Math.PI*xm/(2*Math.SQRT2*cosAux);
-  if(Math.abs(lon)>Math.PI) return;
-  const theta = Math.PI/2 - lat;        // colatitude
-  const phi = (lon + Math.PI) % (2*Math.PI); // longitude [0, 2pi]
+  // Check if click is on the sphere
+  const dx=(x-cx)/R, dy=(y-cy)/R;
+  if(dx*dx+dy*dy>1)return;
+  const dz=-Math.sqrt(1-dx*dx-dy*dy);
 
-  const{mn,nu}=g;
+  // Unrotate to get world coords
+  const cosLon=Math.cos(SKY.rotLon),sinLon=Math.sin(SKY.rotLon);
+  const cosLat=Math.cos(SKY.rotLat),sinLat=Math.sin(SKY.rotLat);
+  let sx=dx,sy=dy,sz=dz;
+  // Inverse X rotation
+  let y1=sy*cosLat+sz*sinLat, z1=-sy*sinLat+sz*cosLat; sy=y1;sz=z1;
+  // Inverse Y rotation
+  let x1=sx*cosLon-sz*sinLon, z2=sx*sinLon+sz*cosLon; sx=x1;sz=z2;
+
+  const theta=Math.acos(Math.max(-1,Math.min(1,-sy))); // colatitude
+  const phi=(Math.atan2(sx,sz)+Math.PI)%(2*Math.PI);
+
+  SKY.clickTheta=theta; SKY.clickPhi=phi;
+
+  let mn=S._skyMn||'dT_cmblens', nu=S._skyNu||'143';
   const mapInfo=S.skyData.maps[mn]?.[nu];
   if(!mapInfo?.patch_variance)return;
 
-  // HEALPix pixel lookup
   const npix=S.skyData.npix;
   const z=Math.cos(theta);
   const pixIdx=Math.min(Math.floor((1-z)/2*npix*0.99),npix-1);
@@ -1019,7 +1114,7 @@ function handleSkyClick(e){
     `\u03B8=${thetaDeg.toFixed(0)}\u00B0, \u03C6=${phiDeg.toFixed(0)}\u00B0`;
   document.getElementById('skyVar').textContent=relVar.toFixed(3);
 
-  drawSkyMap(x,y);
+  drawSkyMap();
   if(S.playing&&S._markDirty)S._markDirty();
 
   // Check for nearby halos and ping them
@@ -1123,11 +1218,22 @@ function setup(){
     if(S.playing)startPlaying(); // restart with new stereo mode
   }));
 
-  // Sky map buttons
-  document.querySelectorAll('.sky-btn').forEach(b=>b.addEventListener('click',()=>{
-    document.querySelectorAll('.sky-btn').forEach(x=>x.classList.remove('active'));
+  // Sky map component buttons
+  document.querySelectorAll('.sky-comp-btn').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('.sky-comp-btn').forEach(x=>x.classList.remove('active'));
     b.classList.add('active');
-    S.skySource=b.dataset.sky;
+    S.skyComp=b.dataset.skycomp;
+    S.skySource=S.skyComp+'_'+S.skyFreq;
+    skyTextureSrc=''; // force rebuild
+    drawSkyMap();
+  }));
+  // Sky map frequency buttons
+  document.querySelectorAll('.sky-freq-btn').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('.sky-freq-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    S.skyFreq=b.dataset.skyfreq;
+    S.skySource=S.skyComp+'_'+S.skyFreq;
+    skyTextureSrc='';
     drawSkyMap();
   }));
 
@@ -1167,8 +1273,29 @@ function setup(){
   });
   document.getElementById('stopBtn').addEventListener('click',stopAll);
 
-  // Sky click
-  document.getElementById('skyCanvas').addEventListener('click',handleSkyClick);
+  // Sky interactions: click to sonify, drag to rotate
+  const skyC=document.getElementById('skyCanvas');
+  skyC.addEventListener('mousedown',(e)=>{
+    SKY.dragging=true; SKY.lastX=e.clientX; SKY.lastY=e.clientY;
+  });
+  window.addEventListener('mousemove',(e)=>{
+    if(!SKY.dragging)return;
+    const dx=e.clientX-SKY.lastX, dy=e.clientY-SKY.lastY;
+    SKY.rotLon+=dx*0.01;
+    SKY.rotLat=Math.max(-Math.PI/2,Math.min(Math.PI/2, SKY.rotLat+dy*0.01));
+    SKY.lastX=e.clientX; SKY.lastY=e.clientY;
+    drawSkyMap();
+  });
+  window.addEventListener('mouseup',(e)=>{
+    if(SKY.dragging){
+      const dx=Math.abs(e.clientX-SKY.lastX), dy=Math.abs(e.clientY-SKY.lastY);
+      // Only fire click if barely moved (not a drag)
+    }
+    SKY.dragging=false;
+  });
+  skyC.addEventListener('click',(e)=>{
+    handleSkyClick(e);
+  });
 
   // Resize
   window.addEventListener('resize',()=>{drawSpectrum();drawSkyMap();});
