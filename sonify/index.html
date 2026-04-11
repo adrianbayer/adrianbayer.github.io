@@ -911,27 +911,36 @@ function drawSkyMap() {
   const ctx=canvas.getContext('2d');
   const dpr=window.devicePixelRatio||1;
   const rect=canvas.getBoundingClientRect();
-  canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;
-  ctx.scale(dpr,dpr);
-  const W=rect.width,H=rect.height;
-  ctx.fillStyle='#0d1220';ctx.fillRect(0,0,W,H);
-  if(!S.skyData)return;
+  const cW=Math.ceil(rect.width*dpr), cH=Math.ceil(rect.height*dpr);
+  canvas.width=cW; canvas.height=cH;
+  // DON'T scale ctx — we work in physical pixels for putImageData
+  const W=cW, H=cH;
+
+  if(!S.skyData){
+    ctx.fillStyle='#0d1220';ctx.fillRect(0,0,W,H);
+    return;
+  }
 
   buildSkyTexture();
-  if(!skyTexture)return;
+  if(!skyTexture){
+    ctx.fillStyle='#0d1220';ctx.fillRect(0,0,W,H);
+    return;
+  }
 
-  // Sphere parameters
-  const R=Math.min(W,H)/2-10;
+  // Sphere parameters (in physical pixels)
+  const R=Math.min(W,H)/2-10*dpr;
   const cx=W/2, cy=H/2;
   const tW=200, tH=100;
 
-  // Rotation matrix (rotate by lon around Y, then lat around X)
   const cosLon=Math.cos(SKY.rotLon), sinLon=Math.sin(SKY.rotLon);
   const cosLat=Math.cos(SKY.rotLat), sinLat=Math.sin(SKY.rotLat);
 
-  // Render sphere via raycasting
-  const imgData=ctx.createImageData(Math.ceil(W),Math.ceil(H));
-  const step=2; // render every 2nd pixel for speed, then fill
+  // Render sphere via raycasting in physical pixels
+  const imgData=ctx.createImageData(W,H);
+  // Fill background
+  for(let i=0;i<W*H*4;i+=4){imgData.data[i]=10;imgData.data[i+1]=18;imgData.data[i+2]=32;imgData.data[i+3]=255;}
+
+  const step=Math.max(1,Math.round(dpr)); // 1px at 1x, 2px at 2x
 
   for(let py=0;py<H;py+=step){
     for(let px=0;px<W;px+=step){
@@ -940,7 +949,6 @@ function drawSkyMap() {
       if(r2>1) continue;
       const dz=Math.sqrt(1-r2);
 
-      // 3D point on sphere (view space), then rotate
       let sx=dx, sy=dy, sz=-dz;
       // Rotate around X (latitude tilt)
       let y1=sy*cosLat-sz*sinLat, z1=sy*sinLat+sz*cosLat;
@@ -949,32 +957,23 @@ function drawSkyMap() {
       let x1=sx*cosLon+sz*sinLon, z2=-sx*sinLon+sz*cosLon;
       sx=x1; sz=z2;
 
-      // Convert to theta, phi
-      const theta=Math.acos(Math.max(-1,Math.min(1,sy))); // using Y as pole
-      const phi=Math.atan2(sx,sz);
-
-      // Look up texture
-      // theta: 0=north pole, pi=south pole. Map sy->theta
-      const t_theta = Math.acos(Math.max(-1,Math.min(1,-sy))); // -sy so north is up
+      const t_theta = Math.acos(Math.max(-1,Math.min(1,-sy)));
       const t_phi = (Math.atan2(sx,sz)+Math.PI)%(2*Math.PI);
       const tx=Math.floor(t_phi/(2*Math.PI)*tW)%tW;
       const ty=Math.min(Math.floor(t_theta/Math.PI*tH), tH-1);
       const v=skyTexture[ty*tW+tx];
 
-      // Colormap (RdBu_r)
       const t=v/254;
       let r,g,b;
       if(t<0.5){const s=t*2;r=30+s*225;g=60+s*195;b=180+s*75;}
       else{const s=(t-0.5)*2;r=255;g=255-s*200;b=255-s*220;}
 
-      // Simple shading: darken edges
       const shade=0.5+0.5*dz;
       r=Math.floor(r*shade); g=Math.floor(g*shade); b=Math.floor(b*shade);
 
-      // Fill step x step block
       for(let fy=0;fy<step&&py+fy<H;fy++){
         for(let fx=0;fx<step&&px+fx<W;fx++){
-          const idx=((py+fy)*Math.ceil(W)+(px+fx))*4;
+          const idx=((py+fy)*W+(px+fx))*4;
           imgData.data[idx]=r;imgData.data[idx+1]=g;imgData.data[idx+2]=b;imgData.data[idx+3]=255;
         }
       }
@@ -982,34 +981,36 @@ function drawSkyMap() {
   }
   ctx.putImageData(imgData,0,0);
 
+  // For overlay drawing (halos, markers), scale context
+  ctx.save();
+  ctx.scale(dpr,dpr);
+  // Convert sphere params to logical coords for overlays
+  const lR=R/dpr, lcx=cx/dpr, lcy=cy/dpr;
+
+  // Helper to project a (theta, phi) onto the sphere in logical coords
+  function project(ht,hp){
+    let hx=Math.sin(ht)*Math.sin(hp-Math.PI);
+    let hy=-Math.cos(ht);
+    let hz=Math.sin(ht)*Math.cos(hp-Math.PI);
+    let x1=hx*cosLon-hz*sinLon, z1=hx*sinLon+hz*cosLon; hx=x1;hz=z1;
+    let y1=hy*cosLat+hz*sinLat, z2=-hy*sinLat+hz*cosLat; hy=y1;hz=z2;
+    if(hz>0) return null; // behind sphere
+    return {x:lcx+hx*lR, y:lcy+hy*lR};
+  }
+
   // Draw halos on the sphere
   if(S.halos){
     for(let i=0;i<S.halos.n;i++){
-      const ht=S.halos.theta[i]*Math.PI/180;
-      const hp=S.halos.phi[i]*Math.PI/180;
-      // 3D point on unit sphere (healpy: theta=colatitude from north, phi=longitude)
-      let hx=Math.sin(ht)*Math.sin(hp-Math.PI);
-      let hy=-Math.cos(ht); // north up
-      let hz=Math.sin(ht)*Math.cos(hp-Math.PI);
-      // Apply inverse rotation (view transform)
-      // Inverse Y rotation
-      let x1=hx*cosLon-hz*sinLon, z1=hx*sinLon+hz*cosLon;
-      hx=x1; hz=z1;
-      // Inverse X rotation
-      let y1=hy*cosLat+hz*sinLat, z2=-hy*sinLat+hz*cosLat;
-      hy=y1; hz=z2;
-      // Check if visible (facing us: z < 0 in view space)
-      if(hz>0) continue;
-      const px=cx+hx*R, py=cy+hy*R;
+      const p=project(S.halos.theta[i]*Math.PI/180, S.halos.phi[i]*Math.PI/180);
+      if(!p) continue;
       const logM=S.halos.log_mass[i];
       const sz=Math.max(1.5,(logM-14.5)*4);
       ctx.globalAlpha=Math.min(0.9,(logM-14.5)*0.8+0.2);
       ctx.fillStyle='#ff9f43';
-      ctx.beginPath();ctx.arc(px,py,sz,0,2*Math.PI);ctx.fill();
-      // Outline for biggest
+      ctx.beginPath();ctx.arc(p.x,p.y,sz,0,2*Math.PI);ctx.fill();
       if(logM>15.0){
         ctx.strokeStyle='#fff';ctx.lineWidth=1;
-        ctx.beginPath();ctx.arc(px,py,sz+1,0,2*Math.PI);ctx.stroke();
+        ctx.beginPath();ctx.arc(p.x,p.y,sz+1,0,2*Math.PI);ctx.stroke();
       }
     }
     ctx.globalAlpha=1;
@@ -1017,23 +1018,19 @@ function drawSkyMap() {
 
   // Draw click marker
   if(SKY.clickTheta!==null){
-    const ht=SKY.clickTheta, hp=SKY.clickPhi;
-    let hx=Math.sin(ht)*Math.sin(hp-Math.PI);
-    let hy=-Math.cos(ht);
-    let hz=Math.sin(ht)*Math.cos(hp-Math.PI);
-    let x1=hx*cosLon-hz*sinLon,z1=hx*sinLon+hz*cosLon; hx=x1;hz=z1;
-    let y1=hy*cosLat+hz*sinLat,z2=-hy*sinLat+hz*cosLat; hy=y1;hz=z2;
-    if(hz<0){
-      const px=cx+hx*R,py=cy+hy*R;
-      ctx.beginPath();ctx.arc(px,py,8,0,2*Math.PI);
+    const p=project(SKY.clickTheta, SKY.clickPhi);
+    if(p){
+      ctx.beginPath();ctx.arc(p.x,p.y,8,0,2*Math.PI);
       ctx.strokeStyle='#00ff88';ctx.lineWidth=2.5;ctx.stroke();
-      ctx.beginPath();ctx.arc(px,py,3,0,2*Math.PI);
+      ctx.beginPath();ctx.arc(p.x,p.y,3,0,2*Math.PI);
       ctx.fillStyle='#00ff88';ctx.fill();
     }
   }
 
-  // Store sphere geometry for click handler
-  S._skyGeo={cx,cy,R};
+  ctx.restore(); // undo dpr scale
+
+  // Store sphere geometry for click handler (in logical coords)
+  S._skyGeo={cx:lcx,cy:lcy,R:lR};
 }
 
 // Play a halo "ping" — pitch encodes mass, volume encodes proximity
