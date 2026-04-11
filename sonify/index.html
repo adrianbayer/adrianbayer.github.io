@@ -861,32 +861,26 @@ function drawSkyMap(markerX, markerY) {
   const mW=mapInfo.width, mH=mapInfo.height;
   const mapData=mapInfo.data;
 
-  // Fit into canvas with aspect ratio
+  // Fit into canvas with 2:1 aspect ratio (Mollweide)
   const pad=8;
-  const aspect=mW/mH;
+  const aspect=2; // Mollweide is 2:1
   let drawW=W-2*pad, drawH=H-2*pad;
   if(drawW/drawH>aspect){drawW=drawH*aspect;}else{drawH=drawW/aspect;}
   const offX=(W-drawW)/2, offY=(H-drawH)/2;
   const scaleX=drawW/mW, scaleY=drawH/mH;
 
-  // Mollweide ellipse center/radii
-  const cx=mW/2,cy=mH/2,rx=mW/2,ry=mH/2;
-
-  // Draw map pixel by pixel using ImageData
+  // Draw the pre-projected Mollweide map
   const iW=Math.ceil(drawW), iH=Math.ceil(drawH);
   const imgData=ctx.createImageData(iW,iH);
 
   for(let py=0;py<iH;py++){
     for(let px=0;px<iW;px++){
-      const srcX=Math.floor(px/scaleX);
-      const srcY=Math.floor(py/scaleY);
-      // Mollweide mask
-      const nx=(srcX-cx)/rx,ny=(srcY-cy)/ry;
-      if(nx*nx+ny*ny>1)continue;
-      if(srcX<0||srcX>=mW||srcY<0||srcY>=mH)continue;
+      const srcX=Math.min(Math.floor(px/scaleX), mW-1);
+      const srcY=Math.min(Math.floor(py/scaleY), mH-1);
       const v=mapData[srcY][srcX];
+      if(v===255) continue; // outside Mollweide ellipse
       // RdBu_r colormap
-      const t=v/255;
+      const t=v/254;
       let r,g,b;
       if(t<0.5){const s=t*2;r=30+s*225;g=60+s*195;b=180+s*75;}
       else{const s=(t-0.5)*2;r=255;g=255-s*200;b=255-s*220;}
@@ -897,32 +891,44 @@ function drawSkyMap(markerX, markerY) {
   }
   ctx.putImageData(imgData,Math.floor(offX),Math.floor(offY));
 
-  // Ellipse outline
+  // Mollweide ellipse outline
   ctx.strokeStyle='#2a3558';ctx.lineWidth=1.5;
   ctx.beginPath();
+  const ecx=offX+drawW/2, ecy=offY+drawH/2, erx=drawW/2, ery=drawH/2;
   for(let a=0;a<=2*Math.PI;a+=0.02){
-    const x=offX+(cx+rx*Math.cos(a))*scaleX;
-    const y=offY+(cy+ry*Math.sin(a))*scaleY;
+    const x=ecx+erx*Math.cos(a), y=ecy+ery*Math.sin(a);
     if(a===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
   }
   ctx.closePath();ctx.stroke();
 
-  // Store geometry for clicks
-  S._skyGeo={offX,offY,scaleX,scaleY,cx,cy,rx,ry,mW,mH,mn,nu};
+  // Store geometry for clicks and halo drawing
+  S._skyGeo={offX,offY,scaleX,scaleY,drawW,drawH,mW,mH,mn,nu};
 
-  // Draw halos as small dots
+  // Draw halos as small dots using Mollweide forward projection
   if(S.halos && S._skyGeo){
     const g = S._skyGeo;
     ctx.fillStyle='rgba(255,159,67,0.5)';
     for(let i=0;i<S.halos.n;i++){
-      const ht=S.halos.theta[i]*Math.PI/180;
-      const hp=S.halos.phi[i]*Math.PI/180;
-      const sy=ht/Math.PI*g.mH;
-      const sx=hp/(2*Math.PI)*g.mW;
-      const nx2=(sx-g.cx)/g.rx, ny2=(sy-g.cy)/g.ry;
-      if(nx2*nx2+ny2*ny2>1) continue;
-      const px=g.offX+sx*g.scaleX, py=g.offY+sy*g.scaleY;
-      // Size by mass
+      const theta_h=S.halos.theta[i]*Math.PI/180; // colatitude
+      const phi_h=S.halos.phi[i]*Math.PI/180;     // longitude [0, 2pi]
+      // Convert to lat, lon for Mollweide
+      const lat = Math.PI/2 - theta_h;          // [-pi/2, pi/2]
+      const lon = phi_h - Math.PI;              // [-pi, pi] (centered)
+      // Mollweide forward projection: solve 2*aux + sin(2*aux) = pi*sin(lat)
+      let aux = lat; // Newton's method seed
+      for(let it=0;it<8;it++){
+        const f = 2*aux + Math.sin(2*aux) - Math.PI*Math.sin(lat);
+        const fp = 2 + 2*Math.cos(2*aux);
+        if(Math.abs(fp)<1e-10) break;
+        aux -= f/fp;
+      }
+      const xm = (2*Math.SQRT2/Math.PI)*lon*Math.cos(aux); // range [-2sqrt2, 2sqrt2]
+      const ym = Math.SQRT2*Math.sin(aux);                  // range [-sqrt2, sqrt2]
+      // Normalize to canvas coords
+      const px = g.offX + g.drawW/2 + xm/(2*Math.SQRT2)*g.drawW;
+      const py = g.offY + g.drawH/2 - ym/Math.SQRT2*g.drawH/2;
+      // Check bounds
+      if(px<g.offX||px>g.offX+g.drawW||py<g.offY||py>g.offY+g.drawH) continue;
       const logM=S.halos.log_mass[i];
       const sz=Math.max(1, (logM-14.5)*3);
       ctx.globalAlpha=Math.min(0.9, (logM-14.5)*0.6+0.1);
@@ -982,19 +988,26 @@ function handleSkyClick(e){
   const canvas=document.getElementById('skyCanvas');
   const rect=canvas.getBoundingClientRect();
   const x=e.clientX-rect.left, y=e.clientY-rect.top;
-  const{offX,offY,scaleX,scaleY,cx,cy,rx,ry,mW,mH,mn,nu}=S._skyGeo;
+  const g=S._skyGeo;
 
-  const srcX=(x-offX)/scaleX, srcY=(y-offY)/scaleY;
-  const nx=(srcX-cx)/rx,ny=(srcY-cy)/ry;
-  if(nx*nx+ny*ny>1)return;
+  // Inverse Mollweide: canvas coords -> (lat, lon)
+  const xm = (x - g.offX - g.drawW/2) / g.drawW * 2 * Math.SQRT2;
+  const ym = -(y - g.offY - g.drawH/2) / (g.drawH/2) * Math.SQRT2;
+  // Check inside ellipse: (xm/2sqrt2)^2 + (ym/sqrt2)^2 <= 1
+  if(xm*xm/(8) + ym*ym/2 > 1) return;
+  const aux = Math.asin(Math.max(-1,Math.min(1, ym/Math.SQRT2)));
+  const lat = Math.asin(Math.max(-1,Math.min(1, (2*aux+Math.sin(2*aux))/Math.PI)));
+  const cosAux = Math.cos(aux);
+  const lon = (Math.abs(cosAux)<1e-10) ? 0 : Math.PI*xm/(2*Math.SQRT2*cosAux);
+  if(Math.abs(lon)>Math.PI) return;
+  const theta = Math.PI/2 - lat;        // colatitude
+  const phi = (lon + Math.PI) % (2*Math.PI); // longitude [0, 2pi]
 
-  const theta=(srcY/mH)*Math.PI;
-  const phi=(srcX/mW)*2*Math.PI;
-
+  const{mn,nu}=g;
   const mapInfo=S.skyData.maps[mn]?.[nu];
   if(!mapInfo?.patch_variance)return;
 
-  // Approximate HEALPix pixel (ring scheme)
+  // HEALPix pixel lookup
   const npix=S.skyData.npix;
   const z=Math.cos(theta);
   const pixIdx=Math.min(Math.floor((1-z)/2*npix*0.99),npix-1);
