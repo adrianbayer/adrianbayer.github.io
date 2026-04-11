@@ -16,112 +16,48 @@
   --cib: #2ed573;
   --tot: #a8a8a8;
 }
-
 * { margin: 0; padding: 0; box-sizing: border-box; }
-
 body {
   background: var(--bg);
   color: var(--text);
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   overflow-x: hidden;
 }
-
-h1 {
-  text-align: center;
-  padding: 18px 0 4px;
-  font-size: 1.6em;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  color: #e8ecf4;
-}
-
-.subtitle {
-  text-align: center;
-  font-size: 0.85em;
-  color: #6b7394;
-  margin-bottom: 12px;
-}
+h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600; color: #e8ecf4; }
+.subtitle { text-align: center; font-size: 0.85em; color: #6b7394; margin-bottom: 12px; }
 
 .container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 16px 24px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto auto auto;
-  gap: 12px;
+  max-width: 1200px; margin: 0 auto; padding: 0 16px 24px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
 }
-
 .panel {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 14px;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px;
 }
-
 .panel h2 {
-  font-size: 0.85em;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: #6b7394;
-  margin-bottom: 10px;
+  font-size: 0.85em; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 1px; color: #6b7394; margin-bottom: 10px;
 }
+.full-width { grid-column: 1 / -1; }
 
-/* Power spectrum panel */
-.spectrum-panel {
-  grid-column: 1 / -1;
-}
+/* Spectrum canvas */
+#spectrumCanvas { width: 100%; height: 300px; border-radius: 6px; cursor: crosshair; }
 
-#spectrumCanvas {
-  width: 100%;
-  height: 300px;
-  border-radius: 6px;
-  cursor: crosshair;
-}
-
-/* Controls panel */
-.controls-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.control-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
+/* Controls */
+.controls-panel { display: flex; flex-direction: column; gap: 10px; }
+.control-group { display: flex; flex-direction: column; gap: 5px; }
 .control-group label {
-  font-size: 0.8em;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: #6b7394;
+  font-size: 0.78em; text-transform: uppercase; letter-spacing: 0.8px; color: #6b7394;
 }
 
-.component-toggles {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
+/* Toggle buttons */
+.btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
 .toggle-btn {
-  padding: 6px 14px;
-  border: 2px solid;
-  border-radius: 20px;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  font-size: 0.85em;
-  font-weight: 500;
-  transition: all 0.2s;
+  padding: 5px 12px; border: 2px solid; border-radius: 20px;
+  background: transparent; color: inherit; cursor: pointer;
+  font-size: 0.82em; font-weight: 500; transition: all 0.2s;
 }
-
-.toggle-btn.active {
-  color: var(--bg);
-}
-
+.toggle-btn.active { color: var(--bg); }
 .toggle-btn[data-comp="dT_cmblens"] { border-color: var(--cmb); }
 .toggle-btn[data-comp="dT_cmblens"].active { background: var(--cmb); }
 .toggle-btn[data-comp="dT_tsz"] { border-color: var(--tsz); }
@@ -131,160 +67,71 @@ h1 {
 .toggle-btn[data-comp="T_tot"] { border-color: var(--tot); }
 .toggle-btn[data-comp="T_tot"].active { background: var(--tot); }
 
-.freq-btns {
-  display: flex;
-  gap: 6px;
+.sm-btn {
+  padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px;
+  background: transparent; color: var(--text); cursor: pointer;
+  font-size: 0.82em; transition: all 0.2s;
 }
+.sm-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.sm-btn:hover { background: #1e2744; }
 
-.freq-btn {
-  padding: 6px 16px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text);
-  cursor: pointer;
-  font-size: 0.85em;
-  transition: all 0.2s;
-}
-
-.freq-btn.active {
-  background: var(--accent);
-  color: var(--bg);
-  border-color: var(--accent);
-}
-
-.slider-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.slider-row input[type="range"] {
-  flex: 1;
-  accent-color: var(--accent);
-}
-
+/* Sliders */
+.slider-row { display: flex; align-items: center; gap: 8px; }
+.slider-row input[type="range"] { flex: 1; accent-color: var(--accent); }
 .slider-val {
-  font-size: 0.85em;
-  min-width: 55px;
-  text-align: right;
-  color: var(--accent);
-  font-variant-numeric: tabular-nums;
+  font-size: 0.82em; min-width: 55px; text-align: right;
+  color: var(--accent); font-variant-numeric: tabular-nums;
 }
 
-/* Transport controls */
-.transport {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-top: 4px;
-}
-
+/* Transport */
+.transport { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .transport-btn {
-  padding: 8px 20px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9em;
-  font-weight: 600;
-  transition: all 0.15s;
+  padding: 7px 16px; border: none; border-radius: 6px;
+  cursor: pointer; font-size: 0.85em; font-weight: 600; transition: all 0.15s;
 }
-
-.play-btn {
-  background: var(--accent);
-  color: var(--bg);
-}
-
+.play-btn { background: var(--accent); color: var(--bg); }
 .play-btn:hover { background: #6bb3ff; }
+.action-btn { background: #1e2744; color: var(--text); border: 1px solid var(--border); }
+.action-btn:hover { background: #2a3558; }
+.action-btn.active { background: #3a4568; border-color: var(--accent); }
+.stop-btn { background: #cc3333; color: white; }
 
-.sweep-btn {
-  background: #1e2744;
-  color: var(--text);
-  border: 1px solid var(--border);
+/* Meter */
+.meter-bar {
+  flex: 1; height: 5px; background: #1a2040; border-radius: 3px; overflow: hidden;
+}
+.meter-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--accent), #2ed573, #ff9f43, #cc3333);
+  border-radius: 3px; transition: width 0.05s;
 }
 
-.sweep-btn:hover { background: #2a3558; }
-.sweep-btn.active { background: #3a4568; border-color: var(--accent); }
-
-.stop-btn {
-  background: #cc3333;
-  color: white;
-}
-
-/* Sky map panel */
-.sky-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-#skyCanvas {
-  width: 100%;
-  height: 220px;
-  border-radius: 6px;
-  cursor: crosshair;
-}
-
-.sky-info {
-  font-size: 0.8em;
-  color: #6b7394;
-}
-
+/* Sky map */
+#skyCanvas { width: 100%; height: 200px; border-radius: 6px; cursor: crosshair; }
+.sky-info { font-size: 0.78em; color: #6b7394; margin-top: 6px; }
 .sky-info span { color: var(--accent); }
 
-/* Volume meter */
-.meter-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 20px;
+/* Status */
+.status {
+  font-size: 0.75em; padding: 3px 8px; border-radius: 10px;
+  background: #1a2040; color: #6b7394;
+}
+.status.playing { background: rgba(74,158,255,0.15); color: var(--accent); }
+
+/* Stereo indicator */
+.stereo-indicator {
+  display: inline-flex; gap: 4px; align-items: center;
+  font-size: 0.75em; padding: 3px 8px; border-radius: 10px;
+  background: rgba(46,213,115,0.15); color: #2ed573;
 }
 
-.meter-bar {
-  flex: 1;
-  height: 6px;
-  background: #1a2040;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.meter-fill {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, var(--accent), #2ed573, #ff9f43, #cc3333);
-  border-radius: 3px;
-  transition: width 0.05s;
-}
-
-/* Info footer */
-.info-panel {
-  grid-column: 1 / -1;
-  font-size: 0.82em;
-  color: #6b7394;
-  line-height: 1.6;
-}
-
+/* Info */
+.info-panel { font-size: 0.8em; color: #6b7394; line-height: 1.6; }
 .info-panel strong { color: var(--text); }
 
-/* Status indicator */
-.status {
-  font-size: 0.75em;
-  padding: 3px 8px;
-  border-radius: 10px;
-  background: #1a2040;
-  color: #6b7394;
-}
-
-.status.playing {
-  background: rgba(74, 158, 255, 0.15);
-  color: var(--accent);
-}
-
-/* Responsive */
 @media (max-width: 800px) {
   .container { grid-template-columns: 1fr; }
-  .spectrum-panel { grid-column: 1; }
-  .info-panel { grid-column: 1; }
+  .full-width { grid-column: 1; }
 }
 </style>
 </head>
@@ -295,11 +142,14 @@ h1 {
 
 <div class="container">
 
-  <!-- Power Spectrum Plot -->
-  <div class="panel spectrum-panel">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
+  <!-- Power Spectrum -->
+  <div class="panel full-width">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
       <h2>Power Spectrum D<sub>&#8467;</sub></h2>
-      <span class="status" id="statusBadge">Ready</span>
+      <div style="display:flex; gap:6px; align-items:center;">
+        <span class="stereo-indicator" id="stereoIndicator" style="display:none;">&#127911; Stereo</span>
+        <span class="status" id="statusBadge">Ready</span>
+      </div>
     </div>
     <canvas id="spectrumCanvas"></canvas>
   </div>
@@ -309,8 +159,8 @@ h1 {
     <h2>Controls</h2>
 
     <div class="control-group">
-      <label>Components</label>
-      <div class="component-toggles">
+      <label>Components (click to toggle)</label>
+      <div class="btn-row">
         <button class="toggle-btn active" data-comp="dT_cmblens">CMB</button>
         <button class="toggle-btn" data-comp="dT_tsz">tSZ</button>
         <button class="toggle-btn" data-comp="dT_cib">CIB</button>
@@ -320,22 +170,42 @@ h1 {
 
     <div class="control-group">
       <label>Observing Frequency</label>
-      <div class="freq-btns">
-        <button class="freq-btn" data-freq="93">93 GHz</button>
-        <button class="freq-btn active" data-freq="143">143 GHz</button>
-        <button class="freq-btn" data-freq="353">353 GHz</button>
+      <div class="btn-row">
+        <button class="sm-btn freq-btn" data-freq="93">93 GHz</button>
+        <button class="sm-btn freq-btn active" data-freq="143">143 GHz</button>
+        <button class="sm-btn freq-btn" data-freq="353">353 GHz</button>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>Synthesis Method</label>
+      <div class="btn-row">
+        <button class="sm-btn method-btn active" data-method="noise">Shaped Noise</button>
+        <button class="sm-btn method-btn" data-method="additive">Additive</button>
+        <button class="sm-btn method-btn" data-method="layers">Scale Layers</button>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>Stereo Mode</label>
+      <div class="btn-row">
+        <button class="sm-btn stereo-btn active" data-stereo="mono">Mono</button>
+        <button class="sm-btn stereo-btn" data-stereo="comp" title="Active components split L/R">Components L/R</button>
+        <button class="sm-btn stereo-btn" data-stereo="freq" title="93 GHz left, 353 GHz right">93|353 GHz</button>
       </div>
     </div>
 
     <div class="control-group">
       <label>&#8467; range</label>
       <div class="slider-row">
+        <span style="font-size:0.75em;color:#6b7394;">min</span>
         <input type="range" id="ellMinSlider" min="2" max="1000" value="2" step="1">
-        <span class="slider-val" id="ellMinVal">&#8467;<sub>min</sub>=2</span>
+        <span class="slider-val" id="ellMinVal">2</span>
       </div>
       <div class="slider-row">
+        <span style="font-size:0.75em;color:#6b7394;">max</span>
         <input type="range" id="ellMaxSlider" min="100" max="6000" value="6000" step="10">
-        <span class="slider-val" id="ellMaxVal">&#8467;<sub>max</sub>=6000</span>
+        <span class="slider-val" id="ellMaxVal">6000</span>
       </div>
     </div>
 
@@ -345,7 +215,7 @@ h1 {
         <input type="range" id="volumeSlider" min="0" max="100" value="70">
         <span class="slider-val" id="volumeVal">70%</span>
       </div>
-      <div class="meter-row">
+      <div style="display:flex;align-items:center;gap:8px;height:16px;">
         <div class="meter-bar"><div class="meter-fill" id="meterFill"></div></div>
       </div>
     </div>
@@ -354,384 +224,508 @@ h1 {
       <label>Playback</label>
       <div class="transport">
         <button class="transport-btn play-btn" id="playBtn">&#9654; Play</button>
-        <button class="transport-btn sweep-btn" id="sweepBtn">&#8467;-Sweep</button>
+        <button class="transport-btn action-btn" id="sweepBtn">&#8467;-Sweep</button>
+        <button class="transport-btn action-btn" id="buildupBtn">Build-Up</button>
+        <button class="transport-btn action-btn" id="freqSweepBtn">&#957;-Sweep</button>
         <button class="transport-btn stop-btn" id="stopBtn">&#9632; Stop</button>
       </div>
     </div>
 
     <div class="control-group">
-      <label>&#8467;-Sweep speed</label>
+      <label>Sweep speed</label>
       <div class="slider-row">
-        <input type="range" id="sweepSpeedSlider" min="1" max="20" value="8">
-        <span class="slider-val" id="sweepSpeedVal">8s</span>
+        <input type="range" id="sweepSpeedSlider" min="2" max="30" value="10">
+        <span class="slider-val" id="sweepSpeedVal">10s</span>
       </div>
     </div>
   </div>
 
   <!-- Sky Map -->
-  <div class="panel sky-panel">
+  <div class="panel">
     <h2>Sky Map</h2>
     <canvas id="skyCanvas"></canvas>
     <div class="sky-info">
-      Click on the map to hear different patches.
+      Click to hear different patches. &nbsp;
       Position: <span id="skyPos">&mdash;</span> &nbsp;|&nbsp;
-      Local variance: <span id="skyVar">&mdash;</span>
+      Relative variance: <span id="skyVar">&mdash;</span>
     </div>
-    <div class="control-group">
-      <label>Sky Map Source</label>
-      <div class="freq-btns">
-        <button class="freq-btn sky-src-btn active" data-skysrc="dT_cmblens_143">CMB 143</button>
-        <button class="freq-btn sky-src-btn" data-skysrc="T_tot_143">Total 143</button>
-        <button class="freq-btn sky-src-btn" data-skysrc="T_tot_353">Total 353</button>
+    <div class="control-group" style="margin-top:8px;">
+      <div class="btn-row">
+        <button class="sm-btn sky-btn active" data-sky="dT_cmblens_143">CMB 143</button>
+        <button class="sm-btn sky-btn" data-sky="T_tot_143">Total 143</button>
+        <button class="sm-btn sky-btn" data-sky="T_tot_353">Total 353</button>
       </div>
     </div>
   </div>
 
   <!-- Info -->
-  <div class="panel info-panel">
-    <strong>How it works:</strong> White noise is spectrally shaped in real time so its power spectrum matches
-    the angular power spectrum D<sub>&#8467;</sub>. Multipole &#8467; maps to audio frequency via a log-log scaling
-    (&#8467;=2 &rarr; 40 Hz, &#8467;=6000 &rarr; 8 kHz). Toggle components to hear each one individually or combined.
-    The &#8467;-sweep animates a bandpass window across scales. Click the sky map to modulate amplitude by local variance.
+  <div class="panel info-panel full-width">
+    <strong>How it works:</strong>
+    Multipole &#8467; maps to audio frequency via log-log scaling (&#8467;=2 &rarr; 40 Hz, &#8467;=6000 &rarr; 8 kHz).
+    <strong>Shaped Noise</strong> filters white noise to match D<sub>&#8467;</sub>.
+    <strong>Additive</strong> sums sine tones weighted by &radic;D<sub>&#8467;</sub>.
+    <strong>Scale Layers</strong> splits into drone (&#8467;&lt;100), harmonics at CMB acoustic peaks, and high-&#8467; noise.
+    <strong>&#8467;-Sweep</strong> animates a bandpass window across scales.
+    <strong>Build-Up</strong> progressively adds CMB &rarr; tSZ &rarr; CIB.
+    <strong>&#957;-Sweep</strong> crossfades 93 &rarr; 143 &rarr; 353 GHz.
+    <strong>Stereo</strong> modes put components or frequencies in separate ears (use headphones!).
+    Click the <strong>sky map</strong> to modulate amplitude by local variance.
   </div>
-
 </div>
 
 <script>
 // ============================================================
-// Global state
+// State
 // ============================================================
-const STATE = {
-  clData: null,
-  skyData: null,
+const S = {
+  clData: null, skyData: null,
   activeComponents: new Set(['dT_cmblens']),
-  freq: 143,
-  ellMin: 2,
-  ellMax: 6000,
-  volume: 0.7,
+  freq: 143, ellMin: 2, ellMax: 6000, volume: 0.7,
+  method: 'noise',       // 'noise', 'additive', 'layers'
+  stereoMode: 'mono',    // 'mono', 'comp', 'freq'
   playing: false,
-  sweeping: false,
-  sweepPos: 0,      // 0-1 normalized position in ell range
-  sweepSpeed: 8,     // seconds for full sweep
-  skyVarianceScale: 1.0,
-  skyMapSource: 'dT_cmblens_143',
-  // Audio
-  audioCtx: null,
-  noiseNode: null,
-  gainNode: null,
-  analyserNode: null,
-  filterChain: [],   // for ell-sweep bandpass
+  sweeping: false, sweepPos: 0, sweepSpeed: 10,
+  buildup: false, buildupPhase: 0,  // 0=CMB, 1=+tSZ, 2=+CIB
+  freqSweep: false, freqSweepPos: 0,
+  skyVarScale: 1.0,
+  skySource: 'dT_cmblens_143',
+  // Audio nodes
+  audioCtx: null, gainNode: null, analyserNode: null,
+  sourceNodes: [], _rebuildTimer: null,
 };
 
-const COLORS = {
-  dT_cmblens: '#4a9eff',
-  dT_tsz: '#ff9f43',
-  dT_cib: '#2ed573',
-  T_tot: '#a8a8a8',
-};
+const COLORS = { dT_cmblens:'#4a9eff', dT_tsz:'#ff9f43', dT_cib:'#2ed573', T_tot:'#a8a8a8' };
+const COMP_LABELS = { dT_cmblens:'CMB', dT_tsz:'tSZ', dT_cib:'CIB', T_tot:'Total' };
 
-const ELL_AUDIO_MIN = 2;
-const ELL_AUDIO_MAX = 6000;
-const FREQ_AUDIO_MIN = 40;
-const FREQ_AUDIO_MAX = 8000;
+const ELL_MIN=2, ELL_MAX=6000, F_MIN=40, F_MAX=8000;
 
 function ellToFreq(ell) {
-  const logEll = Math.log10(Math.max(ell, ELL_AUDIO_MIN));
-  const frac = (logEll - Math.log10(ELL_AUDIO_MIN)) / (Math.log10(ELL_AUDIO_MAX) - Math.log10(ELL_AUDIO_MIN));
-  return 10 ** (Math.log10(FREQ_AUDIO_MIN) + frac * (Math.log10(FREQ_AUDIO_MAX) - Math.log10(FREQ_AUDIO_MIN)));
+  const f = (Math.log10(Math.max(ell,ELL_MIN))-Math.log10(ELL_MIN))/(Math.log10(ELL_MAX)-Math.log10(ELL_MIN));
+  return 10**(Math.log10(F_MIN)+f*(Math.log10(F_MAX)-Math.log10(F_MIN)));
 }
-
 function freqToEll(f) {
-  const logF = Math.log10(Math.max(f, FREQ_AUDIO_MIN));
-  const frac = (logF - Math.log10(FREQ_AUDIO_MIN)) / (Math.log10(FREQ_AUDIO_MAX) - Math.log10(FREQ_AUDIO_MIN));
-  return 10 ** (Math.log10(ELL_AUDIO_MIN) + frac * (Math.log10(ELL_AUDIO_MAX) - Math.log10(ELL_AUDIO_MIN)));
+  const t = (Math.log10(Math.max(f,F_MIN))-Math.log10(F_MIN))/(Math.log10(F_MAX)-Math.log10(F_MIN));
+  return 10**(Math.log10(ELL_MIN)+t*(Math.log10(ELL_MAX)-Math.log10(ELL_MIN)));
 }
 
 // ============================================================
 // Data loading
 // ============================================================
 async function loadData() {
-  const [clResp, skyResp] = await Promise.all([
-    fetch('cl_data.json'),
-    fetch('sky_data.json'),
-  ]);
-  STATE.clData = await clResp.json();
-  STATE.skyData = await skyResp.json();
+  const [a,b] = await Promise.all([fetch('cl_data.json'),fetch('sky_data.json')]);
+  S.clData = await a.json();
+  S.skyData = await b.json();
   drawSpectrum();
   drawSkyMap();
 }
 
 // ============================================================
-// Audio engine - ScriptProcessor for real-time spectral shaping
+// Audio synthesis
 // ============================================================
 function initAudio() {
-  if (STATE.audioCtx) return;
-  STATE.audioCtx = new (window.AudioContext || window.webkitAudioContext)({sampleRate: 44100});
-
-  // Gain node
-  STATE.gainNode = STATE.audioCtx.createGain();
-  STATE.gainNode.gain.value = STATE.volume;
-  STATE.gainNode.connect(STATE.audioCtx.destination);
-
-  // Analyser for the VU meter
-  STATE.analyserNode = STATE.audioCtx.createAnalyser();
-  STATE.analyserNode.fftSize = 256;
-  STATE.gainNode.connect(STATE.analyserNode);
+  if (S.audioCtx) return;
+  S.audioCtx = new (window.AudioContext||window.webkitAudioContext)({sampleRate:44100});
+  S.gainNode = S.audioCtx.createGain();
+  S.gainNode.gain.value = S.volume;
+  S.gainNode.connect(S.audioCtx.destination);
+  S.analyserNode = S.audioCtx.createAnalyser();
+  S.analyserNode.fftSize = 256;
+  S.gainNode.connect(S.analyserNode);
 }
 
-function buildTargetSpectrum() {
-  // Build the target power spectrum in audio-frequency space
-  // by combining active components
-  const sampleRate = STATE.audioCtx.sampleRate;
-  const fftSize = 4096;
-  const numBins = fftSize / 2 + 1;
+// Look up Dl for a given ell, component, frequency
+function lookupDl(ell, comp, nu) {
+  const clArr = S.clData.cl[comp]?.[String(nu)];
+  const ellArr = S.clData.ell_cl;
+  if (!clArr||!ellArr) return 0;
+  // Binary search for nearest ell
+  let lo=0, hi=ellArr.length-1;
+  while (lo<hi) {
+    const mid=(lo+hi)>>1;
+    if (ellArr[mid]<ell) lo=mid+1; else hi=mid;
+  }
+  if (lo>0 && Math.abs(ellArr[lo-1]-ell)<Math.abs(ellArr[lo]-ell)) lo--;
+  const e=ellArr[lo], cl=clArr[lo];
+  return Math.max(e*(e+1)*cl/(2*Math.PI), 0);
+}
+
+// Sum Dl across active components at given ell and freq
+function sumDl(ell, comps, nu) {
+  let sum=0;
+  for (const c of comps) sum += lookupDl(ell, c, nu);
+  return sum;
+}
+
+// Build target amplitude spectrum for one channel
+function buildTarget(comps, nu) {
+  const sr = S.audioCtx.sampleRate;
+  const fftSize = 2048;
+  const numBins = fftSize/2+1;
   const target = new Float32Array(numBins);
 
-  if (!STATE.clData) return target;
-
-  for (let i = 0; i < numBins; i++) {
-    const fAudio = (i / numBins) * (sampleRate / 2);
-    if (fAudio < FREQ_AUDIO_MIN || fAudio > FREQ_AUDIO_MAX) continue;
-
-    // Map audio freq to ell
+  for (let i=1; i<numBins; i++) {
+    const fAudio = (i/numBins)*(sr/2);
+    if (fAudio<F_MIN||fAudio>F_MAX) continue;
     const ell = freqToEll(fAudio);
-    if (ell < STATE.ellMin || ell > STATE.ellMax) continue;
+    if (ell<S.ellMin||ell>S.ellMax) continue;
 
-    // If sweeping, apply a bandpass window around the sweep position
-    if (STATE.sweeping) {
-      const sweepEll = 10 ** (Math.log10(ELL_AUDIO_MIN) + STATE.sweepPos *
-        (Math.log10(ELL_AUDIO_MAX) - Math.log10(ELL_AUDIO_MIN)));
-      const logDist = Math.abs(Math.log10(ell) - Math.log10(sweepEll));
-      const bandwidth = 0.3; // in log10 units
-      if (logDist > bandwidth) continue;
-      const window = Math.cos(Math.PI * logDist / (2 * bandwidth));
-      // Sum active components
-      let dlSum = 0;
-      for (const comp of STATE.activeComponents) {
-        const clArr = STATE.clData.cl[comp]?.[String(STATE.freq)];
-        const ellArr = STATE.clData.ell_cl;
-        if (!clArr || !ellArr) continue;
-        // Find nearest ell in the sampled array
-        let bestIdx = 0;
-        let bestDist = 1e9;
-        for (let j = 0; j < ellArr.length; j++) {
-          const d = Math.abs(ellArr[j] - ell);
-          if (d < bestDist) { bestDist = d; bestIdx = j; }
-        }
-        const e = ellArr[bestIdx];
-        const cl = clArr[bestIdx];
-        const dl = e * (e + 1) * cl / (2 * Math.PI);
-        dlSum += Math.max(dl, 0);
-      }
-      target[i] = Math.sqrt(dlSum) * window * STATE.skyVarianceScale;
+    // Sweep windowing
+    if (S.sweeping) {
+      const sweepEll = 10**(Math.log10(ELL_MIN)+S.sweepPos*(Math.log10(ELL_MAX)-Math.log10(ELL_MIN)));
+      const logDist = Math.abs(Math.log10(ell)-Math.log10(sweepEll));
+      if (logDist>0.3) continue;
+      target[i] = Math.sqrt(sumDl(ell,comps,nu)) * Math.cos(Math.PI*logDist/0.6);
     } else {
-      // Static mode: full spectrum
-      let dlSum = 0;
-      for (const comp of STATE.activeComponents) {
-        const clArr = STATE.clData.cl[comp]?.[String(STATE.freq)];
-        const ellArr = STATE.clData.ell_cl;
-        if (!clArr || !ellArr) continue;
-        let bestIdx = 0;
-        let bestDist = 1e9;
-        for (let j = 0; j < ellArr.length; j++) {
-          const d = Math.abs(ellArr[j] - ell);
-          if (d < bestDist) { bestDist = d; bestIdx = j; }
-        }
-        const e = ellArr[bestIdx];
-        const cl = clArr[bestIdx];
-        const dl = e * (e + 1) * cl / (2 * Math.PI);
-        dlSum += Math.max(dl, 0);
-      }
-      target[i] = Math.sqrt(dlSum) * STATE.skyVarianceScale;
+      target[i] = Math.sqrt(sumDl(ell,comps,nu));
     }
   }
 
   // Normalize
-  let maxVal = 0;
-  for (let i = 0; i < numBins; i++) {
-    if (target[i] > maxVal) maxVal = target[i];
-  }
-  if (maxVal > 0) {
-    for (let i = 0; i < numBins; i++) {
-      target[i] /= maxVal;
-    }
-  }
+  let mx=0;
+  for (let i=0;i<numBins;i++) if(target[i]>mx) mx=target[i];
+  if (mx>0) for (let i=0;i<numBins;i++) target[i]/=mx;
+
+  // Apply sky variance
+  for (let i=0;i<numBins;i++) target[i]*=S.skyVarScale;
 
   return target;
 }
 
-function createShapedBuffer() {
-  // Generate a buffer of spectrally shaped noise using FFT
-  const sampleRate = STATE.audioCtx.sampleRate;
-  const bufLen = sampleRate * 2; // 2 seconds
-  const buffer = STATE.audioCtx.createBuffer(1, bufLen, sampleRate);
-  const data = buffer.getChannelData(0);
-  const target = buildTargetSpectrum();
+// Generate shaped-noise buffer from target spectrum
+function genNoiseBuf(target, duration) {
+  const sr = S.audioCtx.sampleRate;
+  const n = Math.floor(sr*duration);
+  const buf = S.audioCtx.createBuffer(1,n,sr);
+  const data = buf.getChannelData(0);
 
-  // Generate random-phase spectrum matching target
-  const halfN = Math.floor(bufLen / 2) + 1;
-  const real = new Float32Array(bufLen);
-  const imag = new Float32Array(bufLen);
+  // Additive synthesis with ~250 tones for noise-like texture
+  const nTones = 250;
+  for (let i=0;i<n;i++) data[i]=0;
 
-  for (let i = 1; i < halfN; i++) {
-    const fAudio = (i / halfN) * (sampleRate / 2);
-    // Find nearest target bin
-    const tIdx = Math.round(i / bufLen * (target.length - 1) * 2);
-    const amp = (tIdx >= 0 && tIdx < target.length) ? target[tIdx] : 0;
-    const phase = Math.random() * 2 * Math.PI;
-    real[i] = amp * Math.cos(phase);
-    imag[i] = amp * Math.sin(phase);
-    if (i < bufLen - i) {
-      real[bufLen - i] = real[i];
-      imag[bufLen - i] = -imag[i];
-    }
-  }
-
-  // Simple IDFT via additive synthesis (using key frequencies for efficiency)
-  // Pick ~300 frequencies spanning the target spectrum
-  const numFreqs = 300;
-  for (let i = 0; i < bufLen; i++) data[i] = 0;
-
-  for (let k = 0; k < numFreqs; k++) {
-    const tIdx = Math.floor(k / numFreqs * target.length);
+  for (let k=0;k<nTones;k++) {
+    const tIdx = Math.floor(k/nTones*target.length);
     const amp = target[tIdx];
-    if (amp < 0.001) continue;
-    const freq = (tIdx / (target.length - 1)) * (sampleRate / 2);
-    if (freq < 20 || freq > sampleRate / 2 - 100) continue;
+    if (amp<0.001) continue;
+    const freq = (tIdx/(target.length-1))*(sr/2);
+    if (freq<20||freq>sr/2-100) continue;
+    const phase = Math.random()*2*Math.PI;
+    const w = 2*Math.PI*freq/sr;
+    const am = (0.6+Math.random()*0.4)*amp;
+    for (let i=0;i<n;i++) data[i]+=am*Math.sin(w*i+phase);
+  }
 
-    const phase = Math.random() * 2 * Math.PI;
-    const w = 2 * Math.PI * freq / sampleRate;
-    // Slight random amplitude variation for texture
-    const ampMod = (0.7 + Math.random() * 0.3) * amp;
+  normBuf(data);
+  fadeEdges(data, sr);
+  return buf;
+}
 
-    for (let i = 0; i < bufLen; i++) {
-      data[i] += ampMod * Math.sin(w * i + phase);
+// Generate additive synthesis buffer (more tonal, fewer tones, no random amp)
+function genAdditiveBuf(target, duration) {
+  const sr = S.audioCtx.sampleRate;
+  const n = Math.floor(sr*duration);
+  const buf = S.audioCtx.createBuffer(1,n,sr);
+  const data = buf.getChannelData(0);
+
+  const nTones = 150;
+  for (let i=0;i<n;i++) data[i]=0;
+
+  for (let k=0;k<nTones;k++) {
+    const tIdx = Math.floor(k/nTones*target.length);
+    const amp = target[tIdx];
+    if (amp<0.005) continue;
+    const freq = (tIdx/(target.length-1))*(sr/2);
+    if (freq<20||freq>sr/2-100) continue;
+    const phase = Math.random()*2*Math.PI;
+    const w = 2*Math.PI*freq/sr;
+    for (let i=0;i<n;i++) data[i]+=amp*Math.sin(w*i+phase);
+  }
+
+  normBuf(data);
+  fadeEdges(data, sr);
+  return buf;
+}
+
+// Generate scale-separated layers buffer
+function genLayersBuf(comps, nu, duration) {
+  const sr = S.audioCtx.sampleRate;
+  const n = Math.floor(sr*duration);
+  const buf = S.audioCtx.createBuffer(1,n,sr);
+  const data = buf.getChannelData(0);
+  for (let i=0;i<n;i++) data[i]=0;
+
+  const t = new Float32Array(n);
+  for (let i=0;i<n;i++) t[i]=i/sr;
+
+  // Band 1: large scales (ell 2-100) -> drone at A1 (55Hz)
+  let power1=0;
+  for (let ell=2;ell<=100;ell++) power1+=sumDl(ell,comps,nu);
+  power1 = Math.sqrt(power1/99);
+  for (let i=0;i<n;i++) data[i]+=power1*Math.sin(2*Math.PI*55*t[i]+0.3*Math.sin(2*Math.PI*0.3*t[i]));
+
+  // Band 2: acoustic peaks (ell 100-1000) -> harmonics
+  const peaks = [220,540,810];
+  let power2=0;
+  for (let ell=100;ell<=1000;ell++) power2+=sumDl(ell,comps,nu);
+  power2 = Math.sqrt(power2/900);
+  const harm = new Float32Array(n);
+  for (const p of peaks) {
+    const amp = Math.sqrt(sumDl(p,comps,nu));
+    const freq = ellToFreq(p);
+    const ph = Math.random()*2*Math.PI;
+    for (let i=0;i<n;i++) harm[i]+=amp*Math.sin(2*Math.PI*freq*t[i]+ph);
+  }
+  let hmx=0;
+  for (let i=0;i<n;i++) { const a=Math.abs(harm[i]); if(a>hmx) hmx=a; }
+  if (hmx>0) for (let i=0;i<n;i++) data[i]+=harm[i]/hmx*power2;
+
+  // Band 3: small scales (ell 1000-6000) -> bandpass noise
+  let power3=0;
+  for (let ell=1000;ell<=Math.min(6000,S.clData.ell_cl[S.clData.ell_cl.length-1]);ell+=10)
+    power3+=sumDl(ell,comps,nu);
+  power3 = Math.sqrt(power3/500);
+  // Simple bandpass: sum random tones in 1.5-8kHz
+  for (let k=0;k<80;k++) {
+    const freq = 1500+Math.random()*6500;
+    const ph = Math.random()*2*Math.PI;
+    const am = (0.3+Math.random()*0.7)*power3/80;
+    const w = 2*Math.PI*freq/sr;
+    for (let i=0;i<n;i++) data[i]+=am*Math.sin(w*i+ph);
+  }
+
+  normBuf(data);
+  fadeEdges(data, sr);
+  return buf;
+}
+
+function normBuf(data) {
+  let mx=0;
+  for (let i=0;i<data.length;i++) { const a=Math.abs(data[i]); if(a>mx) mx=a; }
+  if (mx>0) { const s=0.85/mx; for (let i=0;i<data.length;i++) data[i]*=s; }
+}
+
+function fadeEdges(data, sr) {
+  const xf=Math.floor(sr*0.04);
+  for (let i=0;i<xf;i++) { const f=i/xf; data[i]*=f; data[data.length-1-i]*=f; }
+}
+
+// ============================================================
+// Create and play audio
+// ============================================================
+function stopAll() {
+  for (const node of S.sourceNodes) {
+    try { node.stop(); node.disconnect(); } catch(e) {}
+  }
+  S.sourceNodes = [];
+  if (S._rebuildTimer) { clearInterval(S._rebuildTimer); S._rebuildTimer=null; }
+  S.playing=false; S.sweeping=false; S.buildup=false; S.freqSweep=false;
+  updateUI();
+}
+
+function generateBuffer(comps, nu, duration) {
+  const target = buildTarget(comps, nu);
+  if (S.method==='additive') return genAdditiveBuf(target, duration);
+  if (S.method==='layers') return genLayersBuf(comps, nu, duration);
+  return genNoiseBuf(target, duration);
+}
+
+function playBuffer(buf, channel) {
+  // channel: 'mono', 'left', 'right'
+  const src = S.audioCtx.createBufferSource();
+  src.buffer = buf;
+  src.loop = true;
+
+  if (channel==='mono' || S.stereoMode==='mono') {
+    src.connect(S.gainNode);
+  } else {
+    // Create a stereo panner
+    const merger = S.audioCtx.createChannelMerger(2);
+    const splitter = S.audioCtx.createChannelSplitter(1);
+    src.connect(splitter);
+    if (channel==='left') {
+      splitter.connect(merger, 0, 0);
+      // Silence in right channel
+      const silence = S.audioCtx.createGain();
+      silence.gain.value = 0;
+      splitter.connect(silence);
+      silence.connect(merger, 0, 1);
+    } else {
+      splitter.connect(merger, 0, 1);
+      const silence = S.audioCtx.createGain();
+      silence.gain.value = 0;
+      splitter.connect(silence);
+      silence.connect(merger, 0, 0);
     }
+    merger.connect(S.gainNode);
   }
 
-  // Normalize
-  let maxAbs = 0;
-  for (let i = 0; i < bufLen; i++) {
-    const a = Math.abs(data[i]);
-    if (a > maxAbs) maxAbs = a;
-  }
-  if (maxAbs > 0) {
-    const scale = 0.85 / maxAbs;
-    for (let i = 0; i < bufLen; i++) data[i] *= scale;
-  }
-
-  // Crossfade edges for seamless looping
-  const xfade = Math.floor(sampleRate * 0.05);
-  for (let i = 0; i < xfade; i++) {
-    const t = i / xfade;
-    data[i] *= t;
-    data[bufLen - 1 - i] *= t;
-  }
-
-  return buffer;
+  src.start();
+  S.sourceNodes.push(src);
+  return src;
 }
 
-function startAudio() {
+function startPlaying() {
   initAudio();
-  if (STATE.audioCtx.state === 'suspended') STATE.audioCtx.resume();
+  if (S.audioCtx.state==='suspended') S.audioCtx.resume();
+  stopAll();
 
-  stopAudioNode();
+  const dur = 2.0;
+  const comps = [...S.activeComponents];
 
-  // Create initial buffer
-  const buffer = createShapedBuffer();
-  const source = STATE.audioCtx.createBufferSource();
-  source.buffer = buffer;
-  source.loop = true;
-  source.connect(STATE.gainNode);
-  source.start();
+  if (S.stereoMode==='mono') {
+    const buf = generateBuffer(comps, S.freq, dur);
+    playBuffer(buf, 'mono');
+  } else if (S.stereoMode==='comp') {
+    // Split components: first half left, rest right
+    const half = Math.ceil(comps.length/2);
+    const leftComps = comps.slice(0, half);
+    const rightComps = comps.slice(half);
+    if (leftComps.length>0) {
+      const bufL = generateBuffer(leftComps, S.freq, dur);
+      playBuffer(bufL, 'left');
+    }
+    if (rightComps.length>0) {
+      const bufR = generateBuffer(rightComps, S.freq, dur);
+      playBuffer(bufR, 'right');
+    }
+  } else if (S.stereoMode==='freq') {
+    // 93 GHz left, 353 GHz right
+    const bufL = generateBuffer(comps, 93, dur);
+    const bufR = generateBuffer(comps, 353, dur);
+    playBuffer(bufL, 'left');
+    playBuffer(bufR, 'right');
+  }
 
-  STATE.noiseNode = source;
-  STATE.playing = true;
+  S.playing = true;
 
-  // Periodic rebuild: swap buffer every ~1s when params change
-  let needsRebuild = false;
-  STATE._rebuildSpectrum = () => { needsRebuild = true; };
-
-  STATE._rebuildInterval = setInterval(() => {
-    if (!needsRebuild || !STATE.playing) return;
-    needsRebuild = false;
-
-    const newBuffer = createShapedBuffer();
-    const newSource = STATE.audioCtx.createBufferSource();
-    newSource.buffer = newBuffer;
-    newSource.loop = true;
-    newSource.connect(STATE.gainNode);
-
-    // Quick crossfade
-    const now = STATE.audioCtx.currentTime;
-    const fadeTime = 0.15;
-
-    // Create temporary gain nodes for crossfade
-    const oldGain = STATE.audioCtx.createGain();
-    const newGain = STATE.audioCtx.createGain();
-
-    STATE.noiseNode.disconnect();
-    STATE.noiseNode.connect(oldGain);
-    oldGain.connect(STATE.gainNode);
-    newSource.connect(newGain);
-    newGain.connect(STATE.gainNode);
-
-    oldGain.gain.setValueAtTime(1, now);
-    oldGain.gain.linearRampToValueAtTime(0, now + fadeTime);
-    newGain.gain.setValueAtTime(0, now);
-    newGain.gain.linearRampToValueAtTime(1, now + fadeTime);
-
-    newSource.start();
-
-    setTimeout(() => {
-      try {
-        STATE.noiseNode.stop();
-        STATE.noiseNode.disconnect();
-        oldGain.disconnect();
-      } catch(e) {}
-      STATE.noiseNode = newSource;
-      newSource.disconnect();
-      newSource.connect(STATE.gainNode);
-      newGain.disconnect();
-    }, fadeTime * 1000 + 50);
-
-  }, 500);
+  // Periodic rebuild on param change
+  let dirty = false;
+  S._markDirty = () => { dirty=true; };
+  S._rebuildTimer = setInterval(() => {
+    if (!dirty||!S.playing) return;
+    dirty=false;
+    // Rebuild by restarting
+    const wasPlaying = S.playing;
+    if (wasPlaying) startPlaying();
+  }, 600);
 
   updateUI();
 }
 
-function stopAudioNode() {
-  if (STATE._rebuildInterval) {
-    clearInterval(STATE._rebuildInterval);
-    STATE._rebuildInterval = null;
-  }
-  if (STATE.noiseNode) {
-    try { STATE.noiseNode.stop(); } catch(e) {}
-    STATE.noiseNode.disconnect();
-    STATE.noiseNode = null;
-  }
-  STATE.playing = false;
-  STATE.sweeping = false;
-  STATE._rebuildSpectrum = null;
-}
+// ============================================================
+// Build-up mode: CMB -> +tSZ -> +CIB
+// ============================================================
+function startBuildup() {
+  initAudio();
+  if (S.audioCtx.state==='suspended') S.audioCtx.resume();
+  stopAll();
+  S.buildup = true;
+  S.buildupPhase = 0;
+  S.playing = true;
 
-function stopAudio() {
-  stopAudioNode();
+  const phases = [
+    ['dT_cmblens'],
+    ['dT_cmblens','dT_tsz'],
+    ['dT_cmblens','dT_tsz','dT_cib'],
+  ];
+
+  let phaseIdx = 0;
+  const phaseDur = S.sweepSpeed / 3; // split sweep time among 3 phases
+
+  function playPhase() {
+    if (!S.buildup || phaseIdx >= phases.length) {
+      S.buildup = false;
+      updateUI();
+      return;
+    }
+    // Update active components visually
+    S.activeComponents = new Set(phases[phaseIdx]);
+    document.querySelectorAll('.toggle-btn').forEach(b => {
+      b.classList.toggle('active', S.activeComponents.has(b.dataset.comp));
+    });
+
+    // Stop current
+    for (const node of S.sourceNodes) { try{node.stop();node.disconnect();}catch(e){} }
+    S.sourceNodes = [];
+
+    const buf = generateBuffer(phases[phaseIdx], S.freq, 2.0);
+    playBuffer(buf, 'mono');
+    S.buildupPhase = phaseIdx;
+    drawSpectrum();
+
+    phaseIdx++;
+    S._buildupTimeout = setTimeout(playPhase, phaseDur*1000);
+  }
+
+  playPhase();
   updateUI();
 }
 
-function toggleSweep() {
-  if (STATE.sweeping) {
-    STATE.sweeping = false;
-    if (STATE._rebuildSpectrum) STATE._rebuildSpectrum();
-    updateUI();
-    return;
+// ============================================================
+// Frequency sweep: 93 -> 143 -> 353
+// ============================================================
+function startFreqSweep() {
+  initAudio();
+  if (S.audioCtx.state==='suspended') S.audioCtx.resume();
+  stopAll();
+  S.freqSweep = true;
+  S.freqSweepPos = 0;
+  S.playing = true;
+
+  const freqs = [93, 143, 353];
+  let idx = 0;
+  const phaseDur = S.sweepSpeed / 3;
+
+  function playFreq() {
+    if (!S.freqSweep || idx >= freqs.length) {
+      S.freqSweep = false;
+      updateUI();
+      return;
+    }
+    S.freq = freqs[idx];
+    document.querySelectorAll('.freq-btn').forEach(b => {
+      b.classList.toggle('active', parseInt(b.dataset.freq)===S.freq);
+    });
+
+    for (const node of S.sourceNodes) { try{node.stop();node.disconnect();}catch(e){} }
+    S.sourceNodes = [];
+
+    const comps = [...S.activeComponents];
+    const buf = generateBuffer(comps, S.freq, 2.0);
+    playBuffer(buf, 'mono');
+    drawSpectrum();
+
+    idx++;
+    setTimeout(playFreq, phaseDur*1000);
   }
-  STATE.sweeping = true;
-  STATE.sweepPos = 0;
-  if (!STATE.playing) startAudio();
-  STATE.sweeping = true; // re-set after startAudio
-  if (STATE._rebuildSpectrum) STATE._rebuildSpectrum();
+
+  playFreq();
+  updateUI();
+}
+
+// ============================================================
+// ell-Sweep
+// ============================================================
+function startSweep() {
+  initAudio();
+  if (S.audioCtx.state==='suspended') S.audioCtx.resume();
+  stopAll();
+  S.sweeping = true;
+  S.sweepPos = 0;
+  S.playing = true;
+
+  const comps = [...S.activeComponents];
+  const buf = generateBuffer(comps, S.freq, 2.0);
+  playBuffer(buf, 'mono');
+
+  // Rebuild periodically as sweep moves
+  S._rebuildTimer = setInterval(() => {
+    if (!S.sweeping||!S.playing) return;
+    for (const node of S.sourceNodes) { try{node.stop();node.disconnect();}catch(e){} }
+    S.sourceNodes = [];
+    const buf2 = generateBuffer([...S.activeComponents], S.freq, 2.0);
+    playBuffer(buf2, 'mono');
+  }, 400);
+
   updateUI();
 }
 
@@ -741,508 +735,354 @@ function toggleSweep() {
 function drawSpectrum() {
   const canvas = document.getElementById('spectrumCanvas');
   const ctx = canvas.getContext('2d');
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = window.devicePixelRatio||1;
   const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
-  ctx.scale(dpr, dpr);
-  const W = rect.width;
-  const H = rect.height;
+  canvas.width = rect.width*dpr;
+  canvas.height = rect.height*dpr;
+  ctx.scale(dpr,dpr);
+  const W=rect.width, H=rect.height;
+  ctx.fillStyle='#0d1220';
+  ctx.fillRect(0,0,W,H);
+  if (!S.clData) return;
 
-  ctx.fillStyle = '#0d1220';
-  ctx.fillRect(0, 0, W, H);
+  const pad={left:58,right:16,top:28,bottom:36};
+  const pW=W-pad.left-pad.right, pH=H-pad.top-pad.bottom;
+  const ellMin=2,ellMax=9000,dlMin=1e-4,dlMax=2e4;
 
-  if (!STATE.clData) return;
-
-  const pad = {left: 60, right: 20, top: 30, bottom: 40};
-  const pW = W - pad.left - pad.right;
-  const pH = H - pad.top - pad.bottom;
-
-  // Log scales
-  const ellMin = 2, ellMax = 9000;
-  const dlMin = 1e-4, dlMax = 2e4;
-
-  function xOf(ell) {
-    return pad.left + (Math.log10(ell) - Math.log10(ellMin)) / (Math.log10(ellMax) - Math.log10(ellMin)) * pW;
-  }
-  function yOf(dl) {
-    if (dl <= 0) return pad.top + pH;
-    return pad.top + (1 - (Math.log10(dl) - Math.log10(dlMin)) / (Math.log10(dlMax) - Math.log10(dlMin))) * pH;
-  }
+  function xOf(e){return pad.left+(Math.log10(e)-Math.log10(ellMin))/(Math.log10(ellMax)-Math.log10(ellMin))*pW;}
+  function yOf(d){if(d<=0)return pad.top+pH;return pad.top+(1-(Math.log10(d)-Math.log10(dlMin))/(Math.log10(dlMax)-Math.log10(dlMin)))*pH;}
 
   // Grid
-  ctx.strokeStyle = '#1a2040';
-  ctx.lineWidth = 0.5;
-  for (const e of [10, 100, 1000]) {
-    const x = xOf(e);
-    ctx.beginPath(); ctx.moveTo(x, pad.top); ctx.lineTo(x, pad.top + pH); ctx.stroke();
-  }
-  for (let p = -4; p <= 4; p++) {
-    const y = yOf(10**p);
-    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + pW, y); ctx.stroke();
-  }
+  ctx.strokeStyle='#1a2040'; ctx.lineWidth=0.5;
+  for (const e of [10,100,1000]) {const x=xOf(e);ctx.beginPath();ctx.moveTo(x,pad.top);ctx.lineTo(x,pad.top+pH);ctx.stroke();}
+  for (let p=-4;p<=4;p++){const y=yOf(10**p);ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(pad.left+pW,y);ctx.stroke();}
 
-  // Axes labels
-  ctx.fillStyle = '#6b7394';
-  ctx.font = '11px system-ui';
-  ctx.textAlign = 'center';
-  for (const e of [10, 100, 1000]) {
-    ctx.fillText(String(e), xOf(e), pad.top + pH + 18);
-  }
-  ctx.fillText('ℓ', pad.left + pW / 2, H - 4);
+  // Axes
+  ctx.fillStyle='#6b7394';ctx.font='10px system-ui';ctx.textAlign='center';
+  for(const e of[10,100,1000,6000])ctx.fillText(String(e),xOf(e),pad.top+pH+15);
+  ctx.fillText('\u2113',pad.left+pW/2,H-4);
+  ctx.textAlign='right';
+  for(let p=-2;p<=4;p+=2) ctx.fillText('10'+String.fromCharCode(0x2070+Math.abs(p)),pad.left-5,yOf(10**p)+4);
+  ctx.save();ctx.translate(12,pad.top+pH/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';
+  ctx.fillText('D\u2113 [\u03BCK\u00B2]',0,0);ctx.restore();
 
-  ctx.textAlign = 'right';
-  for (let p = -2; p <= 4; p += 2) {
-    ctx.fillText(`10${p >= 0 ? '⁺' : '⁻'}${Math.abs(p)}`, pad.left - 6, yOf(10**p) + 4);
+  // Audio freq labels
+  ctx.fillStyle='#3a4a70';ctx.font='9px system-ui';ctx.textAlign='center';
+  for(const e of[10,100,220,1000,3000,6000]){
+    ctx.fillText(Math.round(ellToFreq(e))+' Hz',xOf(e),pad.top-6);
   }
+  ctx.fillText('Audio freq',pad.left+pW/2,pad.top-17);
 
-  ctx.save();
-  ctx.translate(14, pad.top + pH / 2);
-  ctx.rotate(-Math.PI / 2);
-  ctx.textAlign = 'center';
-  ctx.fillText('Dℓ [μK²]', 0, 0);
-  ctx.restore();
-
-  // Audio frequency labels on top
-  ctx.fillStyle = '#4a5580';
-  ctx.font = '9px system-ui';
-  ctx.textAlign = 'center';
-  for (const e of [10, 100, 220, 1000, 3000, 6000]) {
-    const x = xOf(e);
-    const f = ellToFreq(e);
-    ctx.fillText(`${Math.round(f)} Hz`, x, pad.top - 6);
-  }
-  ctx.fillText('Audio frequency', pad.left + pW / 2, pad.top - 18);
+  // ell range shading
+  ctx.fillStyle='rgba(74,158,255,0.04)';
+  ctx.fillRect(xOf(S.ellMin),pad.top,xOf(S.ellMax)-xOf(S.ellMin),pH);
 
   // Draw spectra
-  const allComps = ['dT_cmblens', 'dT_tsz', 'dT_cib', 'T_tot'];
-  const nu = String(STATE.freq);
-
-  for (const comp of allComps) {
-    const ells = STATE.clData.ell;
-    const dls = STATE.clData.spectra[comp]?.[nu];
-    if (!dls) continue;
-
-    const isActive = STATE.activeComponents.has(comp);
-    ctx.globalAlpha = isActive ? 1.0 : 0.15;
-    ctx.strokeStyle = COLORS[comp];
-    ctx.lineWidth = isActive ? 2 : 1;
-
-    if (comp === 'T_tot') {
-      ctx.setLineDash([6, 4]);
-    } else {
-      ctx.setLineDash([]);
-    }
-
+  const nu=String(S.freq);
+  for(const comp of['dT_cmblens','dT_tsz','dT_cib','T_tot']){
+    const ells=S.clData.ell, dls=S.clData.spectra[comp]?.[nu];
+    if(!dls)continue;
+    const active=S.activeComponents.has(comp);
+    ctx.globalAlpha=active?1:0.12;
+    ctx.strokeStyle=COLORS[comp];
+    ctx.lineWidth=active?2:0.8;
+    ctx.setLineDash(comp==='T_tot'?[6,4]:[]);
     ctx.beginPath();
-    let started = false;
-    for (let i = 0; i < ells.length; i++) {
-      const dl = dls[i];
-      if (dl <= 0) continue;
-      const x = xOf(ells[i]);
-      const y = yOf(dl);
-      if (!started) { ctx.moveTo(x, y); started = true; }
-      else ctx.lineTo(x, y);
+    let started=false;
+    for(let i=0;i<ells.length;i++){
+      if(dls[i]<=0)continue;
+      const x=xOf(ells[i]),y=yOf(dls[i]);
+      if(!started){ctx.moveTo(x,y);started=true;}else ctx.lineTo(x,y);
     }
     ctx.stroke();
-    ctx.setLineDash([]);
   }
-  ctx.globalAlpha = 1.0;
+  ctx.setLineDash([]);ctx.globalAlpha=1;
 
-  // Draw ell range window
-  ctx.fillStyle = 'rgba(74, 158, 255, 0.06)';
-  const x1 = xOf(STATE.ellMin);
-  const x2 = xOf(STATE.ellMax);
-  ctx.fillRect(x1, pad.top, x2 - x1, pH);
-
-  // Draw sweep cursor
-  if (STATE.sweeping) {
-    const sweepEll = 10 ** (Math.log10(ELL_AUDIO_MIN) + STATE.sweepPos *
-      (Math.log10(ELL_AUDIO_MAX) - Math.log10(ELL_AUDIO_MIN)));
-    const xs = xOf(sweepEll);
-    const bandwidth = 0.3;
-    const ellLo = 10 ** (Math.log10(sweepEll) - bandwidth);
-    const ellHi = 10 ** (Math.log10(sweepEll) + bandwidth);
-    const xLo = xOf(Math.max(ellLo, 2));
-    const xHi = xOf(Math.min(ellHi, 9000));
-
-    ctx.fillStyle = 'rgba(74, 158, 255, 0.12)';
-    ctx.fillRect(xLo, pad.top, xHi - xLo, pH);
-
-    ctx.strokeStyle = 'rgba(74, 158, 255, 0.8)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(xs, pad.top);
-    ctx.lineTo(xs, pad.top + pH);
-    ctx.stroke();
-
-    ctx.fillStyle = '#4a9eff';
-    ctx.font = 'bold 11px system-ui';
-    ctx.textAlign = 'center';
-    ctx.fillText(`ℓ = ${Math.round(sweepEll)}`, xs, pad.top + pH + 35);
+  // Sweep cursor
+  if(S.sweeping){
+    const se=10**(Math.log10(ELL_MIN)+S.sweepPos*(Math.log10(ELL_MAX)-Math.log10(ELL_MIN)));
+    const xs=xOf(se);
+    const eLo=10**(Math.log10(se)-0.3),eHi=10**(Math.log10(se)+0.3);
+    ctx.fillStyle='rgba(74,158,255,0.1)';
+    ctx.fillRect(xOf(Math.max(eLo,2)),pad.top,xOf(Math.min(eHi,9000))-xOf(Math.max(eLo,2)),pH);
+    ctx.strokeStyle='rgba(74,158,255,0.9)';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(xs,pad.top);ctx.lineTo(xs,pad.top+pH);ctx.stroke();
+    ctx.fillStyle='#4a9eff';ctx.font='bold 10px system-ui';ctx.textAlign='center';
+    ctx.fillText('\u2113='+Math.round(se),xs,pad.top+pH+32);
   }
 
   // Legend
-  const legendX = W - 120;
-  let legendY = pad.top + 14;
-  ctx.font = '11px system-ui';
-  ctx.textAlign = 'left';
-  for (const comp of allComps) {
-    const label = {dT_cmblens: 'CMB', dT_tsz: 'tSZ', dT_cib: 'CIB', T_tot: 'Total'}[comp];
-    const isActive = STATE.activeComponents.has(comp);
-    ctx.globalAlpha = isActive ? 1.0 : 0.3;
-    ctx.fillStyle = COLORS[comp];
-    ctx.fillRect(legendX, legendY - 8, 14, 3);
-    ctx.fillStyle = isActive ? '#c8cde0' : '#4a5580';
-    ctx.fillText(label, legendX + 20, legendY);
-    legendY += 18;
+  let ly=pad.top+12;ctx.font='10px system-ui';ctx.textAlign='left';
+  for(const c of['dT_cmblens','dT_tsz','dT_cib','T_tot']){
+    const act=S.activeComponents.has(c);
+    ctx.globalAlpha=act?1:0.25;ctx.fillStyle=COLORS[c];
+    ctx.fillRect(W-110,ly-7,12,3);
+    ctx.fillStyle=act?'#c8cde0':'#4a5580';
+    ctx.fillText(COMP_LABELS[c],W-94,ly);ly+=16;
   }
-  ctx.globalAlpha = 1.0;
+  ctx.globalAlpha=1;
 }
 
 // ============================================================
 // Sky Map Drawing
 // ============================================================
-function drawSkyMap() {
-  const canvas = document.getElementById('skyCanvas');
-  const ctx = canvas.getContext('2d');
-  const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
-  ctx.scale(dpr, dpr);
-  const W = rect.width;
-  const H = rect.height;
+function drawSkyMap(markerX, markerY) {
+  const canvas=document.getElementById('skyCanvas');
+  const ctx=canvas.getContext('2d');
+  const dpr=window.devicePixelRatio||1;
+  const rect=canvas.getBoundingClientRect();
+  canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;
+  ctx.scale(dpr,dpr);
+  const W=rect.width,H=rect.height;
+  ctx.fillStyle='#0d1220';ctx.fillRect(0,0,W,H);
+  if(!S.skyData)return;
 
-  ctx.fillStyle = '#0d1220';
-  ctx.fillRect(0, 0, W, H);
+  let mn,nu;
+  if(S.skySource==='dT_cmblens_143'){mn='dT_cmblens';nu='143';}
+  else if(S.skySource==='T_tot_143'){mn='T_tot';nu='143';}
+  else{mn='T_tot';nu='353';}
 
-  if (!STATE.skyData) return;
+  const mapInfo=S.skyData.maps[mn]?.[nu];
+  if(!mapInfo)return;
 
-  const [mapName, freqStr] = STATE.skyMapSource.split('_').length > 2
-    ? [STATE.skyMapSource.replace(/_\d+$/, ''), STATE.skyMapSource.match(/_(\d+)$/)[1]]
-    : ['dT_cmblens', '143'];
+  const mW=mapInfo.width, mH=mapInfo.height;
+  const mapData=mapInfo.data;
 
-  // Parse sky map source properly
-  let mn, nu;
-  if (STATE.skyMapSource === 'dT_cmblens_143') { mn = 'dT_cmblens'; nu = '143'; }
-  else if (STATE.skyMapSource === 'T_tot_143') { mn = 'T_tot'; nu = '143'; }
-  else if (STATE.skyMapSource === 'T_tot_353') { mn = 'T_tot'; nu = '353'; }
-  else { mn = 'dT_cmblens'; nu = '143'; }
+  // Fit into canvas with aspect ratio
+  const pad=8;
+  const aspect=mW/mH;
+  let drawW=W-2*pad, drawH=H-2*pad;
+  if(drawW/drawH>aspect){drawW=drawH*aspect;}else{drawH=drawW/aspect;}
+  const offX=(W-drawW)/2, offY=(H-drawH)/2;
+  const scaleX=drawW/mW, scaleY=drawH/mH;
 
-  const mapInfo = STATE.skyData.maps[mn]?.[nu];
-  if (!mapInfo) return;
+  // Mollweide ellipse center/radii
+  const cx=mW/2,cy=mH/2,rx=mW/2,ry=mH/2;
 
-  const data = mapInfo.data;
-  const mW = mapInfo.width;
-  const mH = mapInfo.height;
+  // Draw map pixel by pixel using ImageData
+  const iW=Math.ceil(drawW), iH=Math.ceil(drawH);
+  const imgData=ctx.createImageData(iW,iH);
 
-  // Draw the map as a Mollweide-like projection
-  const pad = 10;
-  const drawW = W - 2 * pad;
-  const drawH = H - 2 * pad;
-  const scaleX = drawW / mW;
-  const scaleY = drawH / mH;
-  const scale = Math.min(scaleX, scaleY);
-  const offX = pad + (drawW - mW * scale) / 2;
-  const offY = pad + (drawH - mH * scale) / 2;
-
-  // Create ImageData
-  const imgData = ctx.createImageData(Math.ceil(mW * scale), Math.ceil(mH * scale));
-
-  // Color map: RdBu_r style
-  function colorMap(v) {
-    // v is 0-255, map to blue-white-red
-    const t = v / 255;
-    if (t < 0.5) {
-      const s = t * 2;
-      return [Math.round(30 + s * 225), Math.round(60 + s * 195), Math.round(180 + s * 75)];
-    } else {
-      const s = (t - 0.5) * 2;
-      return [Math.round(255), Math.round(255 - s * 200), Math.round(255 - s * 220)];
-    }
-  }
-
-  // Mollweide ellipse mask
-  const cx = mW / 2;
-  const cy = mH / 2;
-  const rx = mW / 2;
-  const ry = mH / 2;
-
-  for (let py = 0; py < Math.ceil(mH * scale); py++) {
-    for (let px = 0; px < Math.ceil(mW * scale); px++) {
-      const srcX = Math.floor(px / scale);
-      const srcY = Math.floor(py / scale);
-
+  for(let py=0;py<iH;py++){
+    for(let px=0;px<iW;px++){
+      const srcX=Math.floor(px/scaleX);
+      const srcY=Math.floor(py/scaleY);
       // Mollweide mask
-      const nx = (srcX - cx) / rx;
-      const ny = (srcY - cy) / ry;
-      if (nx * nx + ny * ny > 1) continue;
-
-      if (srcX >= 0 && srcX < mW && srcY >= 0 && srcY < mH) {
-        const v = data[srcY][srcX];
-        const [r, g, b] = colorMap(v);
-        const idx = (py * Math.ceil(mW * scale) + px) * 4;
-        imgData.data[idx] = r;
-        imgData.data[idx + 1] = g;
-        imgData.data[idx + 2] = b;
-        imgData.data[idx + 3] = 255;
-      }
+      const nx=(srcX-cx)/rx,ny=(srcY-cy)/ry;
+      if(nx*nx+ny*ny>1)continue;
+      if(srcX<0||srcX>=mW||srcY<0||srcY>=mH)continue;
+      const v=mapData[srcY][srcX];
+      // RdBu_r colormap
+      const t=v/255;
+      let r,g,b;
+      if(t<0.5){const s=t*2;r=30+s*225;g=60+s*195;b=180+s*75;}
+      else{const s=(t-0.5)*2;r=255;g=255-s*200;b=255-s*220;}
+      const idx=(py*iW+px)*4;
+      imgData.data[idx]=r; imgData.data[idx+1]=g;
+      imgData.data[idx+2]=b; imgData.data[idx+3]=255;
     }
   }
+  ctx.putImageData(imgData,Math.floor(offX),Math.floor(offY));
 
-  ctx.putImageData(imgData, offX, offY);
-
-  // Draw Mollweide outline
-  ctx.strokeStyle = '#2a3558';
-  ctx.lineWidth = 1.5;
+  // Ellipse outline
+  ctx.strokeStyle='#2a3558';ctx.lineWidth=1.5;
   ctx.beginPath();
-  for (let a = 0; a <= 2 * Math.PI; a += 0.02) {
-    const x = offX + (cx + rx * Math.cos(a)) * scale;
-    const y = offY + (cy + ry * Math.sin(a)) * scale;
-    if (a === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
+  for(let a=0;a<=2*Math.PI;a+=0.02){
+    const x=offX+(cx+rx*Math.cos(a))*scaleX;
+    const y=offY+(cy+ry*Math.sin(a))*scaleY;
+    if(a===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
   }
-  ctx.closePath();
-  ctx.stroke();
+  ctx.closePath();ctx.stroke();
 
-  // Store map geometry for click handling
-  STATE._skyGeom = { offX, offY, scale, cx, cy, rx, ry, mW, mH, mn, nu };
+  // Store geometry for clicks
+  S._skyGeo={offX,offY,scaleX,scaleY,cx,cy,rx,ry,mW,mH,mn,nu};
+
+  // Draw marker
+  if(markerX!==undefined && markerY!==undefined){
+    ctx.beginPath();ctx.arc(markerX,markerY,7,0,2*Math.PI);
+    ctx.strokeStyle='#00ff88';ctx.lineWidth=2;ctx.stroke();
+    ctx.beginPath();ctx.arc(markerX,markerY,2.5,0,2*Math.PI);
+    ctx.fillStyle='#00ff88';ctx.fill();
+  }
 }
 
-function handleSkyClick(e) {
-  if (!STATE._skyGeom || !STATE.skyData) return;
-  const canvas = document.getElementById('skyCanvas');
-  const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
+function handleSkyClick(e){
+  if(!S._skyGeo||!S.skyData)return;
+  const canvas=document.getElementById('skyCanvas');
+  const rect=canvas.getBoundingClientRect();
+  const x=e.clientX-rect.left, y=e.clientY-rect.top;
+  const{offX,offY,scaleX,scaleY,cx,cy,rx,ry,mW,mH,mn,nu}=S._skyGeo;
 
-  const { offX, offY, scale, cx, cy, rx, ry, mW, mH, mn, nu } = STATE._skyGeom;
+  const srcX=(x-offX)/scaleX, srcY=(y-offY)/scaleY;
+  const nx=(srcX-cx)/rx,ny=(srcY-cy)/ry;
+  if(nx*nx+ny*ny>1)return;
 
-  const srcX = (x - offX) / scale;
-  const srcY = (y - offY) / scale;
+  const theta=(srcY/mH)*Math.PI;
+  const phi=(srcX/mW)*2*Math.PI;
 
-  const nx = (srcX - cx) / rx;
-  const ny = (srcY - cy) / ry;
-  if (nx * nx + ny * ny > 1) return;
+  const mapInfo=S.skyData.maps[mn]?.[nu];
+  if(!mapInfo?.patch_variance)return;
 
-  // Convert to theta, phi
-  const theta = (srcY / mH) * Math.PI;
-  const phi = (srcX / mW) * 2 * Math.PI;
+  // Approximate HEALPix pixel (ring scheme)
+  const npix=S.skyData.npix;
+  const z=Math.cos(theta);
+  const pixIdx=Math.min(Math.floor((1-z)/2*npix*0.99),npix-1);
+  const relVar=mapInfo.patch_variance[Math.min(pixIdx,mapInfo.patch_variance.length-1)];
+  S.skyVarScale=Math.sqrt(Math.max(relVar,0.01));
 
-  // Find nearest healpix pixel for variance lookup
-  const mapInfo = STATE.skyData.maps[mn]?.[nu];
-  if (!mapInfo?.patch_variance) return;
+  document.getElementById('skyPos').textContent=
+    `\u03B8=${(theta*180/Math.PI).toFixed(0)}\u00B0, \u03C6=${(phi*180/Math.PI).toFixed(0)}\u00B0`;
+  document.getElementById('skyVar').textContent=relVar.toFixed(3);
 
-  // Approximate healpix pixel from theta, phi (nside=32)
-  const nside = STATE.skyData.nside;
-  // Simple ring scheme approximation
-  const cosTheta = Math.cos(theta);
-  const z = cosTheta;
-  const phiNorm = phi / (2 * Math.PI);
-
-  // Use a simple pixel estimation
-  const npix = 12 * nside * nside;
-  const pixIdx = Math.min(Math.floor((1 - z) / 2 * npix * 0.99), npix - 1);
-
-  const relVar = mapInfo.patch_variance[Math.min(pixIdx, mapInfo.patch_variance.length - 1)];
-  STATE.skyVarianceScale = Math.sqrt(relVar);
-
-  document.getElementById('skyPos').textContent =
-    `θ=${(theta * 180 / Math.PI).toFixed(0)}°, φ=${(phi * 180 / Math.PI).toFixed(0)}°`;
-  document.getElementById('skyVar').textContent = relVar.toFixed(3);
-
-  if (STATE._rebuildSpectrum) STATE._rebuildSpectrum();
-
-  // Draw marker on sky map
-  drawSkyMap();
-  const canvas2 = document.getElementById('skyCanvas');
-  const ctx = canvas2.getContext('2d');
-  const dpr = window.devicePixelRatio || 1;
-  ctx.save();
-  ctx.scale(dpr, dpr);
-  ctx.beginPath();
-  ctx.arc(x, y, 6, 0, 2 * Math.PI);
-  ctx.strokeStyle = '#00ff88';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(x, y, 2, 0, 2 * Math.PI);
-  ctx.fillStyle = '#00ff88';
-  ctx.fill();
-  ctx.restore();
+  drawSkyMap(x,y);
+  if(S.playing&&S._markDirty)S._markDirty();
 }
 
 // ============================================================
-// UI updates
+// UI
 // ============================================================
-function updateUI() {
-  const badge = document.getElementById('statusBadge');
-  if (STATE.sweeping) {
-    badge.textContent = 'Sweeping';
-    badge.className = 'status playing';
-  } else if (STATE.playing) {
-    badge.textContent = 'Playing';
-    badge.className = 'status playing';
-  } else {
-    badge.textContent = 'Ready';
-    badge.className = 'status';
-  }
-
-  document.getElementById('playBtn').textContent = STATE.playing ? '⏸ Pause' : '▶ Play';
-
-  const sweepBtn = document.getElementById('sweepBtn');
-  sweepBtn.classList.toggle('active', STATE.sweeping);
-
+function updateUI(){
+  const badge=document.getElementById('statusBadge');
+  const si=document.getElementById('stereoIndicator');
+  if(S.sweeping){badge.textContent='ℓ-Sweeping';badge.className='status playing';}
+  else if(S.buildup){badge.textContent='Build-Up';badge.className='status playing';}
+  else if(S.freqSweep){badge.textContent='ν-Sweeping';badge.className='status playing';}
+  else if(S.playing){badge.textContent='Playing';badge.className='status playing';}
+  else{badge.textContent='Ready';badge.className='status';}
+  si.style.display=(S.stereoMode!=='mono'&&S.playing)?'inline-flex':'none';
+  document.getElementById('playBtn').textContent=S.playing?'\u23F8 Pause':'\u25B6 Play';
+  document.getElementById('sweepBtn').classList.toggle('active',S.sweeping);
+  document.getElementById('buildupBtn').classList.toggle('active',S.buildup);
+  document.getElementById('freqSweepBtn').classList.toggle('active',S.freqSweep);
   drawSpectrum();
 }
 
 // ============================================================
 // Animation loop
 // ============================================================
-let lastFrameTime = 0;
-
-let sweepRebuildCounter = 0;
-
-function animate(timestamp) {
-  // Sweep animation
-  if (STATE.sweeping && STATE.playing) {
-    const dt = (timestamp - lastFrameTime) / 1000;
-    lastFrameTime = timestamp;
-
-    if (dt > 0 && dt < 0.5) {
-      STATE.sweepPos += dt / STATE.sweepSpeed;
-      if (STATE.sweepPos >= 1) {
-        STATE.sweepPos = 0; // loop
-      }
-      // Trigger audio rebuild every ~6 frames for sweep updates
-      sweepRebuildCounter++;
-      if (sweepRebuildCounter % 6 === 0) {
-        if (STATE._rebuildSpectrum) STATE._rebuildSpectrum();
-      }
+let lastT=0, sweepCounter=0;
+function animate(ts){
+  if(S.sweeping&&S.playing){
+    const dt=(ts-lastT)/1000;
+    lastT=ts;
+    if(dt>0&&dt<0.5){
+      S.sweepPos+=dt/S.sweepSpeed;
+      if(S.sweepPos>=1)S.sweepPos=0;
       drawSpectrum();
     }
-  } else {
-    lastFrameTime = timestamp;
-  }
+  } else { lastT=ts; }
 
   // VU meter
-  if (STATE.analyserNode && STATE.playing) {
-    const data = new Uint8Array(STATE.analyserNode.frequencyBinCount);
-    STATE.analyserNode.getByteTimeDomainData(data);
-    let sum = 0;
-    for (let i = 0; i < data.length; i++) {
-      const v = (data[i] - 128) / 128;
-      sum += v * v;
-    }
-    const rms = Math.sqrt(sum / data.length);
-    const pct = Math.min(rms * 300, 100);
-    document.getElementById('meterFill').style.width = pct + '%';
+  if(S.analyserNode&&S.playing){
+    const d=new Uint8Array(S.analyserNode.frequencyBinCount);
+    S.analyserNode.getByteTimeDomainData(d);
+    let sum=0;
+    for(let i=0;i<d.length;i++){const v=(d[i]-128)/128;sum+=v*v;}
+    const pct=Math.min(Math.sqrt(sum/d.length)*300,100);
+    document.getElementById('meterFill').style.width=pct+'%';
   } else {
-    document.getElementById('meterFill').style.width = '0%';
+    document.getElementById('meterFill').style.width='0%';
   }
-
   requestAnimationFrame(animate);
 }
 
 // ============================================================
-// Event handlers
+// Event setup
 // ============================================================
-function setupEvents() {
+function setup(){
   // Component toggles
-  document.querySelectorAll('.toggle-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const comp = btn.dataset.comp;
-      if (STATE.activeComponents.has(comp)) {
-        STATE.activeComponents.delete(comp);
-        btn.classList.remove('active');
-      } else {
-        STATE.activeComponents.add(comp);
-        btn.classList.add('active');
-      }
-      if (STATE._rebuildSpectrum) STATE._rebuildSpectrum();
-      drawSpectrum();
-    });
-  });
+  document.querySelectorAll('.toggle-btn').forEach(b=>b.addEventListener('click',()=>{
+    const c=b.dataset.comp;
+    if(S.activeComponents.has(c)){S.activeComponents.delete(c);b.classList.remove('active');}
+    else{S.activeComponents.add(c);b.classList.add('active');}
+    if(S._markDirty)S._markDirty();
+    drawSpectrum();
+  }));
 
   // Frequency buttons
-  document.querySelectorAll('.freq-btn:not(.sky-src-btn)').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.freq-btn:not(.sky-src-btn)').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      STATE.freq = parseInt(btn.dataset.freq);
-      if (STATE._rebuildSpectrum) STATE._rebuildSpectrum();
-      drawSpectrum();
-    });
-  });
+  document.querySelectorAll('.freq-btn').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('.freq-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    S.freq=parseInt(b.dataset.freq);
+    if(S._markDirty)S._markDirty();
+    drawSpectrum();
+  }));
 
-  // Sky map source buttons
-  document.querySelectorAll('.sky-src-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.sky-src-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      STATE.skyMapSource = btn.dataset.skysrc;
-      drawSkyMap();
-    });
-  });
+  // Method buttons
+  document.querySelectorAll('.method-btn').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('.method-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    S.method=b.dataset.method;
+    if(S._markDirty)S._markDirty();
+  }));
+
+  // Stereo buttons
+  document.querySelectorAll('.stereo-btn').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('.stereo-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    S.stereoMode=b.dataset.stereo;
+    if(S.playing)startPlaying(); // restart with new stereo mode
+  }));
+
+  // Sky map buttons
+  document.querySelectorAll('.sky-btn').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('.sky-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    S.skySource=b.dataset.sky;
+    drawSkyMap();
+  }));
 
   // Sliders
-  document.getElementById('ellMinSlider').addEventListener('input', (e) => {
-    STATE.ellMin = parseInt(e.target.value);
-    document.getElementById('ellMinVal').innerHTML = `ℓ<sub>min</sub>=${STATE.ellMin}`;
-    if (STATE._rebuildSpectrum) STATE._rebuildSpectrum();
-    drawSpectrum();
+  document.getElementById('ellMinSlider').addEventListener('input',e=>{
+    S.ellMin=parseInt(e.target.value);
+    document.getElementById('ellMinVal').textContent=S.ellMin;
+    if(S._markDirty)S._markDirty(); drawSpectrum();
   });
-
-  document.getElementById('ellMaxSlider').addEventListener('input', (e) => {
-    STATE.ellMax = parseInt(e.target.value);
-    document.getElementById('ellMaxVal').innerHTML = `ℓ<sub>max</sub>=${STATE.ellMax}`;
-    if (STATE._rebuildSpectrum) STATE._rebuildSpectrum();
-    drawSpectrum();
+  document.getElementById('ellMaxSlider').addEventListener('input',e=>{
+    S.ellMax=parseInt(e.target.value);
+    document.getElementById('ellMaxVal').textContent=S.ellMax;
+    if(S._markDirty)S._markDirty(); drawSpectrum();
   });
-
-  document.getElementById('volumeSlider').addEventListener('input', (e) => {
-    STATE.volume = parseInt(e.target.value) / 100;
-    document.getElementById('volumeVal').textContent = e.target.value + '%';
-    if (STATE.gainNode) STATE.gainNode.gain.value = STATE.volume;
+  document.getElementById('volumeSlider').addEventListener('input',e=>{
+    S.volume=parseInt(e.target.value)/100;
+    document.getElementById('volumeVal').textContent=e.target.value+'%';
+    if(S.gainNode)S.gainNode.gain.value=S.volume;
   });
-
-  document.getElementById('sweepSpeedSlider').addEventListener('input', (e) => {
-    STATE.sweepSpeed = parseInt(e.target.value);
-    document.getElementById('sweepSpeedVal').textContent = e.target.value + 's';
+  document.getElementById('sweepSpeedSlider').addEventListener('input',e=>{
+    S.sweepSpeed=parseInt(e.target.value);
+    document.getElementById('sweepSpeedVal').textContent=e.target.value+'s';
   });
 
   // Transport
-  document.getElementById('playBtn').addEventListener('click', () => {
-    if (STATE.playing) {
-      stopAudio();
-    } else {
-      startAudio();
-    }
+  document.getElementById('playBtn').addEventListener('click',()=>{
+    if(S.playing)stopAll();else startPlaying();
   });
+  document.getElementById('sweepBtn').addEventListener('click',()=>{
+    if(S.sweeping)stopAll();else startSweep();
+  });
+  document.getElementById('buildupBtn').addEventListener('click',()=>{
+    if(S.buildup)stopAll();else startBuildup();
+  });
+  document.getElementById('freqSweepBtn').addEventListener('click',()=>{
+    if(S.freqSweep)stopAll();else startFreqSweep();
+  });
+  document.getElementById('stopBtn').addEventListener('click',stopAll);
 
-  document.getElementById('sweepBtn').addEventListener('click', toggleSweep);
-  document.getElementById('stopBtn').addEventListener('click', stopAudio);
-
-  // Sky map click
-  document.getElementById('skyCanvas').addEventListener('click', handleSkyClick);
+  // Sky click
+  document.getElementById('skyCanvas').addEventListener('click',handleSkyClick);
 
   // Resize
-  window.addEventListener('resize', () => {
-    drawSpectrum();
-    drawSkyMap();
-  });
+  window.addEventListener('resize',()=>{drawSpectrum();drawSkyMap();});
 }
 
 // ============================================================
 // Init
 // ============================================================
-async function init() {
-  setupEvents();
+async function init(){
+  setup();
   await loadData();
   requestAnimationFrame(animate);
 }
-
 init();
 </script>
 </body>
