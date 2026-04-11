@@ -245,7 +245,7 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
     <h2>Sky Map</h2>
     <canvas id="skyCanvas"></canvas>
     <div class="sky-info">
-      Click to hear different patches. &nbsp;
+      Click to hear patches + nearby clusters (orange dots). &nbsp;
       Position: <span id="skyPos">&mdash;</span> &nbsp;|&nbsp;
       Relative variance: <span id="skyVar">&mdash;</span>
     </div>
@@ -270,6 +270,8 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
     <strong>&#957;-Sweep</strong> crossfades 93 &rarr; 143 &rarr; 353 GHz.
     <strong>Stereo</strong> modes put components or frequencies in separate ears (use headphones!).
     Click the <strong>sky map</strong> to modulate amplitude by local variance.
+    <strong>Orange dots</strong> are the 3000 most massive galaxy clusters (M&gt;5&times;10<sup>14</sup> M<sub>&odot;</sub>).
+    Click near one to hear a ping &mdash; pitch encodes halo mass (heavier = higher).
   </div>
 </div>
 
@@ -278,7 +280,7 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
 // State
 // ============================================================
 const S = {
-  clData: null, skyData: null,
+  clData: null, skyData: null, halos: null,
   activeComponents: new Set(['dT_cmblens']),
   freq: 143, ellMin: 2, ellMax: 6000, volume: 0.7,
   method: 'noise',       // 'noise', 'additive', 'layers'
@@ -312,9 +314,11 @@ function freqToEll(f) {
 // Data loading
 // ============================================================
 async function loadData() {
-  const [a,b] = await Promise.all([fetch('cl_data.json'),fetch('sky_data.json')]);
+  const [a,b,c] = await Promise.all([fetch('cl_data.json'),fetch('sky_data.json'),fetch('halos.json')]);
   S.clData = await a.json();
   S.skyData = await b.json();
+  S.halos = await c.json();
+  console.log(`Loaded ${S.halos.n} halos`);
   drawSpectrum();
   drawSkyMap();
 }
@@ -897,6 +901,27 @@ function drawSkyMap(markerX, markerY) {
   // Store geometry for clicks
   S._skyGeo={offX,offY,scaleX,scaleY,cx,cy,rx,ry,mW,mH,mn,nu};
 
+  // Draw halos as small dots
+  if(S.halos && S._skyGeo){
+    const g = S._skyGeo;
+    ctx.fillStyle='rgba(255,159,67,0.5)';
+    for(let i=0;i<S.halos.n;i++){
+      const ht=S.halos.theta[i]*Math.PI/180;
+      const hp=S.halos.phi[i]*Math.PI/180;
+      const sy=ht/Math.PI*g.mH;
+      const sx=hp/(2*Math.PI)*g.mW;
+      const nx2=(sx-g.cx)/g.rx, ny2=(sy-g.cy)/g.ry;
+      if(nx2*nx2+ny2*ny2>1) continue;
+      const px=g.offX+sx*g.scaleX, py=g.offY+sy*g.scaleY;
+      // Size by mass
+      const logM=S.halos.log_mass[i];
+      const sz=Math.max(1, (logM-14.5)*3);
+      ctx.globalAlpha=Math.min(0.9, (logM-14.5)*0.6+0.1);
+      ctx.beginPath();ctx.arc(px,py,sz,0,2*Math.PI);ctx.fill();
+    }
+    ctx.globalAlpha=1;
+  }
+
   // Draw marker
   if(markerX!==undefined && markerY!==undefined){
     ctx.beginPath();ctx.arc(markerX,markerY,7,0,2*Math.PI);
@@ -904,6 +929,43 @@ function drawSkyMap(markerX, markerY) {
     ctx.beginPath();ctx.arc(markerX,markerY,2.5,0,2*Math.PI);
     ctx.fillStyle='#00ff88';ctx.fill();
   }
+}
+
+// Play a halo "ping" — pitch encodes mass, volume encodes proximity
+function playHaloPing(logMass, distance) {
+  if(!S.audioCtx) initAudio();
+  if(S.audioCtx.state==='suspended') S.audioCtx.resume();
+  // Map log10(mass) to frequency: 14.7 -> 200Hz (low), 15.4 -> 1200Hz (high)
+  const frac = Math.min(1, Math.max(0, (logMass-14.5)/(15.4-14.5)));
+  const freq = 150 + frac*1000;
+  // Volume decreases with distance
+  const vol = Math.max(0.05, Math.min(0.8, 1-distance/15)) * S.volume;
+
+  const osc = S.audioCtx.createOscillator();
+  const gain = S.audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = freq;
+  // Add a harmonic for richness
+  const osc2 = S.audioCtx.createOscillator();
+  osc2.type = 'sine';
+  osc2.frequency.value = freq*2;
+  const gain2 = S.audioCtx.createGain();
+
+  const now = S.audioCtx.currentTime;
+  // ADSR-like envelope: quick attack, longer decay
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(vol, now+0.01);
+  gain.gain.exponentialRampToValueAtTime(vol*0.3, now+0.15);
+  gain.gain.exponentialRampToValueAtTime(0.001, now+0.6);
+
+  gain2.gain.setValueAtTime(0, now);
+  gain2.gain.linearRampToValueAtTime(vol*0.3, now+0.01);
+  gain2.gain.exponentialRampToValueAtTime(0.001, now+0.4);
+
+  osc.connect(gain); gain.connect(S.audioCtx.destination);
+  osc2.connect(gain2); gain2.connect(S.audioCtx.destination);
+  osc.start(now); osc.stop(now+0.7);
+  osc2.start(now); osc2.stop(now+0.5);
 }
 
 function handleSkyClick(e){
@@ -930,12 +992,27 @@ function handleSkyClick(e){
   const relVar=mapInfo.patch_variance[Math.min(pixIdx,mapInfo.patch_variance.length-1)];
   S.skyVarScale=Math.sqrt(Math.max(relVar,0.01));
 
+  const thetaDeg=theta*180/Math.PI, phiDeg=phi*180/Math.PI;
   document.getElementById('skyPos').textContent=
-    `\u03B8=${(theta*180/Math.PI).toFixed(0)}\u00B0, \u03C6=${(phi*180/Math.PI).toFixed(0)}\u00B0`;
+    `\u03B8=${thetaDeg.toFixed(0)}\u00B0, \u03C6=${phiDeg.toFixed(0)}\u00B0`;
   document.getElementById('skyVar').textContent=relVar.toFixed(3);
 
   drawSkyMap(x,y);
   if(S.playing&&S._markDirty)S._markDirty();
+
+  // Check for nearby halos and ping them
+  if(S.halos){
+    const searchRadius=5; // degrees
+    for(let i=0;i<S.halos.n;i++){
+      const dt=S.halos.theta[i]-thetaDeg;
+      const dp=S.halos.phi[i]-phiDeg;
+      // Simple angular distance (approximate)
+      const dist=Math.sqrt(dt*dt+dp*dp*Math.sin(theta)*Math.sin(theta));
+      if(dist<searchRadius){
+        playHaloPing(S.halos.log_mass[i], dist);
+      }
+    }
+  }
 }
 
 // ============================================================
