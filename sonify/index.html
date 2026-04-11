@@ -890,11 +890,11 @@ function buildSkyTexture() {
         if(Math.abs(fp)<1e-10)break;
         aux-=f/fp;
       }
-      const xm=(2*Math.SQRT2/Math.PI)*lon*Math.cos(aux);
-      const ym=Math.SQRT2*Math.sin(aux);
-      // Map to source pixel coords
-      const sx = Math.floor((xm/(2*Math.SQRT2)+0.5)*mW);
-      const sy = Math.floor((0.5-ym/(2*Math.SQRT2))*mH);
+      // Match Python export coords: x_moll in [-2,2], y_moll in [-1,1]
+      const xm=2*lon*Math.cos(aux)/Math.PI;
+      const ym=Math.sin(aux);
+      const sx=Math.floor((xm+2)/4*mW);
+      const sy=Math.floor((1-ym)/2*mH);  // flip: Python has y=0 at top (y_moll=-1)
       if(sx>=0&&sx<mW&&sy>=0&&sy<mH){
         const v=data[sy][sx];
         skyTexture[ty*tW+tx] = (v===255)?128:v;
