@@ -247,6 +247,24 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
         <span class="slider-val" id="sweepSpeedVal">10s</span>
       </div>
     </div>
+
+    <div class="control-group">
+      <label>Sweep position (drag to scrub)</label>
+      <div class="slider-row">
+        <input type="range" id="sweepPosSlider" min="0" max="1000" value="0">
+        <span class="slider-val" id="sweepPosVal">&#8467;=2</span>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>Sweep options</label>
+      <div class="btn-row">
+        <button class="sm-btn option-btn" id="logVolBtn" title="Logarithmic (dB) volume response">log volume</button>
+        <button class="sm-btn option-btn" id="linearSweepBtn" title="Linear ell sweep (vs log)">linear ν-sweep</button>
+        <button class="sm-btn option-btn" id="pingPongBtn" title="Bounce back and forth">ping-pong</button>
+        <button class="sm-btn option-btn" id="fixedPitchBtn" title="Fix audio pitch, vary only amplitude/timbre">fixed pitch</button>
+      </div>
+    </div>
   </div>
 
   <!-- Sky Map -->
@@ -303,7 +321,9 @@ const S = {
   method: 'noise',       // 'noise', 'additive', 'layers'
   stereoMode: 'mono',    // 'mono', 'comp', 'freq'
   playing: false,
-  sweeping: false, sweepPos: 0, sweepSpeed: 10,
+  sweeping: false, sweepPos: 0, sweepSpeed: 10, sweepDir: 1,
+  logVolume: false, linearSweep: false, pingPong: false, fixedPitch: false,
+  scrubbing: false,
   buildup: false, buildupPhase: 0,  // 0=CMB, 1=+tSZ, 2=+CIB
   freqSweep: false, freqSweepPos: 0,
   skyVarScale: 1.0,
@@ -391,6 +411,24 @@ function globalMaxAmp(comps, nu) {
   return mx;
 }
 
+// Compute the current sweep ell based on sweepPos + linear/log mode
+function currentSweepEll() {
+  if (S.linearSweep) {
+    return ELL_MIN + S.sweepPos*(ELL_MAX-ELL_MIN);
+  }
+  return 10**(Math.log10(ELL_MIN)+S.sweepPos*(Math.log10(ELL_MAX)-Math.log10(ELL_MIN)));
+}
+
+// Apply log-volume mapping if enabled
+function mapAmp(rawAmp, globalMx) {
+  if (!S.logVolume) return rawAmp/globalMx;
+  // Log: map over ~6 orders of magnitude (amp is sqrt(Dl))
+  const minAmp = globalMx * 1e-3;
+  if (rawAmp <= minAmp) return 0;
+  const logN = Math.log10(rawAmp/minAmp) / Math.log10(globalMx/minAmp);
+  return Math.max(0, Math.min(1, logN));
+}
+
 // Build target amplitude spectrum for one channel
 function buildTarget(comps, nu) {
   const sr = S.audioCtx.sampleRate;
@@ -398,9 +436,27 @@ function buildTarget(comps, nu) {
   const numBins = fftSize/2+1;
   const target = new Float32Array(numBins);
 
-  // Global normalization reference (doesn't change during sweep)
   const globalMx = globalMaxAmp(comps, nu);
   if (globalMx <= 0) return target;
+
+  // Fixed pitch mode: single band around a reference pitch (~440 Hz),
+  // amplitude = D_ell at the current sweep position
+  if (S.sweeping && S.fixedPitch) {
+    const sweepEll = currentSweepEll();
+    const rawAmp = Math.sqrt(sumDl(sweepEll, comps, nu));
+    const amp = mapAmp(rawAmp, globalMx);
+    const centerFreq = 440; // Hz
+    // Put energy in a narrow band around 440 Hz, modulated by amp
+    for (let i=1; i<numBins; i++) {
+      const fAudio = (i/numBins)*(sr/2);
+      const logDist = Math.abs(Math.log10(fAudio) - Math.log10(centerFreq));
+      if (logDist > 0.15) continue;
+      target[i] = amp * Math.cos(Math.PI*logDist/0.3);
+    }
+    // Apply sky variance
+    for (let i=0;i<numBins;i++) target[i]*=S.skyVarScale;
+    return target;
+  }
 
   for (let i=1; i<numBins; i++) {
     const fAudio = (i/numBins)*(sr/2);
@@ -408,11 +464,12 @@ function buildTarget(comps, nu) {
     const ell = freqToEll(fAudio);
     if (ell<S.ellMin||ell>S.ellMax) continue;
 
-    const amp = Math.sqrt(sumDl(ell,comps,nu)) / globalMx; // normalized to [0,1]
+    const rawAmp = Math.sqrt(sumDl(ell,comps,nu));
+    const amp = mapAmp(rawAmp, globalMx);
 
-    // Sweep windowing
+    // Sweep windowing (moving bandpass across ell)
     if (S.sweeping) {
-      const sweepEll = 10**(Math.log10(ELL_MIN)+S.sweepPos*(Math.log10(ELL_MAX)-Math.log10(ELL_MIN)));
+      const sweepEll = currentSweepEll();
       const logDist = Math.abs(Math.log10(ell)-Math.log10(sweepEll));
       if (logDist>0.3) continue;
       target[i] = amp * Math.cos(Math.PI*logDist/0.6);
@@ -859,17 +916,48 @@ function drawSpectrum() {
   }
   ctx.setLineDash([]);ctx.globalAlpha=1;
 
-  // Sweep cursor
+  // Sweep cursor + amplitude marker on active components
   if(S.sweeping){
-    const se=10**(Math.log10(ELL_MIN)+S.sweepPos*(Math.log10(ELL_MAX)-Math.log10(ELL_MIN)));
+    const se=currentSweepEll();
     const xs=xOf(se);
-    const eLo=10**(Math.log10(se)-0.3),eHi=10**(Math.log10(se)+0.3);
-    ctx.fillStyle='rgba(74,158,255,0.1)';
-    ctx.fillRect(xOf(Math.max(eLo,2)),pad.top,xOf(Math.min(eHi,9000))-xOf(Math.max(eLo,2)),pH);
+    const eLo=S.fixedPitch?se:10**(Math.log10(se)-0.3);
+    const eHi=S.fixedPitch?se:10**(Math.log10(se)+0.3);
+    if(!S.fixedPitch){
+      ctx.fillStyle='rgba(74,158,255,0.1)';
+      ctx.fillRect(xOf(Math.max(eLo,2)),pad.top,xOf(Math.min(eHi,9000))-xOf(Math.max(eLo,2)),pH);
+    }
     ctx.strokeStyle='rgba(74,158,255,0.9)';ctx.lineWidth=2;
     ctx.beginPath();ctx.moveTo(xs,pad.top);ctx.lineTo(xs,pad.top+pH);ctx.stroke();
-    ctx.fillStyle='#4a9eff';ctx.font='bold 10px system-ui';ctx.textAlign='center';
+
+    // Amplitude marker: find D_ell at current ell for each active component, draw dot
+    let totalDl=0;
+    for(const comp of S.activeComponents){
+      const dlArr=S.clData.spectra[comp]?.[nu];
+      const ells=S.clData.ell;
+      if(!dlArr)continue;
+      // Nearest ell bin
+      let best=0, bestD=1e18;
+      for(let i=0;i<ells.length;i++){
+        const d=Math.abs(ells[i]-se);
+        if(d<bestD){bestD=d;best=i;}
+      }
+      const dl=dlArr[best];
+      if(dl>0){
+        const y=yOf(dl);
+        totalDl+=dl;
+        ctx.fillStyle=COLORS[comp];
+        ctx.beginPath();ctx.arc(xs,y,5,0,2*Math.PI);ctx.fill();
+        ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+      }
+    }
+
+    // Text readout
+    ctx.fillStyle='#4a9eff';ctx.font='bold 11px system-ui';ctx.textAlign='center';
     ctx.fillText('\u2113='+Math.round(se),xs,pad.top+pH+32);
+    if(totalDl>0){
+      ctx.fillStyle='#c8cde0';ctx.font='10px system-ui';
+      ctx.fillText('D\u2113='+totalDl.toExponential(2),xs,pad.top-30);
+    }
   }
 
   // Legend
@@ -1193,12 +1281,22 @@ function updateUI(){
 // ============================================================
 let lastT=0, sweepCounter=0;
 function animate(ts){
-  if(S.sweeping&&S.playing){
+  if(S.sweeping&&S.playing&&!S.scrubbing){
     const dt=(ts-lastT)/1000;
     lastT=ts;
     if(dt>0&&dt<0.5){
-      S.sweepPos+=dt/S.sweepSpeed;
-      if(S.sweepPos>=1)S.sweepPos=0;
+      S.sweepPos+=S.sweepDir*dt/S.sweepSpeed;
+      if(S.pingPong){
+        if(S.sweepPos>=1){S.sweepPos=1;S.sweepDir=-1;}
+        else if(S.sweepPos<=0){S.sweepPos=0;S.sweepDir=1;}
+      } else {
+        if(S.sweepPos>=1)S.sweepPos=0;
+        if(S.sweepPos<0)S.sweepPos=0;
+      }
+      // Update position slider
+      document.getElementById('sweepPosSlider').value=Math.round(S.sweepPos*1000);
+      const curEll=currentSweepEll();
+      document.getElementById('sweepPosVal').innerHTML='\u2113='+Math.round(curEll);
       drawSpectrum();
     }
   } else { lastT=ts; }
@@ -1294,6 +1392,32 @@ function setup(){
     S.sweepSpeed=parseInt(e.target.value);
     document.getElementById('sweepSpeedVal').textContent=e.target.value+'s';
   });
+
+  // Sweep position scrubber
+  const posSlider=document.getElementById('sweepPosSlider');
+  posSlider.addEventListener('mousedown',()=>{ S.scrubbing=true; if(!S.sweeping) startSweep(); });
+  posSlider.addEventListener('mouseup',()=>{ S.scrubbing=false; });
+  posSlider.addEventListener('input',e=>{
+    S.sweepPos=parseInt(e.target.value)/1000;
+    const curEll=currentSweepEll();
+    document.getElementById('sweepPosVal').innerHTML='\u2113='+Math.round(curEll);
+    if(S._markDirty)S._markDirty();
+    drawSpectrum();
+  });
+
+  // Sweep option toggles
+  function toggleOpt(btnId, stateKey){
+    document.getElementById(btnId).addEventListener('click',()=>{
+      S[stateKey]=!S[stateKey];
+      document.getElementById(btnId).classList.toggle('active', S[stateKey]);
+      if(S._markDirty)S._markDirty();
+      drawSpectrum();
+    });
+  }
+  toggleOpt('logVolBtn','logVolume');
+  toggleOpt('linearSweepBtn','linearSweep');
+  toggleOpt('pingPongBtn','pingPong');
+  toggleOpt('fixedPitchBtn','fixedPitch');
 
   // Transport
   document.getElementById('playBtn').addEventListener('click',()=>{
