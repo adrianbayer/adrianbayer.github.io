@@ -914,63 +914,192 @@ function playInstrument(instrument, noteFreq, volume, duration, startTime, dest)
 }
 
 // ============================================================
-// Instrument sequencer: step through ell, play notes
+// Continuous instrument voices (sustained tones that glide)
+// ============================================================
+function createVoice(instrument, ctx, dest) {
+  // Each voice has a main gain (starts silent), and a set of sub-oscillators
+  // whose frequencies are kept at harmonic*baseFreq via setFreq.
+  const out = ctx.createGain();
+  out.gain.value = 0;
+  const subs = []; // { osc, harmonic }
+  const others = []; // nodes to stop on cleanup
+
+  function addSub(type, harmonic, level) {
+    const o = ctx.createOscillator();
+    o.type = type;
+    o.frequency.value = 220*harmonic;
+    const hg = ctx.createGain(); hg.gain.value = level;
+    o.connect(hg); hg.connect(out);
+    o.start();
+    subs.push({ osc: o, harmonic });
+    others.push(hg);
+    return o;
+  }
+
+  if (instrument==='piano') {
+    // Triangle harmonics, rich but not too bright
+    for (const [h, a] of [[1,1.0],[2,0.35],[3,0.12],[4,0.06]]) addSub('triangle', h, a);
+  }
+  else if (instrument==='violin') {
+    // Sawtooth base with vibrato via LFO
+    const main = addSub('sawtooth', 1, 0.9);
+    const lfo = ctx.createOscillator();
+    lfo.type='sine'; lfo.frequency.value = 5.5;
+    const lfoGain = ctx.createGain(); lfoGain.gain.value = 3; // 3 Hz vibrato depth (will scale in setFreq)
+    lfo.connect(lfoGain);
+    // Apply vibrato to all subs
+    for (const {osc} of subs) lfoGain.connect(osc.frequency);
+    lfo.start();
+    others.push(lfo, lfoGain);
+    // Low-pass filter inserted between out-gain and dest
+    const filter = ctx.createBiquadFilter();
+    filter.type='lowpass'; filter.frequency.value = 2500; filter.Q.value=1;
+    out.connect(filter); filter.connect(dest);
+    others.push(filter);
+    return {
+      setFreq(f){
+        for (const {osc, harmonic} of subs) osc.frequency.setTargetAtTime(f*harmonic, ctx.currentTime, 0.03);
+        lfoGain.gain.setTargetAtTime(f*0.015, ctx.currentTime, 0.05); // depth ~1.5% of pitch
+      },
+      setGain(v){ out.gain.setTargetAtTime(v, ctx.currentTime, 0.04); },
+      stop(){
+        for (const {osc} of subs) { try{osc.stop();osc.disconnect();}catch(e){} }
+        for (const n of others) { try{n.stop&&n.stop();n.disconnect();}catch(e){} }
+        try{out.disconnect();}catch(e){}
+      }
+    };
+  }
+  else if (instrument==='guitar') {
+    addSub('sawtooth', 1, 0.7);
+    addSub('square', 1.005, 0.3);
+    // Distortion
+    const shaper = ctx.createWaveShaper();
+    const curve = new Float32Array(256);
+    for (let i=0;i<256;i++){const x=(i-128)/128; curve[i]=Math.tanh(3*x);}
+    shaper.curve = curve;
+    const filter = ctx.createBiquadFilter();
+    filter.type='lowpass'; filter.frequency.value=2800; filter.Q.value=2;
+    out.connect(shaper); shaper.connect(filter); filter.connect(dest);
+    others.push(shaper, filter);
+    return {
+      setFreq(f){
+        subs[0].osc.frequency.setTargetAtTime(f, ctx.currentTime, 0.03);
+        subs[1].osc.frequency.setTargetAtTime(f*1.005, ctx.currentTime, 0.03);
+      },
+      setGain(v){ out.gain.setTargetAtTime(v, ctx.currentTime, 0.04); },
+      stop(){
+        for (const {osc} of subs) { try{osc.stop();osc.disconnect();}catch(e){} }
+        for (const n of others) { try{n.disconnect();}catch(e){} }
+        try{out.disconnect();}catch(e){}
+      }
+    };
+  }
+  else if (instrument==='flute') {
+    addSub('sine', 1, 1);
+    addSub('sine', 2, 0.08);
+  }
+  else if (instrument==='bass') {
+    addSub('square', 1, 1);
+    const filter = ctx.createBiquadFilter();
+    filter.type='lowpass'; filter.frequency.value=600; filter.Q.value=3;
+    out.connect(filter); filter.connect(dest);
+    others.push(filter);
+    return {
+      setFreq(f){ for (const {osc, harmonic} of subs) osc.frequency.setTargetAtTime(f*harmonic, ctx.currentTime, 0.03); },
+      setGain(v){ out.gain.setTargetAtTime(v, ctx.currentTime, 0.04); },
+      stop(){
+        for (const {osc} of subs) { try{osc.stop();osc.disconnect();}catch(e){} }
+        for (const n of others) { try{n.disconnect();}catch(e){} }
+        try{out.disconnect();}catch(e){}
+      }
+    };
+  }
+  else if (instrument==='synth') {
+    addSub('sawtooth', 0.995, 0.6);
+    addSub('sawtooth', 1.005, 0.6);
+    const filter = ctx.createBiquadFilter();
+    filter.type='lowpass'; filter.frequency.value=1500; filter.Q.value=1;
+    out.connect(filter); filter.connect(dest);
+    others.push(filter);
+    return {
+      setFreq(f){
+        subs[0].osc.frequency.setTargetAtTime(f*0.995, ctx.currentTime, 0.03);
+        subs[1].osc.frequency.setTargetAtTime(f*1.005, ctx.currentTime, 0.03);
+      },
+      setGain(v){ out.gain.setTargetAtTime(v, ctx.currentTime, 0.04); },
+      stop(){
+        for (const {osc} of subs) { try{osc.stop();osc.disconnect();}catch(e){} }
+        for (const n of others) { try{n.disconnect();}catch(e){} }
+        try{out.disconnect();}catch(e){}
+      }
+    };
+  }
+
+  // Default / piano / flute chain: out -> dest
+  out.connect(dest);
+  return {
+    setFreq(f){ for (const {osc, harmonic} of subs) osc.frequency.setTargetAtTime(f*harmonic, ctx.currentTime, 0.03); },
+    setGain(v){ out.gain.setTargetAtTime(v, ctx.currentTime, 0.04); },
+    stop(){
+      for (const {osc} of subs) { try{osc.stop();osc.disconnect();}catch(e){} }
+      for (const n of others) { try{n.disconnect();}catch(e){} }
+      try{out.disconnect();}catch(e){}
+    }
+  };
+}
+
+// ============================================================
+// Instrument mode: continuous voices gliding through ell
 // ============================================================
 function startInstrumentSeq() {
   initAudio();
   if (S.audioCtx.state==='suspended') S.audioCtx.resume();
   stopAll();
   S.playing = true;
-  S.sweeping = true; // reuse sweep cursor/animation
+  S.sweeping = true; // use sweep cursor/animation
   S.sweepPos = 0;
 
-  // Schedule notes ahead of audio clock
-  const stepDur = 0.25; // seconds per note
-  const lookAhead = 0.5;
-  let nextNoteTime = S.audioCtx.currentTime + 0.05;
-  let nextStep = 0;
-  const totalSteps = 40; // 40 notes across ell range = 10 seconds
+  // One voice per component (all three). Only active components will be audible.
+  const voices = {};
+  const comps = ['dT_cmblens','dT_tsz','dT_cib'];
+  for (const c of comps) {
+    const inst = S.instruments[c] || 'piano';
+    voices[c] = createVoice(inst, S.audioCtx, S.gainNode);
+  }
+  S._voices = voices;
 
+  // Update loop: every ~30ms, update each voice's freq and gain based on
+  // current sweep position and data. Sweep animation is driven by animate().
   S._instTimer = setInterval(() => {
     if (!S.playing || S.audioCtx.state!=='running') return;
-    while (nextNoteTime < S.audioCtx.currentTime + lookAhead) {
-      // Current sweep position
-      const frac = (nextStep % totalSteps) / (totalSteps-1);
-      S.sweepPos = frac;
-      const ell = S.linearSweep
-        ? ELL_MIN + frac*(ELL_MAX-ELL_MIN)
-        : 10**(Math.log10(ELL_MIN)+frac*(Math.log10(ELL_MAX)-Math.log10(ELL_MIN)));
+    const frac = S.sweepPos;
+    const ell = S.linearSweep
+      ? ELL_MIN + frac*(ELL_MAX-ELL_MIN)
+      : 10**(Math.log10(ELL_MIN)+frac*(Math.log10(ELL_MAX)-Math.log10(ELL_MIN)));
 
-      // Find the global max amp (for normalization)
-      const comps = [...S.activeComponents];
-      if (comps.length===0) { nextNoteTime += stepDur; nextStep++; continue; }
+    const noteName = freqToNoteName(S.freq);
+    const octaveF = ellToOctave(ell);
+    // Use continuous octave (fractional) for smooth glide
+    const noteFreq = noteToFreq(noteName, octaveF);
 
-      const globalMx = globalMaxAmp(comps, S.freq);
-
-      // In instrument mode, we ignore "freq" control and play one note per (comp, freq) pair
-      // Actually use S.freq as the base, and play one note per active component
-      const octaveF = ellToOctave(ell);
-      const octave = Math.round(octaveF);
-
-      for (const comp of comps) {
-        const rawAmp = Math.sqrt(lookupDl(ell, comp, S.freq));
-        if (globalMx<=0) continue;
-        let vol = rawAmp / globalMx;
-        if (S.logVolume) vol = mapAmp(rawAmp, globalMx);
-        if (vol < 0.02) continue;
-        vol = Math.min(0.4, vol * 0.5); // tame overall volume
-
-        const inst = S.instruments[comp] || 'piano';
-        const noteName = freqToNoteName(S.freq);
-        const noteFreq = noteToFreq(noteName, octave);
-        playInstrument(inst, noteFreq, vol, stepDur*1.5, nextNoteTime);
+    for (const c of comps) {
+      const v = voices[c];
+      if (!v) continue;
+      if (!S.activeComponents.has(c)) { v.setGain(0); continue; }
+      const rawAmp = Math.sqrt(lookupDl(ell, c, S.freq));
+      const globalMx = globalMaxAmp([c], S.freq);
+      let vol = 0;
+      if (globalMx>0) {
+        vol = S.logVolume ? mapAmp(rawAmp, globalMx) : rawAmp/globalMx;
       }
-
-      nextNoteTime += stepDur;
-      nextStep++;
+      // Tame to avoid clipping with multiple voices
+      vol = Math.min(0.35, vol*0.6);
+      v.setFreq(noteFreq);
+      v.setGain(vol);
     }
   }, 30);
 
+  // Enable auto-sweep by default in instrument mode for continuous motion
   updateUI();
 }
 
@@ -985,6 +1114,10 @@ function stopAll() {
   if (S._rebuildTimer) { clearInterval(S._rebuildTimer); S._rebuildTimer=null; }
   if (S._instTimer) { clearInterval(S._instTimer); S._instTimer=null; }
   if (S._buildupTimeout) { clearTimeout(S._buildupTimeout); S._buildupTimeout=null; }
+  if (S._voices) {
+    for (const c in S._voices) { try { S._voices[c].stop(); } catch(e){} }
+    S._voices = null;
+  }
   S.playing=false; S.sweeping=false; S.buildup=false; S.freqSweep=false;
   updateUI();
 }
