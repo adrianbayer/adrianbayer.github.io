@@ -917,133 +917,186 @@ function playInstrument(instrument, noteFreq, volume, duration, startTime, dest)
 // Continuous instrument voices (sustained tones that glide)
 // ============================================================
 function createVoice(instrument, ctx, dest) {
-  // Each voice has a main gain (starts silent), and a set of sub-oscillators
-  // whose frequencies are kept at harmonic*baseFreq via setFreq.
-  const out = ctx.createGain();
-  out.gain.value = 0;
-  const subs = []; // { osc, harmonic }
-  const others = []; // nodes to stop on cleanup
+  // Signal flow: oscillators -> out(gain) -> [instrument chain] -> artic(gain) -> dest
+  // out.gain = user-driven volume (smoothed by setGain)
+  // artic.gain = instrument-characteristic attack envelope, re-triggered periodically
+  const out = ctx.createGain(); out.gain.value = 0;
+  const artic = ctx.createGain(); artic.gain.value = 1;
+  const subs = []; // { osc, harmonic, freqMul }
+  const others = [];
 
-  function addSub(type, harmonic, level) {
+  function addOsc(type, harmonic, level, freqMul) {
+    freqMul = freqMul || 1;
     const o = ctx.createOscillator();
     o.type = type;
-    o.frequency.value = 220*harmonic;
+    o.frequency.value = 220*harmonic*freqMul;
     const hg = ctx.createGain(); hg.gain.value = level;
     o.connect(hg); hg.connect(out);
     o.start();
-    subs.push({ osc: o, harmonic });
+    subs.push({ osc: o, harmonic, freqMul });
     others.push(hg);
     return o;
   }
 
+  // Build the synth chain and the articulation config per instrument
+  let chainTail = out; // the last node before we connect to artic
+  let articCfg = null; // { rate, attack, decay, sustain }
+  let vibrato = null;  // { lfo, gain } if present
+
   if (instrument==='piano') {
-    // Triangle harmonics, rich but not too bright
-    for (const [h, a] of [[1,1.0],[2,0.35],[3,0.12],[4,0.06]]) addSub('triangle', h, a);
+    // Bright triangle + sine harmonics, sharp repeated attack
+    addOsc('triangle', 1, 1.0);
+    addOsc('triangle', 2, 0.45);
+    addOsc('sine',     3, 0.25);
+    addOsc('sine',     4, 0.12);
+    addOsc('sine',     6, 0.05);
+    articCfg = { rate: 3.5, attack: 0.003, peak: 1.0, decay: 0.25, sustain: 0.15, gap: 0.02 };
   }
   else if (instrument==='violin') {
-    // Sawtooth base with vibrato via LFO
-    const main = addSub('sawtooth', 1, 0.9);
+    // Sawtooth, formant LP filter, strong vibrato, smooth bowed articulation
+    addOsc('sawtooth', 1, 0.85);
+    addOsc('sawtooth', 2, 0.35);
+    const f1 = ctx.createBiquadFilter();
+    f1.type='lowpass'; f1.frequency.value=2200; f1.Q.value=0.8;
+    const f2 = ctx.createBiquadFilter();
+    f2.type='peaking'; f2.frequency.value=900; f2.Q.value=2; f2.gain.value=4;
+    out.connect(f2); f2.connect(f1);
+    others.push(f1, f2);
+    chainTail = f1;
+    // Vibrato
     const lfo = ctx.createOscillator();
-    lfo.type='sine'; lfo.frequency.value = 5.5;
-    const lfoGain = ctx.createGain(); lfoGain.gain.value = 3; // 3 Hz vibrato depth (will scale in setFreq)
+    lfo.type='sine'; lfo.frequency.value=5.8;
+    const lfoGain = ctx.createGain(); lfoGain.gain.value=5;
     lfo.connect(lfoGain);
-    // Apply vibrato to all subs
+    lfo.start();
+    others.push(lfo, lfoGain);
+    vibrato = { lfoGain };
+    // Hook vibrato to all oscillators
+    for (const {osc} of subs) lfoGain.connect(osc.frequency);
+    // Slow bowing swell every 1.2s
+    articCfg = { rate: 0.85, attack: 0.15, peak: 1.0, decay: 0.25, sustain: 0.85, gap: 0.05 };
+  }
+  else if (instrument==='guitar') {
+    // Distorted sawtooth+square, strummed rhythm
+    addOsc('sawtooth', 1, 0.8);
+    addOsc('square',   1, 0.4, 1.003); // slight detune
+    addOsc('sawtooth', 2, 0.2);
+    const shaper = ctx.createWaveShaper();
+    const curve = new Float32Array(256);
+    for (let i=0;i<256;i++){const x=(i-128)/128; curve[i]=Math.tanh(3.5*x);}
+    shaper.curve = curve;
+    const filter = ctx.createBiquadFilter();
+    filter.type='lowpass'; filter.frequency.value=2600; filter.Q.value=2.5;
+    out.connect(shaper); shaper.connect(filter);
+    others.push(shaper, filter);
+    chainTail = filter;
+    // Strumming: medium attack, long decay, ~2 per second
+    articCfg = { rate: 1.8, attack: 0.01, peak: 1.0, decay: 0.35, sustain: 0.25, gap: 0.05 };
+  }
+  else if (instrument==='flute') {
+    // Pure sine, very slight 2nd harmonic, breath noise, slow sustained swells
+    addOsc('sine', 1, 1.0);
+    addOsc('sine', 2, 0.08);
+    // Breath noise: brown-noise source routed through bandpass
+    const nBuf = ctx.createBuffer(1, ctx.sampleRate*2, ctx.sampleRate);
+    const nd = nBuf.getChannelData(0);
+    let last=0;
+    for (let i=0;i<nd.length;i++) { last = 0.97*last + 0.03*(Math.random()*2-1); nd[i] = last*3; }
+    const noise = ctx.createBufferSource(); noise.buffer=nBuf; noise.loop=true;
+    const noiseG = ctx.createGain(); noiseG.gain.value=0.08;
+    const noiseF = ctx.createBiquadFilter();
+    noiseF.type='bandpass'; noiseF.frequency.value=2000; noiseF.Q.value=1;
+    noise.connect(noiseF); noiseF.connect(noiseG); noiseG.connect(out);
+    noise.start();
+    others.push(noise, noiseG, noiseF);
+    // Gentle vibrato
+    const lfo = ctx.createOscillator();
+    lfo.type='sine'; lfo.frequency.value=4;
+    const lfoGain = ctx.createGain(); lfoGain.gain.value=3;
+    lfo.connect(lfoGain);
     for (const {osc} of subs) lfoGain.connect(osc.frequency);
     lfo.start();
     others.push(lfo, lfoGain);
-    // Low-pass filter inserted between out-gain and dest
-    const filter = ctx.createBiquadFilter();
-    filter.type='lowpass'; filter.frequency.value = 2500; filter.Q.value=1;
-    out.connect(filter); filter.connect(dest);
-    others.push(filter);
-    return {
-      setFreq(f){
-        for (const {osc, harmonic} of subs) osc.frequency.setTargetAtTime(f*harmonic, ctx.currentTime, 0.03);
-        lfoGain.gain.setTargetAtTime(f*0.015, ctx.currentTime, 0.05); // depth ~1.5% of pitch
-      },
-      setGain(v){ out.gain.setTargetAtTime(v, ctx.currentTime, 0.04); },
-      stop(){
-        for (const {osc} of subs) { try{osc.stop();osc.disconnect();}catch(e){} }
-        for (const n of others) { try{n.stop&&n.stop();n.disconnect();}catch(e){} }
-        try{out.disconnect();}catch(e){}
-      }
-    };
-  }
-  else if (instrument==='guitar') {
-    addSub('sawtooth', 1, 0.7);
-    addSub('square', 1.005, 0.3);
-    // Distortion
-    const shaper = ctx.createWaveShaper();
-    const curve = new Float32Array(256);
-    for (let i=0;i<256;i++){const x=(i-128)/128; curve[i]=Math.tanh(3*x);}
-    shaper.curve = curve;
-    const filter = ctx.createBiquadFilter();
-    filter.type='lowpass'; filter.frequency.value=2800; filter.Q.value=2;
-    out.connect(shaper); shaper.connect(filter); filter.connect(dest);
-    others.push(shaper, filter);
-    return {
-      setFreq(f){
-        subs[0].osc.frequency.setTargetAtTime(f, ctx.currentTime, 0.03);
-        subs[1].osc.frequency.setTargetAtTime(f*1.005, ctx.currentTime, 0.03);
-      },
-      setGain(v){ out.gain.setTargetAtTime(v, ctx.currentTime, 0.04); },
-      stop(){
-        for (const {osc} of subs) { try{osc.stop();osc.disconnect();}catch(e){} }
-        for (const n of others) { try{n.disconnect();}catch(e){} }
-        try{out.disconnect();}catch(e){}
-      }
-    };
-  }
-  else if (instrument==='flute') {
-    addSub('sine', 1, 1);
-    addSub('sine', 2, 0.08);
+    vibrato = { lfoGain };
+    // Long breath swells every 2s (very smooth, mostly sustained)
+    articCfg = { rate: 0.5, attack: 0.3, peak: 1.0, decay: 0.3, sustain: 0.9, gap: 0.1 };
   }
   else if (instrument==='bass') {
-    addSub('square', 1, 1);
+    // Square wave heavily lowpassed, slight overtone, slow pulsing
+    addOsc('square', 1, 1.0);
+    addOsc('square', 2, 0.12);
     const filter = ctx.createBiquadFilter();
-    filter.type='lowpass'; filter.frequency.value=600; filter.Q.value=3;
-    out.connect(filter); filter.connect(dest);
+    filter.type='lowpass'; filter.frequency.value=500; filter.Q.value=4;
+    out.connect(filter);
     others.push(filter);
-    return {
-      setFreq(f){ for (const {osc, harmonic} of subs) osc.frequency.setTargetAtTime(f*harmonic, ctx.currentTime, 0.03); },
-      setGain(v){ out.gain.setTargetAtTime(v, ctx.currentTime, 0.04); },
-      stop(){
-        for (const {osc} of subs) { try{osc.stop();osc.disconnect();}catch(e){} }
-        for (const n of others) { try{n.disconnect();}catch(e){} }
-        try{out.disconnect();}catch(e){}
-      }
-    };
+    chainTail = filter;
+    articCfg = { rate: 1.4, attack: 0.02, peak: 1.0, decay: 0.3, sustain: 0.6, gap: 0.08 };
   }
   else if (instrument==='synth') {
-    addSub('sawtooth', 0.995, 0.6);
-    addSub('sawtooth', 1.005, 0.6);
+    // Detuned saws with wah: auto-sweeping LP filter, sustained pad
+    addOsc('sawtooth', 1, 0.6, 0.993);
+    addOsc('sawtooth', 1, 0.6, 1.007);
+    addOsc('sawtooth', 2, 0.3);
     const filter = ctx.createBiquadFilter();
-    filter.type='lowpass'; filter.frequency.value=1500; filter.Q.value=1;
-    out.connect(filter); filter.connect(dest);
-    others.push(filter);
-    return {
-      setFreq(f){
-        subs[0].osc.frequency.setTargetAtTime(f*0.995, ctx.currentTime, 0.03);
-        subs[1].osc.frequency.setTargetAtTime(f*1.005, ctx.currentTime, 0.03);
-      },
-      setGain(v){ out.gain.setTargetAtTime(v, ctx.currentTime, 0.04); },
-      stop(){
-        for (const {osc} of subs) { try{osc.stop();osc.disconnect();}catch(e){} }
-        for (const n of others) { try{n.disconnect();}catch(e){} }
-        try{out.disconnect();}catch(e){}
-      }
-    };
+    filter.type='lowpass'; filter.frequency.value=800; filter.Q.value=4;
+    // Wah LFO
+    const wahLfo = ctx.createOscillator();
+    wahLfo.type='sine'; wahLfo.frequency.value=0.4;
+    const wahGain = ctx.createGain(); wahGain.gain.value=1500;
+    wahLfo.connect(wahGain); wahGain.connect(filter.frequency);
+    wahLfo.start();
+    out.connect(filter);
+    others.push(filter, wahLfo, wahGain);
+    chainTail = filter;
+    // Very slow swell
+    articCfg = { rate: 0.3, attack: 0.5, peak: 1.0, decay: 0.5, sustain: 1.0, gap: 0.1 };
+  }
+  else {
+    // Fallback: simple sine
+    addOsc('sine', 1, 1);
   }
 
-  // Default / piano / flute chain: out -> dest
-  out.connect(dest);
+  chainTail.connect(artic);
+  artic.connect(dest);
+
+  // Articulation scheduler: re-fires envelope at the instrument's rate
+  let articTimer = null;
+  if (articCfg) {
+    const period = 1/articCfg.rate;
+    const schedule = () => {
+      const t = ctx.currentTime;
+      const cfg = articCfg;
+      try { artic.gain.cancelScheduledValues(t); } catch(e) {}
+      artic.gain.setValueAtTime(0.0001, t);
+      artic.gain.linearRampToValueAtTime(cfg.peak, t+cfg.attack);
+      const decayEnd = t+cfg.attack+cfg.decay;
+      if (decayEnd < t+period-cfg.gap) {
+        artic.gain.exponentialRampToValueAtTime(Math.max(cfg.sustain, 0.001), decayEnd);
+        artic.gain.setValueAtTime(Math.max(cfg.sustain, 0.001), t+period-cfg.gap);
+      }
+      artic.gain.exponentialRampToValueAtTime(0.0001, t+period);
+    };
+    schedule();
+    articTimer = setInterval(schedule, period*1000);
+  }
+
   return {
-    setFreq(f){ for (const {osc, harmonic} of subs) osc.frequency.setTargetAtTime(f*harmonic, ctx.currentTime, 0.03); },
-    setGain(v){ out.gain.setTargetAtTime(v, ctx.currentTime, 0.04); },
-    stop(){
+    setFreq(f) {
+      const now = ctx.currentTime;
+      for (const {osc, harmonic, freqMul} of subs) {
+        osc.frequency.setTargetAtTime(f*harmonic*freqMul, now, 0.03);
+      }
+      if (vibrato) vibrato.lfoGain.gain.setTargetAtTime(f*0.012, now, 0.05);
+    },
+    setGain(v) {
+      out.gain.setTargetAtTime(v, ctx.currentTime, 0.04);
+    },
+    stop() {
+      if (articTimer) clearInterval(articTimer);
       for (const {osc} of subs) { try{osc.stop();osc.disconnect();}catch(e){} }
-      for (const n of others) { try{n.disconnect();}catch(e){} }
+      for (const n of others) { try{n.stop&&n.stop();n.disconnect();}catch(e){} }
       try{out.disconnect();}catch(e){}
+      try{artic.disconnect();}catch(e){}
     }
   };
 }
@@ -1200,50 +1253,17 @@ function startPlaying() {
 
   S.playing = true;
 
-  // Periodic rebuild on param change: crossfade to a new buffer smoothly
+  // Periodic rebuild on param change
   let dirty = false;
   S._markDirty = () => { dirty=true; };
   S._rebuildTimer = setInterval(() => {
     if (!dirty||!S.playing) return;
-    if (S.method==='instruments') { dirty=false; return; } // handled by voice update loop
+    if (S.method==='instruments') { dirty=false; return; }
     dirty=false;
-
-    // Crossfade: create new buffer, fade in, fade out the old
-    const newComps = [...S.activeComponents];
-    if (newComps.length===0) return;
-
-    function makeFader(buf, delay, channel){
-      const src = S.audioCtx.createBufferSource();
-      src.buffer = buf; src.loop = true;
-      const g = S.audioCtx.createGain(); g.gain.value=0;
-      src.connect(g); g.connect(S.gainNode);
-      src.start();
-      const now = S.audioCtx.currentTime;
-      g.gain.setValueAtTime(0, now);
-      g.gain.linearRampToValueAtTime(1, now+0.2);
-      return {src, g};
-    }
-
-    // Fade out existing sources
-    const now = S.audioCtx.currentTime;
-    const oldNodes = S.sourceNodes.slice();
-    // We can't individually fade out a raw buffer source gainfully - skip perfect fade,
-    // but make the overlap prevent clicks.
-    setTimeout(()=>{
-      for (const n of oldNodes) { try { n.stop(); n.disconnect(); } catch(e){} }
-    }, 250);
-
-    // Create new source(s) and fade them in
-    if (S.stereoMode==='mono') {
-      const buf = generateBuffer(newComps, S.freq, 2.0);
-      const {src} = makeFader(buf, now, 'mono');
-      S.sourceNodes = [src];
-    } else {
-      // For stereo modes, fall back to a hard restart (simpler)
-      for (const n of oldNodes) { try { n.stop(); n.disconnect(); } catch(e){} }
-      startPlaying();
-    }
-  }, 400);
+    // Simple restart
+    const wasPlaying = S.playing;
+    if (wasPlaying && !S.sweeping && !S.buildup && !S.freqSweep) startPlaying();
+  }, 500);
 
   updateUI();
 }
@@ -1354,11 +1374,14 @@ function startSweep() {
   if (S.method==='instruments') { startInstrumentSeq(); return; }
 
   // For shaped-noise/additive/layers, create ONE continuous source.
-  // We generate a long buffer with the full D_ell spectrum (not bandpassed),
+  // Generate a long buffer with the FULL D_ell spectrum (no bandpass window),
   // loop it, and use a bandpass BiquadFilter + GainNode to smoothly track
   // the sweep position without retriggering.
   const comps = [...S.activeComponents];
-  const longBuf = generateBuffer(comps, S.freq, 4.0); // 4-second shaped-noise
+  // Temporarily disable sweep flag so generateBuffer produces the FULL spectrum
+  S.sweeping = false;
+  const longBuf = generateBuffer(comps, S.freq, 4.0);
+  S.sweeping = true;
   const src = S.audioCtx.createBufferSource();
   src.buffer = longBuf;
   src.loop = true;
