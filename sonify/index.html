@@ -105,6 +105,13 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
 .action-btn.active { background: #3a4568; border-color: var(--accent); }
 .stop-btn { background: #cc3333; color: white; }
 
+/* Instrument select */
+.inst-select {
+  flex: 1; padding: 4px 8px; background: #1a2040; color: var(--text);
+  border: 1px solid var(--border); border-radius: 4px;
+  font-size: 0.82em; font-family: inherit;
+}
+
 /* Meter */
 .meter-bar {
   flex: 1; height: 5px; background: #1a2040; border-radius: 3px; overflow: hidden;
@@ -192,6 +199,47 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
         <button class="sm-btn method-btn active" data-method="noise">Shaped Noise</button>
         <button class="sm-btn method-btn" data-method="additive">Additive</button>
         <button class="sm-btn method-btn" data-method="layers">Scale Layers</button>
+        <button class="sm-btn method-btn" data-method="instruments">Instruments</button>
+      </div>
+    </div>
+
+    <div class="control-group" id="instrumentControls" style="display:none;">
+      <label>Instruments (per component)</label>
+      <div class="slider-row">
+        <span style="color:var(--cmb);font-size:0.8em;min-width:40px;">CMB</span>
+        <select id="instCmb" class="inst-select">
+          <option value="piano">piano</option>
+          <option value="violin">violin</option>
+          <option value="guitar">electric guitar</option>
+          <option value="flute">flute</option>
+          <option value="bass">bass</option>
+          <option value="synth">synth pad</option>
+        </select>
+      </div>
+      <div class="slider-row">
+        <span style="color:var(--tsz);font-size:0.8em;min-width:40px;">tSZ</span>
+        <select id="instTsz" class="inst-select">
+          <option value="piano">piano</option>
+          <option value="violin" selected>violin</option>
+          <option value="guitar">electric guitar</option>
+          <option value="flute">flute</option>
+          <option value="bass">bass</option>
+          <option value="synth">synth pad</option>
+        </select>
+      </div>
+      <div class="slider-row">
+        <span style="color:var(--cib);font-size:0.8em;min-width:40px;">CIB</span>
+        <select id="instCib" class="inst-select">
+          <option value="piano">piano</option>
+          <option value="violin">violin</option>
+          <option value="guitar" selected>electric guitar</option>
+          <option value="flute">flute</option>
+          <option value="bass">bass</option>
+          <option value="synth">synth pad</option>
+        </select>
+      </div>
+      <div style="font-size:0.72em;color:#6b7394;margin-top:4px;">
+        &#8467; &rarr; octave, &nbsp; &#957; &rarr; note (93=A, 143=C#, 353=E), &nbsp; D<sub>&#8467;</sub> &rarr; volume
       </div>
     </div>
 
@@ -314,7 +362,14 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
     <em>Scale Layers</em> splits the spectrum into a bass drone
     (&#8467;&lt;100), harmonic tones at the CMB acoustic peaks
     (&#8467;=220, 540, 810), and high-&#8467; bandpass noise &mdash; makes the
-    scale structure explicit as three different timbres.</p>
+    scale structure explicit as three different timbres.
+    <em>Instruments</em> plays the spectrum as a musical sequence: each
+    component gets its own instrument (piano/violin/guitar/flute/bass/synth,
+    assignable via dropdown), and as time steps through &#8467;, each
+    component plays a note whose <strong>octave</strong> is set by &#8467;,
+    whose <strong>note name</strong> is set by the observing frequency
+    (93 GHz = A, 143 GHz = C#, 353 GHz = E), and whose <strong>volume</strong>
+    is set by D<sub>&#8467;</sub> at that multipole.</p>
 
     <p style="margin-bottom:8px;"><strong>Sweep modes.</strong>
     <em>&#8467;-Sweep</em> moves a bandpass window across multipole in time;
@@ -342,8 +397,8 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
     <p><strong>Interactive 3D sphere.</strong>
     The sphere shows the actual sky map at the selected component &amp; frequency.
     <em>Drag</em> to rotate. <em>Click</em> any location to sonify it:
-    (1) a <strong>temperature tone</strong> plays whose pitch encodes the temperature at that pixel
-    (cold &rarr; low pitch, hot &rarr; high pitch);
+    (1) a <strong>drum hit</strong> plays whose fundamental frequency encodes the temperature at that pixel
+    (cold &rarr; low, hot &rarr; high);
     (2) the continuous texture's amplitude is modulated by the local RMS fluctuation
     in the surrounding patch;
     (3) any nearby <strong>halos</strong> (orange dots are the 3000 most massive
@@ -364,7 +419,8 @@ const S = {
   clData: null, skyData: null, halos: null,
   activeComponents: new Set(['dT_cmblens']),
   freq: 143, ellMin: 2, ellMax: 6000, volume: 0.7,
-  method: 'noise',       // 'noise', 'additive', 'layers'
+  method: 'noise',       // 'noise', 'additive', 'layers', 'instruments'
+  instruments: {dT_cmblens:'piano', dT_tsz:'violin', dT_cib:'guitar'},
   stereoMode: 'mono',    // 'mono', 'comp', 'freq'
   playing: false,
   sweeping: false, sweepPos: 0, sweepSpeed: 10, sweepDir: 1,
@@ -673,6 +729,252 @@ function fadeEdges(data, sr) {
 }
 
 // ============================================================
+// Instrument synthesizers
+// ============================================================
+
+// Frequency in Hz for a given note. Use equal-temperament from A4=440.
+const NOTE_OFFSETS = { 'A':0, 'A#':1, 'B':2, 'C':3, 'C#':4, 'D':5,
+                       'D#':6, 'E':7, 'F':8, 'F#':9, 'G':10, 'G#':11 };
+
+function noteToFreq(noteName, octave) {
+  // octave = 4 means the A4=440 reference octave for the 'A' note.
+  const semitones = NOTE_OFFSETS[noteName] + (octave-4)*12 - 9; // offset to A4=440
+  return 440 * Math.pow(2, semitones/12);
+}
+
+// Map observing frequency (GHz) to a musical note name
+function freqToNoteName(nu) {
+  nu = parseInt(nu);
+  if (nu===93) return 'A';
+  if (nu===143) return 'C#';
+  if (nu===353) return 'E';
+  return 'A';
+}
+
+// Map ell to octave (log)
+function ellToOctave(ell) {
+  // ell in [2, 6000] -> octave in [2, 7]
+  const frac = Math.log2(ell/2) / Math.log2(6000/2);
+  return 2 + Math.max(0, Math.min(1, frac)) * 5;
+}
+
+// Play a note with a given instrument. Returns an array of created nodes so
+// they can be cleaned up. All nodes connect to dest (defaults to S.gainNode).
+function playInstrument(instrument, noteFreq, volume, duration, startTime, dest) {
+  if (!S.audioCtx) return [];
+  const ctx = S.audioCtx;
+  const now = startTime || ctx.currentTime;
+  dest = dest || S.gainNode;
+  const nodes = [];
+
+  function connect(node) { nodes.push(node); return node; }
+  function createOsc(type, freq) {
+    const o = connect(ctx.createOscillator());
+    o.type = type; o.frequency.value = freq;
+    return o;
+  }
+  function createGain() { return connect(ctx.createGain()); }
+
+  const v = Math.max(0.001, volume);
+
+  if (instrument==='piano') {
+    // Additive: fundamental + 2nd + 3rd harmonic, sharp attack, medium decay
+    const g = createGain();
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(v, now+0.005);
+    g.gain.exponentialRampToValueAtTime(v*0.4, now+0.2);
+    g.gain.exponentialRampToValueAtTime(0.0001, now+duration);
+    const harmonics = [[1, 1.0], [2, 0.4], [3, 0.15], [4, 0.08]];
+    for (const [h, a] of harmonics) {
+      const o = createOsc('triangle', noteFreq*h);
+      const hg = createGain(); hg.gain.value = a;
+      o.connect(hg); hg.connect(g);
+      o.start(now); o.stop(now+duration+0.05);
+    }
+    g.connect(dest);
+  }
+
+  else if (instrument==='violin') {
+    // Sawtooth with vibrato, slow attack, sustain
+    const g = createGain();
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(v*0.7, now+0.08);
+    g.gain.linearRampToValueAtTime(v, now+0.15);
+    g.gain.setValueAtTime(v, now+duration*0.7);
+    g.gain.exponentialRampToValueAtTime(0.0001, now+duration);
+
+    const osc = createOsc('sawtooth', noteFreq);
+    const filter = connect(ctx.createBiquadFilter());
+    filter.type = 'lowpass'; filter.frequency.value = 2500; filter.Q.value = 1;
+
+    // Vibrato: LFO modulates frequency
+    const lfo = createOsc('sine', 5.5);
+    const lfoGain = createGain(); lfoGain.gain.value = noteFreq*0.015;
+    lfo.connect(lfoGain); lfoGain.connect(osc.frequency);
+
+    osc.connect(filter); filter.connect(g); g.connect(dest);
+    osc.start(now); osc.stop(now+duration+0.05);
+    lfo.start(now); lfo.stop(now+duration+0.05);
+  }
+
+  else if (instrument==='guitar') {
+    // Sawtooth through distortion/lowpass, medium attack
+    const g = createGain();
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(v, now+0.01);
+    g.gain.exponentialRampToValueAtTime(v*0.5, now+0.3);
+    g.gain.exponentialRampToValueAtTime(0.0001, now+duration);
+
+    const osc1 = createOsc('sawtooth', noteFreq);
+    const osc2 = createOsc('square', noteFreq*1.005); // slight detune
+    const og = createGain(); og.gain.value = 0.6;
+    osc1.connect(og); osc2.connect(og);
+
+    // Soft distortion via waveshaper
+    const shaper = connect(ctx.createWaveShaper());
+    const curve = new Float32Array(256);
+    for (let i=0;i<256;i++){ const x=(i-128)/128; curve[i]=Math.tanh(3*x); }
+    shaper.curve = curve;
+
+    const filter = connect(ctx.createBiquadFilter());
+    filter.type = 'lowpass'; filter.frequency.value = 2800; filter.Q.value = 2;
+
+    og.connect(shaper); shaper.connect(filter); filter.connect(g); g.connect(dest);
+    osc1.start(now); osc1.stop(now+duration+0.05);
+    osc2.start(now); osc2.stop(now+duration+0.05);
+  }
+
+  else if (instrument==='flute') {
+    // Mostly sine with a touch of breath (noise), slow attack
+    const g = createGain();
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(v, now+0.05);
+    g.gain.setValueAtTime(v, now+duration*0.7);
+    g.gain.exponentialRampToValueAtTime(0.0001, now+duration);
+    const osc = createOsc('sine', noteFreq);
+    const osc2 = createOsc('sine', noteFreq*2); const og2 = createGain(); og2.gain.value = 0.1;
+    osc2.connect(og2); og2.connect(g);
+    osc.connect(g); g.connect(dest);
+    osc.start(now); osc.stop(now+duration+0.05);
+    osc2.start(now); osc2.stop(now+duration+0.05);
+  }
+
+  else if (instrument==='bass') {
+    // Square wave filtered + subtle attack
+    const g = createGain();
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(v, now+0.01);
+    g.gain.exponentialRampToValueAtTime(v*0.6, now+0.2);
+    g.gain.exponentialRampToValueAtTime(0.0001, now+duration);
+    const osc = createOsc('square', noteFreq);
+    const filter = connect(ctx.createBiquadFilter());
+    filter.type = 'lowpass'; filter.frequency.value = 600; filter.Q.value = 3;
+    osc.connect(filter); filter.connect(g); g.connect(dest);
+    osc.start(now); osc.stop(now+duration+0.05);
+  }
+
+  else if (instrument==='synth') {
+    // Pad: two detuned sawtooths with slow attack + long release
+    const g = createGain();
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(v*0.8, now+0.15);
+    g.gain.setValueAtTime(v*0.8, now+duration*0.6);
+    g.gain.exponentialRampToValueAtTime(0.0001, now+duration);
+    const o1 = createOsc('sawtooth', noteFreq*0.995);
+    const o2 = createOsc('sawtooth', noteFreq*1.005);
+    const filter = connect(ctx.createBiquadFilter());
+    filter.type = 'lowpass'; filter.frequency.value = 1500; filter.Q.value = 1;
+    o1.connect(filter); o2.connect(filter); filter.connect(g); g.connect(dest);
+    o1.start(now); o1.stop(now+duration+0.05);
+    o2.start(now); o2.stop(now+duration+0.05);
+  }
+
+  else if (instrument==='drum') {
+    // Kick drum: sine with rapid pitch drop + noise click
+    const g = createGain();
+    g.gain.setValueAtTime(v, now);
+    g.gain.exponentialRampToValueAtTime(0.0001, now+0.4);
+    const osc = createOsc('sine', noteFreq*4);
+    osc.frequency.setValueAtTime(noteFreq*4, now);
+    osc.frequency.exponentialRampToValueAtTime(noteFreq, now+0.08);
+    // Noise click
+    const noiseBuf = ctx.createBuffer(1, 0.03*ctx.sampleRate, ctx.sampleRate);
+    const nd = noiseBuf.getChannelData(0);
+    for (let i=0;i<nd.length;i++) nd[i] = (Math.random()*2-1)*(1-i/nd.length);
+    const noise = ctx.createBufferSource(); noise.buffer = noiseBuf;
+    const ng = createGain(); ng.gain.value = v*0.4;
+    noise.connect(ng); ng.connect(g);
+    osc.connect(g); g.connect(dest);
+    osc.start(now); osc.stop(now+0.5);
+    noise.start(now);
+    nodes.push(noise);
+  }
+
+  return nodes;
+}
+
+// ============================================================
+// Instrument sequencer: step through ell, play notes
+// ============================================================
+function startInstrumentSeq() {
+  initAudio();
+  if (S.audioCtx.state==='suspended') S.audioCtx.resume();
+  stopAll();
+  S.playing = true;
+  S.sweeping = true; // reuse sweep cursor/animation
+  S.sweepPos = 0;
+
+  // Schedule notes ahead of audio clock
+  const stepDur = 0.25; // seconds per note
+  const lookAhead = 0.5;
+  let nextNoteTime = S.audioCtx.currentTime + 0.05;
+  let nextStep = 0;
+  const totalSteps = 40; // 40 notes across ell range = 10 seconds
+
+  S._instTimer = setInterval(() => {
+    if (!S.playing || S.audioCtx.state!=='running') return;
+    while (nextNoteTime < S.audioCtx.currentTime + lookAhead) {
+      // Current sweep position
+      const frac = (nextStep % totalSteps) / (totalSteps-1);
+      S.sweepPos = frac;
+      const ell = S.linearSweep
+        ? ELL_MIN + frac*(ELL_MAX-ELL_MIN)
+        : 10**(Math.log10(ELL_MIN)+frac*(Math.log10(ELL_MAX)-Math.log10(ELL_MIN)));
+
+      // Find the global max amp (for normalization)
+      const comps = [...S.activeComponents];
+      if (comps.length===0) { nextNoteTime += stepDur; nextStep++; continue; }
+
+      const globalMx = globalMaxAmp(comps, S.freq);
+
+      // In instrument mode, we ignore "freq" control and play one note per (comp, freq) pair
+      // Actually use S.freq as the base, and play one note per active component
+      const octaveF = ellToOctave(ell);
+      const octave = Math.round(octaveF);
+
+      for (const comp of comps) {
+        const rawAmp = Math.sqrt(lookupDl(ell, comp, S.freq));
+        if (globalMx<=0) continue;
+        let vol = rawAmp / globalMx;
+        if (S.logVolume) vol = mapAmp(rawAmp, globalMx);
+        if (vol < 0.02) continue;
+        vol = Math.min(0.4, vol * 0.5); // tame overall volume
+
+        const inst = S.instruments[comp] || 'piano';
+        const noteName = freqToNoteName(S.freq);
+        const noteFreq = noteToFreq(noteName, octave);
+        playInstrument(inst, noteFreq, vol, stepDur*1.5, nextNoteTime);
+      }
+
+      nextNoteTime += stepDur;
+      nextStep++;
+    }
+  }, 30);
+
+  updateUI();
+}
+
+// ============================================================
 // Create and play audio
 // ============================================================
 function stopAll() {
@@ -681,6 +983,8 @@ function stopAll() {
   }
   S.sourceNodes = [];
   if (S._rebuildTimer) { clearInterval(S._rebuildTimer); S._rebuildTimer=null; }
+  if (S._instTimer) { clearInterval(S._instTimer); S._instTimer=null; }
+  if (S._buildupTimeout) { clearTimeout(S._buildupTimeout); S._buildupTimeout=null; }
   S.playing=false; S.sweeping=false; S.buildup=false; S.freqSweep=false;
   updateUI();
 }
@@ -731,6 +1035,8 @@ function startPlaying() {
   initAudio();
   if (S.audioCtx.state==='suspended') S.audioCtx.resume();
   stopAll();
+
+  if (S.method==='instruments') { startInstrumentSeq(); return; }
 
   const dur = 2.0;
   const comps = [...S.activeComponents];
@@ -1320,10 +1626,13 @@ function sonifyPoint(theta, phi, playTemp=true){
   drawSkyMap();
   if(S.playing&&S._markDirty)S._markDirty();
 
-  // Temperature tone: pitch encodes temperature at this pixel
+  // Temperature sound: drum hit (pitch encodes temperature)
   if(playTemp){
-    const temp=lookupTemperature(theta, phi);
-    playTemperatureTone(temp);
+    const temp=lookupTemperature(theta, phi); // [-1, 1]
+    // Map temperature to drum fundamental: cold -> 60 Hz, hot -> 180 Hz
+    const drumFreq = 60 + (temp+1)/2 * 120;
+    const vol = 0.4*S.volume;
+    playInstrument('drum', drumFreq, vol, 0.5);
   }
 
   // Check for nearby halos and ping them
@@ -1434,8 +1743,22 @@ function setup(){
     document.querySelectorAll('.method-btn').forEach(x=>x.classList.remove('active'));
     b.classList.add('active');
     S.method=b.dataset.method;
-    if(S._markDirty)S._markDirty();
+    document.getElementById('instrumentControls').style.display =
+      (S.method==='instruments') ? 'flex' : 'none';
+    if (S.playing) { stopAll(); startPlaying(); }
+    else if(S._markDirty)S._markDirty();
   }));
+
+  // Instrument dropdowns
+  document.getElementById('instCmb').addEventListener('change',e=>{
+    S.instruments['dT_cmblens']=e.target.value;
+  });
+  document.getElementById('instTsz').addEventListener('change',e=>{
+    S.instruments['dT_tsz']=e.target.value;
+  });
+  document.getElementById('instCib').addEventListener('change',e=>{
+    S.instruments['dT_cib']=e.target.value;
+  });
 
   // Stereo buttons
   document.querySelectorAll('.stereo-btn').forEach(b=>b.addEventListener('click',()=>{
