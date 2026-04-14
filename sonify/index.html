@@ -474,6 +474,26 @@ function initAudio() {
   S.analyserNode = S.audioCtx.createAnalyser();
   S.analyserNode.fftSize = 256;
   S.gainNode.connect(S.analyserNode);
+
+  // Synthetic reverb: convolve with a decaying noise impulse response
+  const sr = S.audioCtx.sampleRate;
+  const irLen = Math.floor(sr * 2.2); // 2.2 second tail
+  const ir = S.audioCtx.createBuffer(2, irLen, sr);
+  for (let ch = 0; ch < 2; ch++) {
+    const data = ir.getChannelData(ch);
+    for (let i = 0; i < irLen; i++) {
+      // Exponentially decaying noise, with slight early-reflection shaping
+      const t = i / sr;
+      const env = Math.pow(1 - t/(irLen/sr), 3.5);
+      data[i] = (Math.random()*2 - 1) * env * (0.7 + 0.3*Math.sin(t*200));
+    }
+  }
+  S.reverbNode = S.audioCtx.createConvolver();
+  S.reverbNode.buffer = ir;
+  S.reverbWet = S.audioCtx.createGain();
+  S.reverbWet.gain.value = 0.5;
+  S.reverbNode.connect(S.reverbWet);
+  S.reverbWet.connect(S.gainNode);
 }
 
 // Look up Dl for a given ell, component, frequency
@@ -916,19 +936,32 @@ function playInstrument(instrument, noteFreq, volume, duration, startTime, dest)
 // ============================================================
 // Continuous instrument voices (sustained tones that glide)
 // ============================================================
+// Build a PeriodicWave from a list of harmonic amplitudes [1..N]
+function buildPeriodicWave(ctx, harmonics) {
+  const N = harmonics.length + 1;
+  const real = new Float32Array(N);
+  const imag = new Float32Array(N);
+  for (let i = 0; i < harmonics.length; i++) imag[i+1] = harmonics[i];
+  return ctx.createPeriodicWave(real, imag, {disableNormalization: false});
+}
+
 function createVoice(instrument, ctx, dest) {
-  // Signal flow: oscillators -> out(gain) -> [instrument chain] -> artic(gain) -> dest
-  // out.gain = user-driven volume (smoothed by setGain)
-  // artic.gain = instrument-characteristic attack envelope, re-triggered periodically
+  // Signal flow:
+  //   subs -> out(gain, user volume) -> [instrument body chain] -> artic(gain, rhythmic env) -> dry + wet(reverb)
   const out = ctx.createGain(); out.gain.value = 0;
   const artic = ctx.createGain(); artic.gain.value = 1;
-  const subs = []; // { osc, harmonic, freqMul }
+  const subs = [];    // { osc, harmonic, freqMul }
   const others = [];
+  let chainTail = out;
+  let articCfg = null;
+  let vibrato = null;
+  let setFreqFn = null;
 
-  function addOsc(type, harmonic, level, freqMul) {
+  function addOsc(type, harmonic, level, freqMul, periodicWave) {
     freqMul = freqMul || 1;
     const o = ctx.createOscillator();
-    o.type = type;
+    if (periodicWave) o.setPeriodicWave(periodicWave);
+    else o.type = type;
     o.frequency.value = 220*harmonic*freqMul;
     const hg = ctx.createGain(); hg.gain.value = level;
     o.connect(hg); hg.connect(out);
@@ -938,128 +971,180 @@ function createVoice(instrument, ctx, dest) {
     return o;
   }
 
-  // Build the synth chain and the articulation config per instrument
-  let chainTail = out; // the last node before we connect to artic
-  let articCfg = null; // { rate, attack, decay, sustain }
-  let vibrato = null;  // { lfo, gain } if present
+  // Reverb send level per instrument
+  let reverbSend = 0.2;
 
-  if (instrument==='piano') {
-    // Bright triangle + sine harmonics, sharp repeated attack
-    addOsc('triangle', 1, 1.0);
-    addOsc('triangle', 2, 0.45);
-    addOsc('sine',     3, 0.25);
-    addOsc('sine',     4, 0.12);
-    addOsc('sine',     6, 0.05);
-    articCfg = { rate: 3.5, attack: 0.003, peak: 1.0, decay: 0.25, sustain: 0.15, gap: 0.02 };
+  if (instrument === 'piano') {
+    // Realistic piano partials (from measured spectra), with 3 slightly detuned unison strings
+    // Harmonic amplitudes: strong fundamental, quickly decaying upper partials
+    const pianoWave = buildPeriodicWave(ctx, [
+      1.0, 0.55, 0.38, 0.22, 0.16, 0.11, 0.08, 0.06, 0.04, 0.03, 0.025, 0.02
+    ]);
+    addOsc(null, 1, 0.55, 1.000, pianoWave);
+    addOsc(null, 1, 0.45, 0.998, pianoWave); // detune for unison chorus
+    addOsc(null, 1, 0.45, 1.002, pianoWave);
+    // Body resonance: peak around 350 Hz (body), gentle HP to cut mud
+    const hp = ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=60; hp.Q.value=0.7;
+    const body = ctx.createBiquadFilter(); body.type='peaking'; body.frequency.value=350; body.Q.value=1.5; body.gain.value=3;
+    const brite = ctx.createBiquadFilter(); brite.type='peaking'; brite.frequency.value=2500; brite.Q.value=1.2; brite.gain.value=2;
+    out.connect(hp); hp.connect(body); body.connect(brite);
+    others.push(hp, body, brite);
+    chainTail = brite;
+    // Articulation: quickly-struck strings
+    articCfg = { rate: 3.0, attack: 0.002, peak: 1.0, decay: 0.35, sustain: 0.12, gap: 0.02 };
+    reverbSend = 0.35;
   }
-  else if (instrument==='violin') {
-    // Sawtooth, formant LP filter, strong vibrato, smooth bowed articulation
-    addOsc('sawtooth', 1, 0.85);
-    addOsc('sawtooth', 2, 0.35);
-    const f1 = ctx.createBiquadFilter();
-    f1.type='lowpass'; f1.frequency.value=2200; f1.Q.value=0.8;
-    const f2 = ctx.createBiquadFilter();
-    f2.type='peaking'; f2.frequency.value=900; f2.Q.value=2; f2.gain.value=4;
-    out.connect(f2); f2.connect(f1);
-    others.push(f1, f2);
-    chainTail = f1;
-    // Vibrato
-    const lfo = ctx.createOscillator();
-    lfo.type='sine'; lfo.frequency.value=5.8;
+
+  else if (instrument === 'violin') {
+    // Violin: rich sawtooth-like partials with formants from body resonance
+    // Violin spectra typically have strong 1st + 2nd harmonics, odd-heavy
+    const violinWave = buildPeriodicWave(ctx, [
+      1.0, 0.8, 0.6, 0.5, 0.42, 0.32, 0.26, 0.2, 0.16, 0.12, 0.09, 0.07, 0.05
+    ]);
+    // Section effect: 3 detuned players
+    addOsc(null, 1, 0.5, 0.995, violinWave);
+    addOsc(null, 1, 0.5, 1.000, violinWave);
+    addOsc(null, 1, 0.5, 1.005, violinWave);
+    // Violin body resonance: A0 resonance ~280 Hz, bridge hill ~3 kHz
+    const body1 = ctx.createBiquadFilter(); body1.type='peaking'; body1.frequency.value=280; body1.Q.value=4; body1.gain.value=5;
+    const body2 = ctx.createBiquadFilter(); body2.type='peaking'; body2.frequency.value=900; body2.Q.value=3; body2.gain.value=4;
+    const bridge = ctx.createBiquadFilter(); bridge.type='peaking'; bridge.frequency.value=3000; bridge.Q.value=2.5; bridge.gain.value=3;
+    const lp = ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=6000; lp.Q.value=0.7;
+    out.connect(body1); body1.connect(body2); body2.connect(bridge); bridge.connect(lp);
+    others.push(body1, body2, bridge, lp);
+    chainTail = lp;
+    // Strong vibrato
+    const lfo = ctx.createOscillator(); lfo.type='sine'; lfo.frequency.value=5.6;
     const lfoGain = ctx.createGain(); lfoGain.gain.value=5;
     lfo.connect(lfoGain);
+    for (const {osc} of subs) lfoGain.connect(osc.frequency);
     lfo.start();
     others.push(lfo, lfoGain);
     vibrato = { lfoGain };
-    // Hook vibrato to all oscillators
-    for (const {osc} of subs) lfoGain.connect(osc.frequency);
-    // Slow bowing swell every 1.2s
-    articCfg = { rate: 0.85, attack: 0.15, peak: 1.0, decay: 0.25, sustain: 0.85, gap: 0.05 };
+    articCfg = { rate: 0.7, attack: 0.18, peak: 1.0, decay: 0.3, sustain: 0.85, gap: 0.08 };
+    reverbSend = 0.55;
   }
-  else if (instrument==='guitar') {
-    // Distorted sawtooth+square, strummed rhythm
-    addOsc('sawtooth', 1, 0.8);
-    addOsc('square',   1, 0.4, 1.003); // slight detune
-    addOsc('sawtooth', 2, 0.2);
+
+  else if (instrument === 'guitar') {
+    // Electric guitar: power-chord feel, tube-amp saturation, speaker cabinet
+    const guitarWave = buildPeriodicWave(ctx, [
+      1.0, 0.7, 0.55, 0.45, 0.4, 0.35, 0.3, 0.22, 0.17, 0.12, 0.08
+    ]);
+    // Root + octave + fifth (power chord)
+    addOsc(null, 1, 0.6, 1.000, guitarWave);
+    addOsc(null, 1, 0.3, 1.005, guitarWave); // detune
+    addOsc(null, 2, 0.15, 1.0, guitarWave);  // octave up
+    // Pre-distortion EQ: boost mids
+    const preMid = ctx.createBiquadFilter(); preMid.type='peaking'; preMid.frequency.value=800; preMid.Q.value=1.5; preMid.gain.value=4;
+    // Tube-style distortion
     const shaper = ctx.createWaveShaper();
-    const curve = new Float32Array(256);
-    for (let i=0;i<256;i++){const x=(i-128)/128; curve[i]=Math.tanh(3.5*x);}
+    const curve = new Float32Array(1024);
+    for (let i=0;i<1024;i++){
+      const x=(i-512)/512;
+      curve[i]=Math.tanh(4.5*x) * 0.7;
+    }
     shaper.curve = curve;
-    const filter = ctx.createBiquadFilter();
-    filter.type='lowpass'; filter.frequency.value=2600; filter.Q.value=2.5;
-    out.connect(shaper); shaper.connect(filter);
-    others.push(shaper, filter);
-    chainTail = filter;
-    // Strumming: medium attack, long decay, ~2 per second
-    articCfg = { rate: 1.8, attack: 0.01, peak: 1.0, decay: 0.35, sustain: 0.25, gap: 0.05 };
+    shaper.oversample = '4x';
+    // Speaker cabinet simulation: bandpass 80-4500 Hz
+    const cabHP = ctx.createBiquadFilter(); cabHP.type='highpass'; cabHP.frequency.value=85; cabHP.Q.value=0.7;
+    const cabLP = ctx.createBiquadFilter(); cabLP.type='lowpass'; cabLP.frequency.value=4500; cabLP.Q.value=1.2;
+    const cabResonance = ctx.createBiquadFilter(); cabResonance.type='peaking'; cabResonance.frequency.value=2200; cabResonance.Q.value=2; cabResonance.gain.value=3;
+    out.connect(preMid); preMid.connect(shaper); shaper.connect(cabHP); cabHP.connect(cabLP); cabLP.connect(cabResonance);
+    others.push(preMid, shaper, cabHP, cabLP, cabResonance);
+    chainTail = cabResonance;
+    articCfg = { rate: 1.6, attack: 0.005, peak: 1.0, decay: 0.4, sustain: 0.4, gap: 0.04 };
+    reverbSend = 0.3;
   }
-  else if (instrument==='flute') {
-    // Pure sine, very slight 2nd harmonic, breath noise, slow sustained swells
-    addOsc('sine', 1, 1.0);
-    addOsc('sine', 2, 0.08);
-    // Breath noise: brown-noise source routed through bandpass
+
+  else if (instrument === 'flute') {
+    // Flute: nearly pure sine + subtle harmonics + breath noise
+    const fluteWave = buildPeriodicWave(ctx, [
+      1.0, 0.12, 0.05, 0.02, 0.01
+    ]);
+    addOsc(null, 1, 1.0, 1.000, fluteWave);
+    addOsc(null, 1, 0.2, 1.003, fluteWave); // slight beat
+    // Breath noise
     const nBuf = ctx.createBuffer(1, ctx.sampleRate*2, ctx.sampleRate);
     const nd = nBuf.getChannelData(0);
-    let last=0;
-    for (let i=0;i<nd.length;i++) { last = 0.97*last + 0.03*(Math.random()*2-1); nd[i] = last*3; }
+    for (let i=0;i<nd.length;i++) nd[i] = (Math.random()*2-1);
     const noise = ctx.createBufferSource(); noise.buffer=nBuf; noise.loop=true;
-    const noiseG = ctx.createGain(); noiseG.gain.value=0.08;
-    const noiseF = ctx.createBiquadFilter();
-    noiseF.type='bandpass'; noiseF.frequency.value=2000; noiseF.Q.value=1;
+    const noiseF = ctx.createBiquadFilter(); noiseF.type='bandpass'; noiseF.frequency.value=2500; noiseF.Q.value=0.8;
+    const noiseG = ctx.createGain(); noiseG.gain.value=0.06;
     noise.connect(noiseF); noiseF.connect(noiseG); noiseG.connect(out);
     noise.start();
-    others.push(noise, noiseG, noiseF);
-    // Gentle vibrato
-    const lfo = ctx.createOscillator();
-    lfo.type='sine'; lfo.frequency.value=4;
-    const lfoGain = ctx.createGain(); lfoGain.gain.value=3;
+    others.push(noise, noiseF, noiseG);
+    // Gentle breath vibrato
+    const lfo = ctx.createOscillator(); lfo.type='sine'; lfo.frequency.value=4.5;
+    const lfoGain = ctx.createGain(); lfoGain.gain.value=2;
     lfo.connect(lfoGain);
     for (const {osc} of subs) lfoGain.connect(osc.frequency);
     lfo.start();
     others.push(lfo, lfoGain);
     vibrato = { lfoGain };
-    // Long breath swells every 2s (very smooth, mostly sustained)
-    articCfg = { rate: 0.5, attack: 0.3, peak: 1.0, decay: 0.3, sustain: 0.9, gap: 0.1 };
+    // High-shelf cut to remove harshness
+    const hs = ctx.createBiquadFilter(); hs.type='highshelf'; hs.frequency.value=4000; hs.gain.value=-6;
+    out.connect(hs);
+    others.push(hs);
+    chainTail = hs;
+    articCfg = { rate: 0.55, attack: 0.25, peak: 1.0, decay: 0.35, sustain: 0.9, gap: 0.1 };
+    reverbSend = 0.45;
   }
-  else if (instrument==='bass') {
-    // Square wave heavily lowpassed, slight overtone, slow pulsing
-    addOsc('square', 1, 1.0);
-    addOsc('square', 2, 0.12);
-    const filter = ctx.createBiquadFilter();
-    filter.type='lowpass'; filter.frequency.value=500; filter.Q.value=4;
-    out.connect(filter);
-    others.push(filter);
-    chainTail = filter;
-    articCfg = { rate: 1.4, attack: 0.02, peak: 1.0, decay: 0.3, sustain: 0.6, gap: 0.08 };
+
+  else if (instrument === 'bass') {
+    // Electric bass: strong fundamental + pluck character
+    const bassWave = buildPeriodicWave(ctx, [
+      1.0, 0.6, 0.4, 0.25, 0.15, 0.08, 0.04
+    ]);
+    addOsc(null, 1, 0.8, 1.000, bassWave);
+    addOsc(null, 1, 0.4, 1.004, bassWave); // string beat
+    addOsc(null, 0.5, 0.3, 1.000, bassWave); // sub-octave for depth
+    // Lowpass + punchy mid bump
+    const punch = ctx.createBiquadFilter(); punch.type='peaking'; punch.frequency.value=180; punch.Q.value=1.5; punch.gain.value=4;
+    const lp = ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=1200; lp.Q.value=1.5;
+    out.connect(punch); punch.connect(lp);
+    others.push(punch, lp);
+    chainTail = lp;
+    articCfg = { rate: 1.2, attack: 0.008, peak: 1.0, decay: 0.35, sustain: 0.55, gap: 0.05 };
+    reverbSend = 0.15;
   }
-  else if (instrument==='synth') {
-    // Detuned saws with wah: auto-sweeping LP filter, sustained pad
-    addOsc('sawtooth', 1, 0.6, 0.993);
-    addOsc('sawtooth', 1, 0.6, 1.007);
-    addOsc('sawtooth', 2, 0.3);
-    const filter = ctx.createBiquadFilter();
-    filter.type='lowpass'; filter.frequency.value=800; filter.Q.value=4;
-    // Wah LFO
-    const wahLfo = ctx.createOscillator();
-    wahLfo.type='sine'; wahLfo.frequency.value=0.4;
+
+  else if (instrument === 'synth') {
+    // Supersaw pad: 7 detuned sawtooths + slow filter sweep + lush reverb
+    const detunes = [-12, -7, -3, 0, 3, 7, 12];
+    for (const d of detunes) {
+      addOsc('sawtooth', 1, 0.18, 1 + d*0.0008);
+    }
+    // Octave-up layer for sparkle
+    addOsc('triangle', 2, 0.08, 1.0);
+    // Auto-wah
+    const filter = ctx.createBiquadFilter(); filter.type='lowpass'; filter.frequency.value=1200; filter.Q.value=3;
+    const wahLfo = ctx.createOscillator(); wahLfo.type='sine'; wahLfo.frequency.value=0.35;
     const wahGain = ctx.createGain(); wahGain.gain.value=1500;
     wahLfo.connect(wahGain); wahGain.connect(filter.frequency);
     wahLfo.start();
     out.connect(filter);
     others.push(filter, wahLfo, wahGain);
     chainTail = filter;
-    // Very slow swell
-    articCfg = { rate: 0.3, attack: 0.5, peak: 1.0, decay: 0.5, sustain: 1.0, gap: 0.1 };
+    articCfg = { rate: 0.3, attack: 0.6, peak: 1.0, decay: 0.5, sustain: 1.0, gap: 0.1 };
+    reverbSend = 0.7;
   }
+
   else {
-    // Fallback: simple sine
+    // Fallback
     addOsc('sine', 1, 1);
   }
 
+  // chainTail -> artic -> dry/wet split
   chainTail.connect(artic);
-  artic.connect(dest);
+  const dryG = ctx.createGain(); dryG.gain.value = 1 - reverbSend*0.5;
+  const wetG = ctx.createGain(); wetG.gain.value = reverbSend;
+  artic.connect(dryG); dryG.connect(dest);
+  if (S.reverbNode) {
+    artic.connect(wetG); wetG.connect(S.reverbNode);
+  }
+  others.push(dryG, wetG);
 
-  // Articulation scheduler: re-fires envelope at the instrument's rate
+  // Articulation scheduler
   let articTimer = null;
   if (articCfg) {
     const period = 1/articCfg.rate;
