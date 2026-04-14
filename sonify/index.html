@@ -298,18 +298,61 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
 
   <!-- Info -->
   <div class="panel info-panel full-width">
-    <strong>How it works:</strong>
-    Multipole &#8467; maps to audio frequency via log-log scaling (&#8467;=2 &rarr; 40 Hz, &#8467;=6000 &rarr; 8 kHz).
-    <strong>Shaped Noise</strong> filters white noise to match D<sub>&#8467;</sub>.
-    <strong>Additive</strong> sums sine tones weighted by &radic;D<sub>&#8467;</sub>.
-    <strong>Scale Layers</strong> splits into drone (&#8467;&lt;100), harmonics at CMB acoustic peaks, and high-&#8467; noise.
-    <strong>&#8467;-Sweep</strong> animates a bandpass window across scales.
-    <strong>Build-Up</strong> progressively adds CMB &rarr; tSZ &rarr; CIB.
-    <strong>&#957;-Sweep</strong> crossfades 93 &rarr; 143 &rarr; 353 GHz.
-    <strong>Stereo</strong> modes put components or frequencies in separate ears (use headphones!).
-    Click the <strong>sky map</strong> to modulate amplitude by local variance.
-    <strong>Orange dots</strong> are the 3000 most massive galaxy clusters (M&gt;5&times;10<sup>14</sup> M<sub>&odot;</sub>).
-    Click near one to hear a ping &mdash; pitch encodes halo mass (heavier = higher).
+    <p style="margin-bottom:8px;"><strong>How the sonification works.</strong>
+    Multipole &#8467; maps to audio frequency via log-log scaling
+    (&#8467;=2 &rarr; 40 Hz, &#8467;=6000 &rarr; 8 kHz). The CMB first acoustic peak
+    at &#8467;&sim;220 lands near middle C (~270 Hz), the tSZ peak (&#8467;&sim;2000)
+    at ~2.7 kHz, and the CIB peak (&#8467;&sim;5000) at ~6.8 kHz. Amplitude is
+    globally normalized so variations in D<sub>&#8467;</sub> are preserved during sweeps
+    (otherwise per-buffer normalization would flatten the dynamic range).</p>
+
+    <p style="margin-bottom:8px;"><strong>Synthesis methods.</strong>
+    <em>Shaped Noise</em> filters white noise so its spectrum matches D<sub>&#8467;</sub>
+    &mdash; the most faithful representation, sounds textural.
+    <em>Additive</em> sums sine tones weighted by &radic;D<sub>&#8467;</sub>
+    &mdash; more tonal, individual peaks audible as distinct pitches.
+    <em>Scale Layers</em> splits the spectrum into a bass drone
+    (&#8467;&lt;100), harmonic tones at the CMB acoustic peaks
+    (&#8467;=220, 540, 810), and high-&#8467; bandpass noise &mdash; makes the
+    scale structure explicit as three different timbres.</p>
+
+    <p style="margin-bottom:8px;"><strong>Sweep modes.</strong>
+    <em>&#8467;-Sweep</em> moves a bandpass window across multipole in time;
+    drag the <em>Sweep position</em> slider to scrub manually.
+    Sweep options: <em>log volume</em> (dB-scaled amplitude for a wider
+    dynamic range), <em>linear &#957;-sweep</em> (linear in &#8467; instead of
+    log, spends more time at high &#8467;), <em>ping-pong</em> (bounce back and
+    forth), and <em>fixed pitch</em> (keep audio pitch at 440 Hz while the
+    input &#8467; varies &mdash; isolates amplitude/timbre variation from the
+    confounding pitch change).
+    <em>Build-Up</em> progressively adds CMB &rarr; tSZ &rarr; CIB so you hear
+    the components layer up into T<sub>tot</sub>.
+    <em>&#957;-Sweep</em> crossfades 93 &rarr; 143 &rarr; 353 GHz so you hear the
+    foreground transition from CMB-dominated to CIB-dominated.
+    During any sweep the plot shows a cursor, the current &#8467; value, the
+    total D<sub>&#8467;</sub>, and amplitude markers on each active component curve.</p>
+
+    <p style="margin-bottom:8px;"><strong>Stereo modes</strong> (headphones recommended):
+    <em>Components L/R</em> splits active components into the two ears, so you
+    can directly A/B compare (e.g. CMB left, tSZ right).
+    <em>93|353 GHz</em> places 93 GHz in the left ear (CMB-dominated) and
+    353 GHz in the right (CIB-dominated) &mdash; the clearest way to hear
+    the foreground transition.</p>
+
+    <p><strong>Interactive 3D sphere.</strong>
+    The sphere shows the actual sky map at the selected component &amp; frequency.
+    <em>Drag</em> to rotate. <em>Click</em> any location to sonify it:
+    (1) a <strong>temperature tone</strong> plays whose pitch encodes the temperature at that pixel
+    (cold &rarr; low pitch, hot &rarr; high pitch);
+    (2) the continuous texture's amplitude is modulated by the local RMS fluctuation
+    in the surrounding patch;
+    (3) any nearby <strong>halos</strong> (orange dots are the 3000 most massive
+    clusters with M&gt;5&times;10<sup>14</sup> M<sub>&odot;</sub>) fire a <strong>ping</strong>
+    whose pitch encodes halo mass (heavier = higher).
+    Toggle <em>Scan mode</em> to fire all three continuously while dragging,
+    turning your cursor into an ear moving across the sky. The tSZ map in
+    particular is cluster-dominated &mdash; in scan mode it sounds like a
+    field of discrete chirps against a quiet background.</p>
   </div>
 </div>
 
