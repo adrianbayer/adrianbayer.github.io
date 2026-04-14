@@ -377,6 +377,20 @@ function sumDl(ell, comps, nu) {
   return sum;
 }
 
+// Compute global max sqrt(Dl) over the full ell range for a component set + freq
+// Used for consistent normalization so sweeps reflect true Dl variation
+function globalMaxAmp(comps, nu) {
+  const ellArr = S.clData.ell_cl;
+  let mx = 0;
+  for (let i=0; i<ellArr.length; i++) {
+    const e = ellArr[i];
+    if (e<ELL_MIN||e>ELL_MAX) continue;
+    const amp = Math.sqrt(sumDl(e, comps, nu));
+    if (amp>mx) mx = amp;
+  }
+  return mx;
+}
+
 // Build target amplitude spectrum for one channel
 function buildTarget(comps, nu) {
   const sr = S.audioCtx.sampleRate;
@@ -384,27 +398,28 @@ function buildTarget(comps, nu) {
   const numBins = fftSize/2+1;
   const target = new Float32Array(numBins);
 
+  // Global normalization reference (doesn't change during sweep)
+  const globalMx = globalMaxAmp(comps, nu);
+  if (globalMx <= 0) return target;
+
   for (let i=1; i<numBins; i++) {
     const fAudio = (i/numBins)*(sr/2);
     if (fAudio<F_MIN||fAudio>F_MAX) continue;
     const ell = freqToEll(fAudio);
     if (ell<S.ellMin||ell>S.ellMax) continue;
 
+    const amp = Math.sqrt(sumDl(ell,comps,nu)) / globalMx; // normalized to [0,1]
+
     // Sweep windowing
     if (S.sweeping) {
       const sweepEll = 10**(Math.log10(ELL_MIN)+S.sweepPos*(Math.log10(ELL_MAX)-Math.log10(ELL_MIN)));
       const logDist = Math.abs(Math.log10(ell)-Math.log10(sweepEll));
       if (logDist>0.3) continue;
-      target[i] = Math.sqrt(sumDl(ell,comps,nu)) * Math.cos(Math.PI*logDist/0.6);
+      target[i] = amp * Math.cos(Math.PI*logDist/0.6);
     } else {
-      target[i] = Math.sqrt(sumDl(ell,comps,nu));
+      target[i] = amp;
     }
   }
-
-  // Normalize
-  let mx=0;
-  for (let i=0;i<numBins;i++) if(target[i]>mx) mx=target[i];
-  if (mx>0) for (let i=0;i<numBins;i++) target[i]/=mx;
 
   // Apply sky variance
   for (let i=0;i<numBins;i++) target[i]*=S.skyVarScale;
@@ -413,15 +428,24 @@ function buildTarget(comps, nu) {
 }
 
 // Generate shaped-noise buffer from target spectrum
+// Does NOT peak-normalize so amplitude scales with target (for sweep dynamics)
 function genNoiseBuf(target, duration) {
   const sr = S.audioCtx.sampleRate;
   const n = Math.floor(sr*duration);
   const buf = S.audioCtx.createBuffer(1,n,sr);
   const data = buf.getChannelData(0);
 
-  // Additive synthesis with ~250 tones for noise-like texture
   const nTones = 250;
   for (let i=0;i<n;i++) data[i]=0;
+
+  // Count active tones to scale down
+  let activeTones = 0;
+  for (let k=0;k<nTones;k++) {
+    const tIdx = Math.floor(k/nTones*target.length);
+    if (target[tIdx]>=0.001) activeTones++;
+  }
+  if (activeTones===0) return buf;
+  const toneScale = 1/Math.sqrt(activeTones); // RMS-like normalization
 
   for (let k=0;k<nTones;k++) {
     const tIdx = Math.floor(k/nTones*target.length);
@@ -431,16 +455,22 @@ function genNoiseBuf(target, duration) {
     if (freq<20||freq>sr/2-100) continue;
     const phase = Math.random()*2*Math.PI;
     const w = 2*Math.PI*freq/sr;
-    const am = (0.6+Math.random()*0.4)*amp;
+    const am = (0.6+Math.random()*0.4)*amp*toneScale;
     for (let i=0;i<n;i++) data[i]+=am*Math.sin(w*i+phase);
   }
 
-  normBuf(data);
+  // Soft clip to avoid distortion, but don't normalize to peak
+  let mx=0;
+  for (let i=0;i<n;i++) { const a=Math.abs(data[i]); if(a>mx) mx=a; }
+  if (mx>0.95) {
+    const s=0.95/mx;
+    for (let i=0;i<n;i++) data[i]*=s;
+  }
   fadeEdges(data, sr);
   return buf;
 }
 
-// Generate additive synthesis buffer (more tonal, fewer tones, no random amp)
+// Additive synthesis: tonal, preserves amplitude variation
 function genAdditiveBuf(target, duration) {
   const sr = S.audioCtx.sampleRate;
   const n = Math.floor(sr*duration);
@@ -450,6 +480,14 @@ function genAdditiveBuf(target, duration) {
   const nTones = 150;
   for (let i=0;i<n;i++) data[i]=0;
 
+  let activeTones=0;
+  for (let k=0;k<nTones;k++) {
+    const tIdx = Math.floor(k/nTones*target.length);
+    if (target[tIdx]>=0.005) activeTones++;
+  }
+  if (activeTones===0) return buf;
+  const toneScale = 1/Math.sqrt(activeTones);
+
   for (let k=0;k<nTones;k++) {
     const tIdx = Math.floor(k/nTones*target.length);
     const amp = target[tIdx];
@@ -458,10 +496,12 @@ function genAdditiveBuf(target, duration) {
     if (freq<20||freq>sr/2-100) continue;
     const phase = Math.random()*2*Math.PI;
     const w = 2*Math.PI*freq/sr;
-    for (let i=0;i<n;i++) data[i]+=amp*Math.sin(w*i+phase);
+    for (let i=0;i<n;i++) data[i]+=amp*toneScale*Math.sin(w*i+phase);
   }
 
-  normBuf(data);
+  let mx=0;
+  for (let i=0;i<n;i++) { const a=Math.abs(data[i]); if(a>mx) mx=a; }
+  if (mx>0.95) { const s=0.95/mx; for (let i=0;i<n;i++) data[i]*=s; }
   fadeEdges(data, sr);
   return buf;
 }
