@@ -272,9 +272,12 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
     <h2>Sky Map</h2>
     <canvas id="skyCanvas"></canvas>
     <div class="sky-info">
-      Click to hear patches + nearby clusters (orange dots). &nbsp;
+      <strong>Drag</strong> to rotate, <strong>click</strong> to sonify. Toggle <strong>Scan</strong> to sonify while dragging.<br>
       Position: <span id="skyPos">&mdash;</span> &nbsp;|&nbsp;
-      Relative variance: <span id="skyVar">&mdash;</span>
+      Local RMS: <span id="skyVar">&mdash;</span>
+    </div>
+    <div class="btn-row" style="margin-top:6px;">
+      <button class="sm-btn option-btn" id="scanModeBtn">Scan mode</button>
     </div>
     <div class="control-group" style="margin-top:8px;">
       <label>Map component</label>
@@ -323,7 +326,7 @@ const S = {
   playing: false,
   sweeping: false, sweepPos: 0, sweepSpeed: 10, sweepDir: 1,
   logVolume: false, linearSweep: false, pingPong: false, fixedPitch: false,
-  scrubbing: false,
+  scrubbing: false, scanMode: false,
   buildup: false, buildupPhase: 0,  // 0=CMB, 1=+tSZ, 2=+CIB
   freqSweep: false, freqSweepPos: 0,
   skyVarScale: 1.0,
@@ -1161,6 +1164,44 @@ function drawSkyMap() {
   S._skyGeo={cx:lcx,cy:lcy,R:lR};
 }
 
+// Look up normalized temperature [-1, 1] at (theta, phi) from the skyTexture
+function lookupTemperature(theta, phi) {
+  if (!skyTexture) return 0;
+  const tW=200, tH=100;
+  const tx=Math.floor((phi/(2*Math.PI))*tW)%tW;
+  const ty=Math.min(Math.floor((theta/Math.PI)*tH), tH-1);
+  const v=skyTexture[ty*tW+tx];
+  if (v===128||v===undefined) return 0;
+  return (v-128)/127; // [-1, 1]
+}
+
+// Play a brief tone whose pitch encodes temperature at a sky location
+function playTemperatureTone(tempNorm) {
+  if (!S.audioCtx) initAudio();
+  if (S.audioCtx.state==='suspended') S.audioCtx.resume();
+  // Map [-1, 1] -> pitch: cold = low, hot = high
+  // Use log scale around middle C (262 Hz)
+  const minF=150, maxF=1200;
+  const logMin=Math.log10(minF), logMax=Math.log10(maxF);
+  const frac=(tempNorm+1)/2; // [0, 1]
+  const freq=10**(logMin + frac*(logMax-logMin));
+  const vol=0.3*S.volume;
+
+  const osc=S.audioCtx.createOscillator();
+  const gain=S.audioCtx.createGain();
+  osc.type='triangle'; // warmer than sine
+  osc.frequency.value=freq;
+  const now=S.audioCtx.currentTime;
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(vol, now+0.02);
+  gain.gain.exponentialRampToValueAtTime(vol*0.5, now+0.2);
+  gain.gain.exponentialRampToValueAtTime(0.001, now+0.8);
+  osc.connect(gain);
+  gain.connect(S.audioCtx.destination);
+  osc.start(now);
+  osc.stop(now+0.9);
+}
+
 // Play a halo "ping" — pitch encodes mass, volume encodes proximity
 function playHaloPing(logMass, distance) {
   if(!S.audioCtx) initAudio();
@@ -1198,30 +1239,24 @@ function playHaloPing(logMass, distance) {
   osc2.start(now); osc2.stop(now+0.5);
 }
 
-function handleSkyClick(e){
-  if(!S._skyGeo||!S.skyData)return;
-  const canvas=document.getElementById('skyCanvas');
-  const rect=canvas.getBoundingClientRect();
-  const x=e.clientX-rect.left, y=e.clientY-rect.top;
+// Convert canvas coords (cx, cy) to (theta, phi) on the unrotated sphere
+function canvasToThetaPhi(x, y) {
+  if(!S._skyGeo) return null;
   const{cx,cy,R}=S._skyGeo;
-
-  // Check if click is on the sphere
   const dx=(x-cx)/R, dy=(y-cy)/R;
-  if(dx*dx+dy*dy>1)return;
+  if(dx*dx+dy*dy>1) return null;
   const dz=-Math.sqrt(1-dx*dx-dy*dy);
-
-  // Unrotate to get world coords
   const cosLon=Math.cos(SKY.rotLon),sinLon=Math.sin(SKY.rotLon);
   const cosLat=Math.cos(SKY.rotLat),sinLat=Math.sin(SKY.rotLat);
   let sx=dx,sy=dy,sz=dz;
-  // Inverse X rotation
   let y1=sy*cosLat+sz*sinLat, z1=-sy*sinLat+sz*cosLat; sy=y1;sz=z1;
-  // Inverse Y rotation
   let x1=sx*cosLon-sz*sinLon, z2=sx*sinLon+sz*cosLon; sx=x1;sz=z2;
-
-  const theta=Math.acos(Math.max(-1,Math.min(1,-sy))); // colatitude
+  const theta=Math.acos(Math.max(-1,Math.min(1,-sy)));
   const phi=(Math.atan2(sx,sz)+Math.PI)%(2*Math.PI);
+  return {theta, phi};
+}
 
+function sonifyPoint(theta, phi, playTemp=true){
   SKY.clickTheta=theta; SKY.clickPhi=phi;
 
   let mn=S._skyMn||'dT_cmblens', nu=S._skyNu||'143';
@@ -1242,19 +1277,33 @@ function handleSkyClick(e){
   drawSkyMap();
   if(S.playing&&S._markDirty)S._markDirty();
 
+  // Temperature tone: pitch encodes temperature at this pixel
+  if(playTemp){
+    const temp=lookupTemperature(theta, phi);
+    playTemperatureTone(temp);
+  }
+
   // Check for nearby halos and ping them
   if(S.halos){
     const searchRadius=5; // degrees
     for(let i=0;i<S.halos.n;i++){
       const dt=S.halos.theta[i]-thetaDeg;
       const dp=S.halos.phi[i]-phiDeg;
-      // Simple angular distance (approximate)
       const dist=Math.sqrt(dt*dt+dp*dp*Math.sin(theta)*Math.sin(theta));
       if(dist<searchRadius){
         playHaloPing(S.halos.log_mass[i], dist);
       }
     }
   }
+}
+
+function handleSkyClick(e){
+  const canvas=document.getElementById('skyCanvas');
+  const rect=canvas.getBoundingClientRect();
+  const x=e.clientX-rect.left, y=e.clientY-rect.top;
+  const tp=canvasToThetaPhi(x,y);
+  if(!tp) return;
+  sonifyPoint(tp.theta, tp.phi, true);
 }
 
 // ============================================================
@@ -1434,28 +1483,47 @@ function setup(){
   });
   document.getElementById('stopBtn').addEventListener('click',stopAll);
 
-  // Sky interactions: click to sonify, drag to rotate
+  // Sky interactions
   const skyC=document.getElementById('skyCanvas');
+  let lastScanTime=0;
   skyC.addEventListener('mousedown',(e)=>{
     SKY.dragging=true; SKY.lastX=e.clientX; SKY.lastY=e.clientY;
+    SKY.downX=e.clientX; SKY.downY=e.clientY;
   });
   window.addEventListener('mousemove',(e)=>{
     if(!SKY.dragging)return;
     const dx=e.clientX-SKY.lastX, dy=e.clientY-SKY.lastY;
-    SKY.rotLon+=dx*0.01;
-    SKY.rotLat=Math.max(-Math.PI/2,Math.min(Math.PI/2, SKY.rotLat+dy*0.01));
     SKY.lastX=e.clientX; SKY.lastY=e.clientY;
-    drawSkyMap();
-  });
-  window.addEventListener('mouseup',(e)=>{
-    if(SKY.dragging){
-      const dx=Math.abs(e.clientX-SKY.lastX), dy=Math.abs(e.clientY-SKY.lastY);
-      // Only fire click if barely moved (not a drag)
+
+    if(S.scanMode){
+      // Sonify at current position (throttled to 6 per second so tones don't overlap too much)
+      const rect=skyC.getBoundingClientRect();
+      const x=e.clientX-rect.left, y=e.clientY-rect.top;
+      const tp=canvasToThetaPhi(x,y);
+      if(tp && Date.now()-lastScanTime>160){
+        sonifyPoint(tp.theta, tp.phi, true);
+        lastScanTime=Date.now();
+      }
+    } else {
+      // Normal drag rotates the sphere
+      SKY.rotLon+=dx*0.01;
+      SKY.rotLat=Math.max(-Math.PI/2,Math.min(Math.PI/2, SKY.rotLat+dy*0.01));
+      drawSkyMap();
     }
-    SKY.dragging=false;
   });
+  window.addEventListener('mouseup',(e)=>{ SKY.dragging=false; });
   skyC.addEventListener('click',(e)=>{
-    handleSkyClick(e);
+    // Only fire click if user didn't drag more than a few pixels
+    const dx=Math.abs(e.clientX-(SKY.downX||e.clientX));
+    const dy=Math.abs(e.clientY-(SKY.downY||e.clientY));
+    if(dx<4 && dy<4) handleSkyClick(e);
+  });
+
+  // Scan mode toggle
+  document.getElementById('scanModeBtn').addEventListener('click',()=>{
+    S.scanMode=!S.scanMode;
+    document.getElementById('scanModeBtn').classList.toggle('active', S.scanMode);
+    skyC.style.cursor = S.scanMode ? 'cell' : 'grab';
   });
 
   // Resize
