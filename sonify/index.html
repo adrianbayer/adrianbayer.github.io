@@ -1200,16 +1200,50 @@ function startPlaying() {
 
   S.playing = true;
 
-  // Periodic rebuild on param change
+  // Periodic rebuild on param change: crossfade to a new buffer smoothly
   let dirty = false;
   S._markDirty = () => { dirty=true; };
   S._rebuildTimer = setInterval(() => {
     if (!dirty||!S.playing) return;
+    if (S.method==='instruments') { dirty=false; return; } // handled by voice update loop
     dirty=false;
-    // Rebuild by restarting
-    const wasPlaying = S.playing;
-    if (wasPlaying) startPlaying();
-  }, 600);
+
+    // Crossfade: create new buffer, fade in, fade out the old
+    const newComps = [...S.activeComponents];
+    if (newComps.length===0) return;
+
+    function makeFader(buf, delay, channel){
+      const src = S.audioCtx.createBufferSource();
+      src.buffer = buf; src.loop = true;
+      const g = S.audioCtx.createGain(); g.gain.value=0;
+      src.connect(g); g.connect(S.gainNode);
+      src.start();
+      const now = S.audioCtx.currentTime;
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(1, now+0.2);
+      return {src, g};
+    }
+
+    // Fade out existing sources
+    const now = S.audioCtx.currentTime;
+    const oldNodes = S.sourceNodes.slice();
+    // We can't individually fade out a raw buffer source gainfully - skip perfect fade,
+    // but make the overlap prevent clicks.
+    setTimeout(()=>{
+      for (const n of oldNodes) { try { n.stop(); n.disconnect(); } catch(e){} }
+    }, 250);
+
+    // Create new source(s) and fade them in
+    if (S.stereoMode==='mono') {
+      const buf = generateBuffer(newComps, S.freq, 2.0);
+      const {src} = makeFader(buf, now, 'mono');
+      S.sourceNodes = [src];
+    } else {
+      // For stereo modes, fall back to a hard restart (simpler)
+      for (const n of oldNodes) { try { n.stop(); n.disconnect(); } catch(e){} }
+      startPlaying();
+    }
+  }, 400);
 
   updateUI();
 }
@@ -1316,18 +1350,55 @@ function startSweep() {
   S.sweepPos = 0;
   S.playing = true;
 
-  const comps = [...S.activeComponents];
-  const buf = generateBuffer(comps, S.freq, 2.0);
-  playBuffer(buf, 'mono');
+  // If we're in instrument mode, delegate to the voice-based sequencer
+  if (S.method==='instruments') { startInstrumentSeq(); return; }
 
-  // Rebuild periodically as sweep moves
-  S._rebuildTimer = setInterval(() => {
-    if (!S.sweeping||!S.playing) return;
-    for (const node of S.sourceNodes) { try{node.stop();node.disconnect();}catch(e){} }
-    S.sourceNodes = [];
-    const buf2 = generateBuffer([...S.activeComponents], S.freq, 2.0);
-    playBuffer(buf2, 'mono');
-  }, 400);
+  // For shaped-noise/additive/layers, create ONE continuous source.
+  // We generate a long buffer with the full D_ell spectrum (not bandpassed),
+  // loop it, and use a bandpass BiquadFilter + GainNode to smoothly track
+  // the sweep position without retriggering.
+  const comps = [...S.activeComponents];
+  const longBuf = generateBuffer(comps, S.freq, 4.0); // 4-second shaped-noise
+  const src = S.audioCtx.createBufferSource();
+  src.buffer = longBuf;
+  src.loop = true;
+
+  // Bandpass filter whose frequency we automate based on sweep position
+  const filter = S.audioCtx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.Q.value = 3;
+  filter.frequency.value = 500;
+
+  // Output gain to track D_ell at the current sweep position
+  const sweepGain = S.audioCtx.createGain();
+  sweepGain.gain.value = 0.5;
+
+  src.connect(filter);
+  filter.connect(sweepGain);
+  sweepGain.connect(S.gainNode);
+  src.start();
+  S.sourceNodes.push(src);
+  S._sweepFilter = filter;
+  S._sweepGain = sweepGain;
+
+  // Update filter/gain continuously (fast timer, smooth)
+  S._instTimer = setInterval(() => {
+    if (!S.sweeping || !S.playing) return;
+    const frac = S.sweepPos;
+    const ell = S.linearSweep
+      ? ELL_MIN + frac*(ELL_MAX-ELL_MIN)
+      : 10**(Math.log10(ELL_MIN)+frac*(Math.log10(ELL_MAX)-Math.log10(ELL_MIN)));
+    const fAudio = S.fixedPitch ? 440 : ellToFreq(ell);
+    filter.frequency.setTargetAtTime(fAudio, S.audioCtx.currentTime, 0.03);
+
+    const comps2 = [...S.activeComponents];
+    const rawAmp = Math.sqrt(sumDl(ell, comps2, S.freq));
+    const globalMx = globalMaxAmp(comps2, S.freq);
+    let vol = 0;
+    if (globalMx>0) vol = S.logVolume ? mapAmp(rawAmp, globalMx) : rawAmp/globalMx;
+    vol = Math.min(1.0, vol * 2.5); // compensate for bandpass attenuation
+    sweepGain.gain.setTargetAtTime(vol, S.audioCtx.currentTime, 0.04);
+  }, 30);
 
   updateUI();
 }
