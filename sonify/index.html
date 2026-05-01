@@ -204,7 +204,15 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
     </div>
 
     <div class="control-group" id="instrumentControls" style="display:none;">
-      <label>Instruments (per component)</label>
+      <label>Instrument preset</label>
+      <div class="btn-row">
+        <button class="sm-btn preset-btn" data-preset="classical">Classical</button>
+        <button class="sm-btn preset-btn" data-preset="ambient">Ambient</button>
+        <button class="sm-btn preset-btn" data-preset="cosmic">Cosmic</button>
+        <button class="sm-btn preset-btn" data-preset="rock">Rock</button>
+        <button class="sm-btn preset-btn" data-preset="jazz">Jazz</button>
+      </div>
+      <label style="margin-top:6px;">Instruments (per component)</label>
       <div class="slider-row">
         <span style="color:var(--cmb);font-size:0.8em;min-width:40px;">CMB</span>
         <select id="instCmb" class="inst-select">
@@ -286,6 +294,10 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
         <button class="transport-btn action-btn" id="freqSweepBtn">&#957;-Sweep</button>
         <button class="transport-btn stop-btn" id="stopBtn">&#9632; Stop</button>
       </div>
+      <div class="transport" style="margin-top:6px;">
+        <button class="transport-btn action-btn" id="bigBangBtn" style="background:linear-gradient(90deg,#ff9f43,#cc3333);color:white;">&#127775; Big Bang</button>
+        <button class="transport-btn action-btn" id="spatialBtn" title="3D spatial audio (use headphones)">3D Spatial</button>
+      </div>
     </div>
 
     <div class="control-group">
@@ -363,13 +375,27 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
     (&#8467;&lt;100), harmonic tones at the CMB acoustic peaks
     (&#8467;=220, 540, 810), and high-&#8467; bandpass noise &mdash; makes the
     scale structure explicit as three different timbres.
-    <em>Instruments</em> plays the spectrum as a musical sequence: each
-    component gets its own instrument (piano/violin/guitar/flute/bass/synth,
-    assignable via dropdown), and as time steps through &#8467;, each
-    component plays a note whose <strong>octave</strong> is set by &#8467;,
-    whose <strong>note name</strong> is set by the observing frequency
-    (93 GHz = A, 143 GHz = C#, 353 GHz = E), and whose <strong>volume</strong>
-    is set by D<sub>&#8467;</sub> at that multipole.</p>
+    <em>Instruments</em> plays the spectrum as continuous gliding voices:
+    each component gets its own instrument (piano/violin/guitar/flute/bass/synth,
+    assignable via dropdown or palette preset). The <strong>octave</strong>
+    is set by &#8467;, the <strong>note name</strong> by observing frequency
+    (93 GHz = A, 143 GHz = C#, 353 GHz = E), and the <strong>volume</strong>
+    by &radic;&lang;D<sub>&#8467;</sub>&rang; <em>integrated over an octave-wide band</em>
+    around the current &#8467;, not just the single point. Each instrument
+    has its own articulation rhythm (piano: re-strikes with per-harmonic
+    decay rates; violin: bowed swells with vibrato; guitar: distorted strums;
+    etc.). All instruments have convolution reverb.</p>
+
+    <p style="margin-bottom:8px;"><strong>3D Spatial mode</strong> places
+    each component at a fixed position around the listener (CMB ahead,
+    tSZ left, CIB right) using HRTF panning. Sphere clicks become localized
+    drum hits at the actual sky position. Use headphones for the effect.</p>
+
+    <p style="margin-bottom:8px;"><strong>&#127775; Big Bang button</strong> plays
+    a 12-second standalone sonification based on Cramer (2003)'s scaling of
+    the actual CMB acoustic peaks at &#8467;=220, 540, 810, 1120, 1400, 1750,
+    2150, 2600 to audible frequencies, with their relative D<sub>&#8467;</sub>
+    amplitudes. The pitch slowly descends to evoke the cosmic expansion.</p>
 
     <p style="margin-bottom:8px;"><strong>Sweep modes.</strong>
     <em>&#8467;-Sweep</em> moves a bandpass window across multipole in time;
@@ -425,7 +451,7 @@ const S = {
   playing: false,
   sweeping: false, sweepPos: 0, sweepSpeed: 10, sweepDir: 1,
   logVolume: false, linearSweep: false, pingPong: false, fixedPitch: false,
-  scrubbing: false, scanMode: false,
+  scrubbing: false, scanMode: false, spatialMode: false,
   buildup: false, buildupPhase: 0,  // 0=CMB, 1=+tSZ, 2=+CIB
   freqSweep: false, freqSweepPos: 0,
   skyVarScale: 1.0,
@@ -529,6 +555,37 @@ function globalMaxAmp(comps, nu) {
     if (e<ELL_MIN||e>ELL_MAX) continue;
     const amp = Math.sqrt(sumDl(e, comps, nu));
     if (amp>mx) mx = amp;
+  }
+  return mx;
+}
+
+// Integrate D_ell over a band of width `widthOctaves` centered on ellCenter.
+// Returns the mean D_ell over the band — physically meaningful for a finite
+// bandwidth audio window.
+function bandIntegralDl(ellCenter, comps, nu, widthOctaves) {
+  widthOctaves = widthOctaves || 1.0;
+  const half = widthOctaves/2;
+  const ellLo = Math.max(2, ellCenter / Math.pow(2, half));
+  const ellHi = ellCenter * Math.pow(2, half);
+  const N = 12;
+  let sum = 0;
+  for (let i=0; i<N; i++) {
+    const frac = (i+0.5)/N;
+    const ell = Math.pow(10, Math.log10(ellLo) + frac*(Math.log10(ellHi)-Math.log10(ellLo)));
+    sum += sumDl(ell, comps, nu);
+  }
+  return sum / N;
+}
+
+// Maximum band-integrated amplitude over the full ell range
+function globalMaxBandAmp(comps, nu, widthOctaves) {
+  const N = 60;
+  let mx = 0;
+  for (let i=0; i<N; i++) {
+    const frac = (i+0.5)/N;
+    const ell = Math.pow(10, Math.log10(ELL_MIN) + frac*(Math.log10(ELL_MAX)-Math.log10(ELL_MIN)));
+    const amp = Math.sqrt(bandIntegralDl(ell, comps, nu, widthOctaves));
+    if (amp > mx) mx = amp;
   }
   return mx;
 }
@@ -780,11 +837,11 @@ function ellToOctave(ell) {
 
 // Play a note with a given instrument. Returns an array of created nodes so
 // they can be cleaned up. All nodes connect to dest (defaults to S.gainNode).
-function playInstrument(instrument, noteFreq, volume, duration, startTime, dest) {
+function playInstrument(instrument, noteFreq, volume, duration, startTime, destOverride) {
   if (!S.audioCtx) return [];
   const ctx = S.audioCtx;
   const now = startTime || ctx.currentTime;
-  dest = dest || S.gainNode;
+  const dest = destOverride || S.gainNode;
   const nodes = [];
 
   function connect(node) { nodes.push(node); return node; }
@@ -934,6 +991,99 @@ function playInstrument(instrument, noteFreq, volume, duration, startTime, dest)
 }
 
 // ============================================================
+// "Listen to the Big Bang": play the actual CMB acoustic peaks
+// as harmonic tones with amplitudes from D_ell (after Cramer 2003)
+// ============================================================
+function playBigBang() {
+  initAudio();
+  if (S.audioCtx.state==='suspended') S.audioCtx.resume();
+  stopAll();
+
+  const ctx = S.audioCtx;
+  const cl = S.clData?.cl?.dT_cmblens?.['143'];
+  const ellArr = S.clData?.ell_cl;
+  if (!cl || !ellArr) return;
+
+  // CMB acoustic peak ell positions (from theory + measurement)
+  const peakEll = [220, 540, 810, 1120, 1400, 1750, 2150, 2600];
+
+  // Look up D_ell at each peak
+  function dlAt(ell) {
+    let bestI=0, bestD=1e18;
+    for (let i=0; i<ellArr.length; i++) {
+      const d = Math.abs(ellArr[i]-ell);
+      if (d<bestD) { bestD=d; bestI=i; }
+    }
+    const e=ellArr[bestI], c=cl[bestI];
+    return Math.max(e*(e+1)*c/(2*Math.PI), 0);
+  }
+
+  const peakDl = peakEll.map(dlAt);
+  const maxDl = Math.max(...peakDl);
+
+  // Cramer-style: scale CMB sound horizon frequency up to audible range.
+  // Use the first peak as the fundamental, then play subsequent peaks at
+  // their proportional frequencies.
+  const fundamental = 60; // Hz, low rumble base
+  const now = ctx.currentTime;
+  const totalDur = 12; // 12 seconds
+  const fadeIn = 2.0;
+  const fadeOut = 4.0;
+
+  // Slowly descending pitch over time to evoke the universe's expansion
+  // (universe gets cooler/larger -> sound horizon shifts to lower freq)
+  const pitchEnd = 0.5; // factor at end
+
+  // Master output gain
+  const master = ctx.createGain();
+  master.gain.setValueAtTime(0, now);
+  master.gain.linearRampToValueAtTime(0.6*S.volume, now+fadeIn);
+  master.gain.setValueAtTime(0.6*S.volume, now+totalDur-fadeOut);
+  master.gain.exponentialRampToValueAtTime(0.001, now+totalDur);
+  // Send to reverb for cosmic ambience
+  if (S.reverbNode) {
+    const wet = ctx.createGain(); wet.gain.value = 0.8;
+    master.connect(wet); wet.connect(S.reverbNode);
+  }
+  master.connect(S.gainNode);
+
+  for (let k=0; k<peakEll.length; k++) {
+    const ratio = peakEll[k] / peakEll[0];
+    const baseFreq = fundamental * ratio;
+    const amp = Math.sqrt(peakDl[k]/maxDl);
+    if (amp < 0.05) continue;
+
+    // Each peak: a sine tone with slight detune for warmth
+    for (let det of [-0.005, 0, 0.005]) {
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(baseFreq*(1+det), now);
+      osc.frequency.exponentialRampToValueAtTime(baseFreq*pitchEnd*(1+det), now+totalDur);
+      const og = ctx.createGain();
+      og.gain.value = amp * 0.18; // share gain across detuned voices
+      osc.connect(og); og.connect(master);
+      osc.start(now);
+      osc.stop(now+totalDur+0.1);
+    }
+  }
+
+  // Add a low subsonic rumble for the inflationary background
+  const rumble = ctx.createOscillator();
+  rumble.type = 'sine';
+  rumble.frequency.setValueAtTime(35, now);
+  rumble.frequency.exponentialRampToValueAtTime(20, now+totalDur);
+  const rumbleG = ctx.createGain();
+  rumbleG.gain.value = 0.3;
+  rumble.connect(rumbleG); rumbleG.connect(master);
+  rumble.start(now); rumble.stop(now+totalDur+0.1);
+
+  // Visual feedback: status badge
+  document.getElementById('statusBadge').textContent='Big Bang';
+  document.getElementById('statusBadge').className='status playing';
+  setTimeout(() => { updateUI(); }, totalDur*1000+200);
+}
+
+// ============================================================
 // Continuous instrument voices (sustained tones that glide)
 // ============================================================
 // Build a PeriodicWave from a list of harmonic amplitudes [1..N]
@@ -974,15 +1124,43 @@ function createVoice(instrument, ctx, dest) {
   // Reverb send level per instrument
   let reverbSend = 0.2;
 
+  // Per-osc independently re-articulated gains for instruments where each
+  // partial decays at its own rate (used by piano's per-harmonic decay).
+  const perOscGains = []; // parallel to subs
+
+  function addOscWithGain(type, harmonic, level, freqMul, periodicWave) {
+    freqMul = freqMul || 1;
+    const o = ctx.createOscillator();
+    if (periodicWave) o.setPeriodicWave(periodicWave);
+    else o.type = type;
+    o.frequency.value = 220*harmonic*freqMul;
+    const og = ctx.createGain(); og.gain.value = 1; // re-modulated by articulation
+    const lvl = ctx.createGain(); lvl.gain.value = level;
+    o.connect(og); og.connect(lvl); lvl.connect(out);
+    o.start();
+    subs.push({ osc: o, harmonic, freqMul });
+    perOscGains.push(og);
+    others.push(og, lvl);
+    return o;
+  }
+
   if (instrument === 'piano') {
-    // Realistic piano partials (from measured spectra), with 3 slightly detuned unison strings
-    // Harmonic amplitudes: strong fundamental, quickly decaying upper partials
-    const pianoWave = buildPeriodicWave(ctx, [
-      1.0, 0.55, 0.38, 0.22, 0.16, 0.11, 0.08, 0.06, 0.04, 0.03, 0.025, 0.02
-    ]);
-    addOsc(null, 1, 0.55, 1.000, pianoWave);
-    addOsc(null, 1, 0.45, 0.998, pianoWave); // detune for unison chorus
-    addOsc(null, 1, 0.45, 1.002, pianoWave);
+    // Real piano: fundamental sustains for seconds, upper harmonics decay in <1s.
+    // Use 3 detuned unison "strings" at the fundamental + separate higher harmonics
+    // each with its own per-strike decay rate.
+    const pianoFund = buildPeriodicWave(ctx, [1.0, 0.0, 0.0]);  // pure-ish sine fundamental
+    const pianoHarm2 = buildPeriodicWave(ctx, [0.0, 1.0, 0.0]);
+    const pianoHarm3 = buildPeriodicWave(ctx, [0.0, 0.0, 1.0]);
+    // 3 detuned strings at the fundamental
+    addOscWithGain(null, 1, 0.50, 1.000, pianoFund);
+    addOscWithGain(null, 1, 0.40, 0.997, pianoFund);
+    addOscWithGain(null, 1, 0.40, 1.003, pianoFund);
+    // Upper harmonics — each independent so they can decay separately
+    addOscWithGain(null, 2, 0.30, 1.000, pianoFund); // 2nd harmonic via 1*2
+    addOscWithGain(null, 3, 0.18, 1.000, pianoFund); // 3rd
+    addOscWithGain(null, 4, 0.10, 1.000, pianoFund); // 4th
+    addOscWithGain(null, 5, 0.06, 1.000, pianoFund); // 5th
+    addOscWithGain(null, 6, 0.04, 1.000, pianoFund); // 6th
     // Body resonance: peak around 350 Hz (body), gentle HP to cut mud
     const hp = ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=60; hp.Q.value=0.7;
     const body = ctx.createBiquadFilter(); body.type='peaking'; body.frequency.value=350; body.Q.value=1.5; body.gain.value=3;
@@ -1134,13 +1312,28 @@ function createVoice(instrument, ctx, dest) {
     addOsc('sine', 1, 1);
   }
 
-  // chainTail -> artic -> dry/wet split
+  // chainTail -> artic -> [optional panner] -> dry/wet split
   chainTail.connect(artic);
+  // Optional 3D positioning (spatial mode)
+  let panner = null;
+  let preDryDest = artic;
+  if (S.spatialMode) {
+    panner = ctx.createPanner();
+    panner.panningModel = 'HRTF';
+    panner.distanceModel = 'inverse';
+    panner.refDistance = 1;
+    panner.positionX.value = 0;
+    panner.positionY.value = 0;
+    panner.positionZ.value = -1;
+    artic.connect(panner);
+    preDryDest = panner;
+    others.push(panner);
+  }
   const dryG = ctx.createGain(); dryG.gain.value = 1 - reverbSend*0.5;
   const wetG = ctx.createGain(); wetG.gain.value = reverbSend;
-  artic.connect(dryG); dryG.connect(dest);
+  preDryDest.connect(dryG); dryG.connect(dest);
   if (S.reverbNode) {
-    artic.connect(wetG); wetG.connect(S.reverbNode);
+    preDryDest.connect(wetG); wetG.connect(S.reverbNode);
   }
   others.push(dryG, wetG);
 
@@ -1160,6 +1353,23 @@ function createVoice(instrument, ctx, dest) {
         artic.gain.setValueAtTime(Math.max(cfg.sustain, 0.001), t+period-cfg.gap);
       }
       artic.gain.exponentialRampToValueAtTime(0.0001, t+period);
+
+      // Per-harmonic decays (e.g., piano: upper partials decay faster)
+      if (instrument==='piano' && perOscGains.length>0) {
+        // Each subs entry has a harmonic index; use it to set decay time
+        for (let i=0; i<perOscGains.length; i++) {
+          const g = perOscGains[i];
+          const h = subs[i].harmonic;
+          // Decay time decreases with harmonic number: fundamental ~period, h=6 ~0.2*period
+          const decayT = period * Math.max(0.15, 1.0 / Math.sqrt(h));
+          try { g.gain.cancelScheduledValues(t); } catch(e) {}
+          g.gain.setValueAtTime(1.0, t);
+          // Exponential decay to a low floor over decayT, but never beyond next strike
+          const sustainFloor = Math.max(0.01, 0.1 / h);
+          const decayEnd2 = Math.min(t+decayT, t+period-cfg.gap);
+          g.gain.exponentialRampToValueAtTime(sustainFloor, decayEnd2);
+        }
+      }
     };
     schedule();
     articTimer = setInterval(schedule, period*1000);
@@ -1175,6 +1385,13 @@ function createVoice(instrument, ctx, dest) {
     },
     setGain(v) {
       out.gain.setTargetAtTime(v, ctx.currentTime, 0.04);
+    },
+    setPosition(x, y, z) {
+      if (!panner) return;
+      const t = ctx.currentTime;
+      panner.positionX.setTargetAtTime(x, t, 0.05);
+      panner.positionY.setTargetAtTime(y, t, 0.05);
+      panner.positionZ.setTargetAtTime(z, t, 0.05);
     },
     stop() {
       if (articTimer) clearInterval(articTimer);
@@ -1224,16 +1441,22 @@ function startInstrumentSeq() {
       const v = voices[c];
       if (!v) continue;
       if (!S.activeComponents.has(c)) { v.setGain(0); continue; }
-      const rawAmp = Math.sqrt(lookupDl(ell, c, S.freq));
-      const globalMx = globalMaxAmp([c], S.freq);
+      // Band integration over ~1 octave (matches the perceived octave of the note)
+      const rawAmp = Math.sqrt(bandIntegralDl(ell, [c], S.freq, 1.0));
+      const globalMx = globalMaxBandAmp([c], S.freq, 1.0);
       let vol = 0;
       if (globalMx>0) {
         vol = S.logVolume ? mapAmp(rawAmp, globalMx) : rawAmp/globalMx;
       }
-      // Tame to avoid clipping with multiple voices
       vol = Math.min(0.35, vol*0.6);
       v.setFreq(noteFreq);
       v.setGain(vol);
+      if (v.setPosition && S.spatialMode) {
+        // Place each component at a fixed sky position for spatial mode
+        const placement = {dT_cmblens:[0,0,-1], dT_tsz:[-0.7,0,-0.7], dT_cib:[0.7,0,-0.7]};
+        const p = placement[c] || [0,0,-1];
+        v.setPosition(p[0], p[1], p[2]);
+      }
     }
   }, 30);
 
@@ -1500,11 +1723,12 @@ function startSweep() {
     filter.frequency.setTargetAtTime(fAudio, S.audioCtx.currentTime, 0.03);
 
     const comps2 = [...S.activeComponents];
-    const rawAmp = Math.sqrt(sumDl(ell, comps2, S.freq));
-    const globalMx = globalMaxAmp(comps2, S.freq);
+    // Band integration over ~0.6 octaves (matches BiquadFilter Q≈3 bandwidth)
+    const rawAmp = Math.sqrt(bandIntegralDl(ell, comps2, S.freq, 0.6));
+    const globalMx = globalMaxBandAmp(comps2, S.freq, 0.6);
     let vol = 0;
     if (globalMx>0) vol = S.logVolume ? mapAmp(rawAmp, globalMx) : rawAmp/globalMx;
-    vol = Math.min(1.0, vol * 2.5); // compensate for bandpass attenuation
+    vol = Math.min(1.0, vol * 2.5);
     sweepGain.gain.setTargetAtTime(vol, S.audioCtx.currentTime, 0.04);
   }, 30);
 
@@ -1941,10 +2165,22 @@ function sonifyPoint(theta, phi, playTemp=true){
   // Temperature sound: drum hit (pitch encodes temperature)
   if(playTemp){
     const temp=lookupTemperature(theta, phi); // [-1, 1]
-    // Map temperature to drum fundamental: cold -> 60 Hz, hot -> 180 Hz
     const drumFreq = 60 + (temp+1)/2 * 120;
     const vol = 0.4*S.volume;
-    playInstrument('drum', drumFreq, vol, 0.5);
+    if (S.spatialMode && S.audioCtx) {
+      // 3D spatial drum — placed at the actual sky location
+      const x = Math.sin(theta)*Math.sin(phi-Math.PI);
+      const y = -Math.cos(theta);
+      const z = Math.sin(theta)*Math.cos(phi-Math.PI);
+      const panner = S.audioCtx.createPanner();
+      panner.panningModel='HRTF';
+      panner.positionX.value=x; panner.positionY.value=y; panner.positionZ.value=z;
+      panner.connect(S.gainNode);
+      playInstrument('drum', drumFreq, vol, 0.5, undefined, panner);
+      setTimeout(()=>{ try{panner.disconnect();}catch(e){} }, 1000);
+    } else {
+      playInstrument('drum', drumFreq, vol, 0.5);
+    }
   }
 
   // Check for nearby halos and ping them
@@ -2064,12 +2300,47 @@ function setup(){
   // Instrument dropdowns
   document.getElementById('instCmb').addEventListener('change',e=>{
     S.instruments['dT_cmblens']=e.target.value;
+    if (S.method==='instruments' && S.playing) { stopAll(); startPlaying(); }
   });
   document.getElementById('instTsz').addEventListener('change',e=>{
     S.instruments['dT_tsz']=e.target.value;
+    if (S.method==='instruments' && S.playing) { stopAll(); startPlaying(); }
   });
   document.getElementById('instCib').addEventListener('change',e=>{
     S.instruments['dT_cib']=e.target.value;
+    if (S.method==='instruments' && S.playing) { stopAll(); startPlaying(); }
+  });
+
+  // Preset palettes
+  const presets = {
+    classical: { dT_cmblens:'piano', dT_tsz:'violin', dT_cib:'flute' },
+    ambient:   { dT_cmblens:'synth', dT_tsz:'synth', dT_cib:'flute' },
+    cosmic:    { dT_cmblens:'synth', dT_tsz:'flute', dT_cib:'bass' },
+    rock:      { dT_cmblens:'guitar', dT_tsz:'bass', dT_cib:'guitar' },
+    jazz:      { dT_cmblens:'piano', dT_tsz:'bass', dT_cib:'guitar' },
+  };
+  document.querySelectorAll('.preset-btn').forEach(b=>b.addEventListener('click',()=>{
+    const p = presets[b.dataset.preset];
+    if (!p) return;
+    document.querySelectorAll('.preset-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    S.instruments = {...p};
+    document.getElementById('instCmb').value = p.dT_cmblens;
+    document.getElementById('instTsz').value = p.dT_tsz;
+    document.getElementById('instCib').value = p.dT_cib;
+    if (S.method==='instruments' && S.playing) { stopAll(); startPlaying(); }
+  }));
+
+  // Spatial 3D toggle
+  document.getElementById('spatialBtn').addEventListener('click',()=>{
+    S.spatialMode = !S.spatialMode;
+    document.getElementById('spatialBtn').classList.toggle('active', S.spatialMode);
+    if (S.playing) { stopAll(); startPlaying(); }
+  });
+
+  // Big Bang: standalone "real CMB" sonification
+  document.getElementById('bigBangBtn').addEventListener('click',()=>{
+    playBigBang();
   });
 
   // Stereo buttons
