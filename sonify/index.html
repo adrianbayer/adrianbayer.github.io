@@ -123,7 +123,7 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
 }
 
 /* Sky map */
-#skyCanvas { width: 100%; height: 200px; border-radius: 6px; cursor: crosshair; }
+#skyCanvas { width: 100%; height: 200px; border-radius: 6px; cursor: crosshair; touch-action: none; }
 .sky-info { font-size: 0.78em; color: #6b7394; margin-top: 6px; }
 .sky-info span { color: var(--accent); }
 
@@ -320,7 +320,7 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
       <label>Sweep options</label>
       <div class="btn-row">
         <button class="sm-btn option-btn" id="logVolBtn" title="Logarithmic (dB) volume response">log volume</button>
-        <button class="sm-btn option-btn" id="linearSweepBtn" title="Linear ell sweep (vs log)">linear ν-sweep</button>
+        <button class="sm-btn option-btn" id="linearSweepBtn" title="Linear ℓ sweep (vs log)">linear &#8467;-sweep</button>
         <button class="sm-btn option-btn" id="pingPongBtn" title="Bounce back and forth">ping-pong</button>
         <button class="sm-btn option-btn" id="fixedPitchBtn" title="Fix audio pitch, vary only amplitude/timbre">fixed pitch</button>
       </div>
@@ -401,7 +401,7 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
     <em>&#8467;-Sweep</em> moves a bandpass window across multipole in time;
     drag the <em>Sweep position</em> slider to scrub manually.
     Sweep options: <em>log volume</em> (dB-scaled amplitude for a wider
-    dynamic range), <em>linear &#957;-sweep</em> (linear in &#8467; instead of
+    dynamic range), <em>linear &#8467;-sweep</em> (linear in &#8467; instead of
     log, spends more time at high &#8467;), <em>ping-pong</em> (bounce back and
     forth), and <em>fixed pitch</em> (keep audio pitch at 440 Hz while the
     input &#8467; varies &mdash; isolates amplitude/timbre variation from the
@@ -479,13 +479,52 @@ function freqToEll(f) {
 // Data loading
 // ============================================================
 async function loadData() {
-  const [a,b,c] = await Promise.all([fetch('cl_data.json'),fetch('sky_data.json'),fetch('halos.json')]);
-  S.clData = await a.json();
-  S.skyData = await b.json();
-  S.halos = await c.json();
-  console.log(`Loaded ${S.halos.n} halos`);
-  drawSpectrum();
-  drawSkyMap();
+  const badge = document.getElementById('statusBadge');
+  if (badge) badge.textContent = 'Loading…';
+  try {
+    const [a,b,c] = await Promise.all([fetch('cl_data.json'),fetch('sky_data.json'),fetch('halos.json')]);
+    for (const r of [a,b,c]) {
+      if (!r.ok) throw new Error(`${r.url.split('/').pop()} → HTTP ${r.status}`);
+    }
+    S.clData = await a.json();
+    S.skyData = await b.json();
+    S.halos = await c.json();
+    console.log(`Loaded ${S.halos.n} halos`);
+    if (badge) badge.textContent = 'Ready';
+    drawSpectrum();
+    drawSkyMap();
+  } catch (err) {
+    console.error('Data load failed:', err);
+    showLoadError(err);
+  }
+}
+
+// Friendly full-screen message when the JSON data files can't be fetched —
+// the most common cause is opening index.html via file:// (browsers block
+// fetch() of local files) rather than serving it over HTTP.
+function showLoadError(err) {
+  const badge = document.getElementById('statusBadge');
+  if (badge) badge.textContent = 'Load error';
+  const isFile = location.protocol === 'file:';
+  const msg = (err && err.message) ? String(err.message) : 'Unknown error';
+  const div = document.createElement('div');
+  div.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;' +
+    'justify-content:center;background:rgba(10,14,26,0.96);z-index:9999;padding:24px;';
+  div.innerHTML =
+    '<div style="max-width:540px;text-align:center;color:#c8cde0;font-family:system-ui;line-height:1.6;">' +
+    '<h2 style="color:#ff9f43;margin-bottom:12px;">Could not load data files</h2>' +
+    '<p style="margin-bottom:10px;">' + msg + '</p>' +
+    (isFile
+      ? '<p>This page is open via <code>file://</code>. Browsers block ' +
+        '<code>fetch()</code> of local files, so the data can’t load. ' +
+        'Serve the folder over HTTP instead:</p>' +
+        '<pre style="background:#131829;padding:10px;border-radius:6px;text-align:left;overflow:auto;">' +
+        'cd web\npython -m http.server 8000</pre>' +
+        '<p>then open <code>http://localhost:8000/</code></p>'
+      : '<p>Make sure <code>cl_data.json</code>, <code>sky_data.json</code>, and ' +
+        '<code>halos.json</code> sit next to <code>index.html</code> on the server.</p>') +
+    '</div>';
+  document.body.appendChild(div);
 }
 
 // ============================================================
@@ -496,7 +535,16 @@ function initAudio() {
   S.audioCtx = new (window.AudioContext||window.webkitAudioContext)({sampleRate:44100});
   S.gainNode = S.audioCtx.createGain();
   S.gainNode.gain.value = S.volume;
-  S.gainNode.connect(S.audioCtx.destination);
+  // Master limiter: tames peaks when several voices + reverb stack up, so the
+  // mix stays clean instead of clipping into harsh digital distortion.
+  S.limiterNode = S.audioCtx.createDynamicsCompressor();
+  S.limiterNode.threshold.value = -3.0;
+  S.limiterNode.knee.value = 6.0;
+  S.limiterNode.ratio.value = 12.0;
+  S.limiterNode.attack.value = 0.003;
+  S.limiterNode.release.value = 0.25;
+  S.gainNode.connect(S.limiterNode);
+  S.limiterNode.connect(S.audioCtx.destination);
   S.analyserNode = S.audioCtx.createAnalyser();
   S.analyserNode.fftSize = 256;
   S.gainNode.connect(S.analyserNode);
@@ -2082,7 +2130,7 @@ function playTemperatureTone(tempNorm) {
   gain.gain.exponentialRampToValueAtTime(vol*0.5, now+0.2);
   gain.gain.exponentialRampToValueAtTime(0.001, now+0.8);
   osc.connect(gain);
-  gain.connect(S.audioCtx.destination);
+  gain.connect(S.limiterNode||S.audioCtx.destination);
   osc.start(now);
   osc.stop(now+0.9);
 }
@@ -2118,8 +2166,9 @@ function playHaloPing(logMass, distance) {
   gain2.gain.linearRampToValueAtTime(vol*0.3, now+0.01);
   gain2.gain.exponentialRampToValueAtTime(0.001, now+0.4);
 
-  osc.connect(gain); gain.connect(S.audioCtx.destination);
-  osc2.connect(gain2); gain2.connect(S.audioCtx.destination);
+  const pingDest=S.limiterNode||S.audioCtx.destination;
+  osc.connect(gain); gain.connect(pingDest);
+  osc2.connect(gain2); gain2.connect(pingDest);
   osc.start(now); osc.stop(now+0.7);
   osc2.start(now); osc2.stop(now+0.5);
 }
@@ -2195,15 +2244,6 @@ function sonifyPoint(theta, phi, playTemp=true){
       }
     }
   }
-}
-
-function handleSkyClick(e){
-  const canvas=document.getElementById('skyCanvas');
-  const rect=canvas.getBoundingClientRect();
-  const x=e.clientX-rect.left, y=e.clientY-rect.top;
-  const tp=canvasToThetaPhi(x,y);
-  if(!tp) return;
-  sonifyPoint(tp.theta, tp.phi, true);
 }
 
 // ============================================================
@@ -2432,23 +2472,21 @@ function setup(){
   });
   document.getElementById('stopBtn').addEventListener('click',stopAll);
 
-  // Sky interactions
+  // Sky interactions (mouse + touch)
   const skyC=document.getElementById('skyCanvas');
   let lastScanTime=0;
-  skyC.addEventListener('mousedown',(e)=>{
-    SKY.dragging=true; SKY.lastX=e.clientX; SKY.lastY=e.clientY;
-    SKY.downX=e.clientX; SKY.downY=e.clientY;
-  });
-  window.addEventListener('mousemove',(e)=>{
-    if(!SKY.dragging)return;
-    const dx=e.clientX-SKY.lastX, dy=e.clientY-SKY.lastY;
-    SKY.lastX=e.clientX; SKY.lastY=e.clientY;
 
+  function skyDown(cx,cy){
+    SKY.dragging=true; SKY.lastX=cx; SKY.lastY=cy; SKY.downX=cx; SKY.downY=cy;
+  }
+  function skyMove(cx,cy){
+    if(!SKY.dragging)return;
+    const dx=cx-SKY.lastX, dy=cy-SKY.lastY;
+    SKY.lastX=cx; SKY.lastY=cy;
     if(S.scanMode){
-      // Sonify at current position (throttled to 6 per second so tones don't overlap too much)
+      // Sonify at current position (throttled so tones don't overlap too much)
       const rect=skyC.getBoundingClientRect();
-      const x=e.clientX-rect.left, y=e.clientY-rect.top;
-      const tp=canvasToThetaPhi(x,y);
+      const tp=canvasToThetaPhi(cx-rect.left, cy-rect.top);
       if(tp && Date.now()-lastScanTime>160){
         sonifyPoint(tp.theta, tp.phi, true);
         lastScanTime=Date.now();
@@ -2459,14 +2497,40 @@ function setup(){
       SKY.rotLat=Math.max(-Math.PI/2,Math.min(Math.PI/2, SKY.rotLat+dy*0.01));
       drawSkyMap();
     }
-  });
-  window.addEventListener('mouseup',(e)=>{ SKY.dragging=false; });
-  skyC.addEventListener('click',(e)=>{
-    // Only fire click if user didn't drag more than a few pixels
-    const dx=Math.abs(e.clientX-(SKY.downX||e.clientX));
-    const dy=Math.abs(e.clientY-(SKY.downY||e.clientY));
-    if(dx<4 && dy<4) handleSkyClick(e);
-  });
+  }
+  function skyUp(cx,cy){
+    if(!SKY.dragging) return;
+    SKY.dragging=false;
+    // Treat as a click/tap (sonify) if the pointer barely moved
+    const dx=Math.abs(cx-(SKY.downX||cx)), dy=Math.abs(cy-(SKY.downY||cy));
+    if(dx<5 && dy<5){
+      const rect=skyC.getBoundingClientRect();
+      const tp=canvasToThetaPhi(cx-rect.left, cy-rect.top);
+      if(tp) sonifyPoint(tp.theta, tp.phi, true);
+    }
+  }
+
+  // Mouse
+  skyC.addEventListener('mousedown',(e)=>skyDown(e.clientX,e.clientY));
+  window.addEventListener('mousemove',(e)=>skyMove(e.clientX,e.clientY));
+  window.addEventListener('mouseup',(e)=>skyUp(e.clientX,e.clientY));
+
+  // Touch (phones / tablets)
+  skyC.addEventListener('touchstart',(e)=>{
+    if(e.touches.length!==1) return;
+    skyDown(e.touches[0].clientX, e.touches[0].clientY);
+    e.preventDefault();
+  },{passive:false});
+  skyC.addEventListener('touchmove',(e)=>{
+    if(e.touches.length!==1) return;
+    skyMove(e.touches[0].clientX, e.touches[0].clientY);
+    e.preventDefault();
+  },{passive:false});
+  skyC.addEventListener('touchend',(e)=>{
+    const t=e.changedTouches[0];
+    if(t) skyUp(t.clientX, t.clientY); else SKY.dragging=false;
+    e.preventDefault();
+  },{passive:false});
 
   // Scan mode toggle
   document.getElementById('scanModeBtn').addEventListener('click',()=>{
