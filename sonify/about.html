@@ -13,30 +13,45 @@
   else{document.documentElement.innerHTML='<body style="background:#0a0e1a;color:#c8cde0;display:flex;justify-content:center;align-items:center;height:100vh;font-family:system-ui"><h2>Access denied</h2></body>';throw'blocked';}
 })();
 </script>
+<script>
+window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},svg:{fontCache:'global'}};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
 <style>
 :root{--bg:#0a0e1a;--panel:#131829;--border:#1e2744;--text:#c8cde0;--accent:#4a9eff;
   --cmb:#4a9eff;--tsz:#ff9f43;--cib:#2ed573;--ksz:#b86bff;--tot:#a8a8a8;}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;line-height:1.65;}
-nav{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:10;}
+nav{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:20;}
 nav a{color:var(--accent);text-decoration:none;font-size:0.85em;border:1px solid var(--border);padding:5px 11px;border-radius:6px;}
 nav a:hover{background:#1e2744;}
 nav a.home{font-weight:600;}
-.wrap{max-width:820px;margin:0 auto;padding:24px 18px 60px;}
-h1{font-size:1.8em;color:#e8ecf4;margin-bottom:4px;}
-.lead{color:#8a93b4;margin-bottom:26px;}
-h2{font-size:1.15em;color:#e8ecf4;margin:28px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--border);}
-h3{font-size:0.98em;color:#cdd4ea;margin:16px 0 4px;}
+.tabs{display:flex;flex-wrap:wrap;gap:5px;padding:10px 16px 0;position:sticky;top:49px;background:var(--bg);z-index:19;border-bottom:1px solid var(--border);}
+.tab{padding:6px 13px;border:1px solid var(--border);border-bottom:none;border-radius:7px 7px 0 0;
+  background:#0f1424;color:#9aa3c4;cursor:pointer;font-size:0.82em;}
+.tab:hover{color:var(--text);}
+.tab.active{background:var(--panel);color:#e8ecf4;border-color:var(--accent);}
+.tab.cmb.active{border-color:var(--cmb);color:var(--cmb);}
+.tab.tsz.active{border-color:var(--tsz);color:var(--tsz);}
+.tab.cib.active{border-color:var(--cib);color:var(--cib);}
+.tab.ksz.active{border-color:var(--ksz);color:var(--ksz);}
+.wrap{max-width:820px;margin:0 auto;padding:22px 18px 70px;}
+section{display:none;} section.active{display:block;}
+h1{font-size:1.7em;color:#e8ecf4;margin-bottom:4px;}
+h2{font-size:1.25em;color:#e8ecf4;margin:6px 0 10px;}
+h3{font-size:1.0em;color:#cdd4ea;margin:18px 0 5px;}
 p{margin-bottom:11px;color:#c2c9e0;}
 ul{margin:6px 0 12px 22px;} li{margin-bottom:6px;color:#c2c9e0;}
-strong{color:#e8ecf4;} em{color:#a9b4d6;font-style:italic;}
+strong{color:#e8ecf4;} em{color:#a9b4d6;}
 code{background:#1a2040;padding:1px 5px;border-radius:4px;font-size:0.9em;}
-.tag{display:inline-block;font-size:0.78em;padding:1px 7px;border-radius:10px;border:1px solid;margin-right:3px;vertical-align:middle;}
+.lead{color:#8a93b4;margin-bottom:18px;}
+.tag{display:inline-block;font-size:0.8em;padding:1px 8px;border-radius:10px;border:1px solid;margin-right:4px;}
 .tag.cmb{color:var(--cmb);border-color:var(--cmb);} .tag.tsz{color:var(--tsz);border-color:var(--tsz);}
-.tag.cib{color:var(--cib);border-color:var(--cib);} .tag.ksz{color:var(--ksz);border-color:var(--ksz);}
-.tag.tot{color:var(--tot);border-color:var(--tot);}
+.tag.cib{color:var(--cib);border-color:var(--cib);} .tag.ksz{color:var(--ksz);border-color:var(--ksz);} .tag.tot{color:var(--tot);border-color:var(--tot);}
+.note{background:#0f1424;border-left:3px solid var(--accent);padding:8px 12px;border-radius:4px;margin:12px 0;font-size:0.92em;color:#aeb6d4;}
 .muted{color:#6b7394;font-size:0.85em;}
 a.inline{color:var(--accent);}
+mjx-container{overflow-x:auto;overflow-y:hidden;max-width:100%;}
 </style>
 </head>
 <body>
@@ -45,49 +60,147 @@ a.inline{color:var(--accent);}
   <a href="sonifier.html">Sonifier</a>
   <a href="sky.html">Sky Explorer</a>
 </nav>
-<div class="wrap">
-  <h1>How it works</h1>
-  <p class="lead">Turning the multi-probe microwave sky from the HalfDome simulations into sound &mdash; what the pieces are, and how each one is mapped to what you hear.</p>
-
-  <h2>The idea</h2>
-  <p>In cosmology the <strong>angular power spectrum</strong> &mdash; how much structure the sky has at each angular scale, indexed by multipole &#8467; &mdash; is the central summary statistic. The analogy to audio is exact: the power spectrum of a <em>sound</em> is what gives it its timbre, so when we map a cosmological power spectrum onto an audible spectrum we are making the <em>same mathematical object</em> perceptible to a different sense. Big angular scales (small &#8467;) become low pitches; fine scales (large &#8467;) become high pitches.</p>
-
-  <h2>The data: components &amp; bands</h2>
-  <p>Everything is built from the HalfDome simulation suite (spherical-harmonic maps to &#8467;<sub>max</sub>=9000, smoothed with a 2&prime; beam). There are five things you can listen to or view:</p>
-  <ul>
-    <li><span class="tag cmb">CMB</span> lensed cosmic microwave background &mdash; dominates the large scales (bass).</li>
-    <li><span class="tag tsz">tSZ</span> thermal Sunyaev&ndash;Zel'dovich effect from hot cluster gas &mdash; midrange, peaks near &#8467;&sim;2000.</li>
-    <li><span class="tag cib">CIB</span> cosmic infrared background from dusty galaxies &mdash; treble, dominates the small scales and the high frequencies.</li>
-    <li><span class="tag ksz">kSZ</span> kinetic Sunyaev&ndash;Zel'dovich effect &mdash; a faint Doppler signal.</li>
-    <li><span class="tag tot">Total</span> the sum CMB + tSZ + CIB.</li>
-  </ul>
-  <p>Six observing bands are grouped by survey: <strong>SO MF</strong> (93, 145 GHz), <strong>SO HF</strong> (225, 280 GHz), and <strong>Planck</strong> (143, 353 GHz). A key physical point: only <strong>tSZ and CIB depend on frequency</strong>. The CMB and kSZ are frequency-independent in thermodynamic units, so switching bands leaves them (and their sky patterns) unchanged &mdash; only the tSZ/CIB/Total mix moves. The tSZ in particular nearly <strong>vanishes near its ~217 GHz null</strong> (quietest at 225 GHz), while the CIB climbs steeply toward 353 GHz.</p>
-
-  <h2>The &#8467; &rarr; sound mapping</h2>
-  <p>Multipole &#8467; maps to audio frequency by a log&ndash;log scaling (&#8467;=2 &rarr; 40 Hz, &#8467;=6000 &rarr; 8 kHz), which respects human pitch perception. Under this mapping the CMB first acoustic peak (&#8467;&sim;220) lands near middle C (~270 Hz), the tSZ peak (&#8467;&sim;2000) at ~2.7 kHz, and the CIB peak (&#8467;&sim;5000) at ~6.8 kHz. Amplitudes are <strong>globally normalized</strong> (against a fixed reference, not per-buffer) so that genuine variations in power are preserved &mdash; essential during sweeps, where loudness should track the power at the current scale.</p>
-
-  <h2>The toys</h2>
-  <h3><a class="inline" href="sonifier.html">Power Spectrum Sonifier &rarr;</a></h3>
-  <p>The main instrument. Toggle components, pick a band, choose a synthesis method, and play, sweep, or build up the signal. It also carries an interactive 3D sphere of the sky.</p>
-  <h3><a class="inline" href="sky.html">Sky Explorer &rarr;</a></h3>
-  <p>A pannable, zoomable full-sky map (longitude wraps so you can keep scrolling), with its own component and frequency controls, a cluster (halo) overlay, and an optional scan-to-listen mode. A tiny overview paints instantly, then a high-resolution image loads in the background so zooming stays sharp.</p>
-
-  <h2>Synthesis methods (Sonifier)</h2>
-  <p><em>Shaped Noise</em> filters white noise so its spectrum matches D<sub>&#8467;</sub> &mdash; the most faithful representation; sounds textural. <em>Additive</em> sums sine tones weighted by &radic;D<sub>&#8467;</sub> &mdash; more tonal, with individual peaks audible as distinct pitches. <em>Scale Layers</em> splits the spectrum into a bass drone (&#8467;&lt;100), harmonic tones at the CMB acoustic peaks (&#8467;=220, 540, 810), and high-&#8467; bandpass noise &mdash; making the scale structure explicit as three timbres. <em>Instruments</em> plays the spectrum as continuous gliding voices: each component gets its own instrument (piano/violin/guitar/flute/bass/synth, by dropdown or palette preset), with the <strong>octave</strong> set by &#8467;, the <strong>note</strong> by the observing band (an ascending pentatonic), and the <strong>volume</strong> by the power integrated over an octave-wide band. Each instrument has its own articulation and convolution reverb.</p>
-
-  <h2>Things to try (Sonifier)</h2>
-  <ul>
-    <li><strong>&#8467;-Sweep</strong> &mdash; moves a bandpass window across multipole in time (low/bass &rarr; high/treble). Drag the position slider to scrub. Options: <em>log volume</em> (dB scaling), <em>linear &#8467;</em> (vs log), <em>ping-pong</em> (bounce), and <em>fixed pitch</em> (hold the pitch at 440 Hz so you hear only amplitude/timbre change, not the confounding pitch).</li>
-    <li><strong>Build-Up</strong> &mdash; progressively layers CMB &rarr; +tSZ &rarr; +CIB so you hear the total assemble from its parts.</li>
-    <li><strong>&#957;-Sweep</strong> &mdash; crossfades across the bands so you hear the foreground transition from CMB-dominated to CIB-dominated.</li>
-    <li><strong>Stereo</strong> (headphones) &mdash; <em>Components L/R</em> puts different components in each ear for A/B comparison; <em>93|353 GHz</em> puts a CMB-dominated band in one ear and a CIB-dominated band in the other.</li>
-    <li><strong>&#127775; Big Bang</strong> &mdash; a 12-second standalone piece (after Cramer 2003) that scales the actual CMB acoustic peaks (&#8467;=220, 540, 810, 1120, &hellip;) to audible frequencies with their measured relative amplitudes, the pitch slowly descending to evoke cosmic expansion.</li>
-    <li><strong>3D Spatial</strong> (headphones) &mdash; places each component at a fixed direction around you (CMB ahead, tSZ left, CIB right) via HRTF panning; sphere clicks become localized drum hits at the real sky position.</li>
-    <li><strong>Interactive sphere</strong> &mdash; shows the sky for the selected component/band. Click any point for a drum hit whose pitch encodes the temperature there, a texture modulated by the local fluctuation, and pings from nearby massive clusters (pitch = halo mass). Toggle <em>Scan mode</em> to fire all three continuously while dragging &mdash; over the cluster-dominated tSZ map it becomes a field of discrete chirps against near-silence.</li>
-  </ul>
-
-  <h2>Reproducibility</h2>
-  <p class="muted">Spectra are precomputed from the simulation alm files; the web app synthesizes all audio client-side with the Web Audio API and renders with Canvas 2D &mdash; no server, no JavaScript dependencies. Sky Explorer images are high-resolution equirectangular renders. See the accompanying writeup for the full method.</p>
+<div class="tabs" id="tabs">
+  <div class="tab active" data-tab="overview">Overview</div>
+  <div class="tab" data-tab="mapping">Mapping &amp; \(C_\ell\)</div>
+  <div class="tab cmb" data-tab="cmb">CMB</div>
+  <div class="tab tsz" data-tab="tsz">tSZ</div>
+  <div class="tab cib" data-tab="cib">CIB</div>
+  <div class="tab ksz" data-tab="ksz">kSZ</div>
+  <div class="tab" data-tab="total">Total</div>
+  <div class="tab" data-tab="synth">Synthesis</div>
+  <div class="tab" data-tab="explorer">Sky Explorer</div>
+  <div class="tab" data-tab="repro">Reproducibility</div>
 </div>
+<div class="wrap">
+
+<section class="active" id="overview">
+  <h1>How it works</h1>
+  <p class="lead">Turning the multi-probe microwave sky from the HalfDome simulations into sound and an explorable map &mdash; component by component, with the math.</p>
+  <p>In cosmology the <strong>angular power spectrum</strong> \(C_\ell\) is the central summary statistic: it measures how much structure the sky has at each angular scale, indexed by the multipole \(\ell\) (roughly an inverse angle, \(\theta\approx 180^\circ/\ell\)). The analogy to audio is exact &mdash; the power spectrum of a <em>sound</em> is what gives it its timbre &mdash; so mapping \(C_\ell\) to an audible spectrum makes the same mathematical object perceptible to the ear. Large angular scales (small \(\ell\)) become low pitches; fine scales (large \(\ell\)) become treble.</p>
+  <p>The sky is a sum of physically distinct <strong>components</strong>, each with its own spectrum, frequency behaviour, and spatial texture:</p>
+  <ul>
+    <li><span class="tag cmb">CMB</span> lensed primordial light &mdash; the acoustic-peak structure, dominates large scales.</li>
+    <li><span class="tag tsz">tSZ</span> hot cluster gas distorting the CMB &mdash; midrange, with a striking frequency null.</li>
+    <li><span class="tag cib">CIB</span> dusty star-forming galaxies &mdash; rises steeply to high frequency &amp; high \(\ell\).</li>
+    <li><span class="tag ksz">kSZ</span> bulk motion of electrons &mdash; a faint, frequency-independent Doppler signal.</li>
+    <li><span class="tag tot">Total</span> their sum, \(T_{\rm tot}=\)CMB\(+\)tSZ\(+\)CIB.</li>
+  </ul>
+  <p>Use the tabs above for the mapping and each component in detail. Then try the <a class="inline" href="sonifier.html">Sonifier</a> (hear the spectra) and the <a class="inline" href="sky.html">Sky Explorer</a> (scan the sky).</p>
+</section>
+
+<section id="mapping">
+  <h2>From the sky to a spectrum</h2>
+  <p>A scalar field on the sphere (a temperature map) is expanded in spherical harmonics \(Y_{\ell m}\):</p>
+  \[ \Delta T(\hat n)=\sum_{\ell=0}^{\infty}\sum_{m=-\ell}^{\ell} a_{\ell m}\,Y_{\ell m}(\hat n),\qquad a_{\ell m}=\int \Delta T(\hat n)\,Y_{\ell m}^{*}(\hat n)\,d\Omega. \]
+  <p>Statistical isotropy means all the two-point information lives in the angular power spectrum</p>
+  \[ C_\ell=\frac{1}{2\ell+1}\sum_{m=-\ell}^{\ell}\bigl|a_{\ell m}\bigr|^2,\qquad D_\ell\equiv\frac{\ell(\ell+1)}{2\pi}\,C_\ell, \]
+  <p>where \(D_\ell\) is the conventionally plotted quantity (roughly the variance per logarithmic interval in \(\ell\)). Maps here are computed to \(\ell_{\max}=9000\) with a \(2'\) beam.</p>
+
+  <h3>Multipole &rarr; pitch</h3>
+  <p>We map \(\ell\) to audio frequency \(f\) on a log&ndash;log line, which respects the (logarithmic) human perception of pitch:</p>
+  \[ \log_{10} f=\log_{10} f_{\min}+\frac{\log_{10}(\ell/\ell_{\min})}{\log_{10}(\ell_{\max}/\ell_{\min})}\,\log_{10}\!\frac{f_{\max}}{f_{\min}}, \]
+  <p>with \(\ell_{\min}=2,\ \ell_{\max}=6000,\ f_{\min}=40\,\mathrm{Hz},\ f_{\max}=8\,\mathrm{kHz}\). Under this map the CMB first acoustic peak \((\ell\!\approx\!220)\) lands near middle C, the tSZ peak \((\ell\!\approx\!2000)\) near \(2.7\,\)kHz, and the CIB peak \((\ell\!\approx\!5000)\) near \(6.8\,\)kHz. Loudness tracks \(\sqrt{D_\ell}\) (amplitude \(=\sqrt{\text{power}}\)), with a single <em>global</em> normalization so real amplitude variations survive (per-buffer normalization would flatten them).</p>
+</section>
+
+<section id="cmb">
+  <h2><span class="tag cmb">CMB</span> Lensed cosmic microwave background</h2>
+  <p>Before recombination \((z\!\approx\!1100)\) the universe was an ionized photon&ndash;baryon plasma. Gravity pulled fluid into dark-matter potential wells; radiation pressure pushed back. The result is <strong>acoustic oscillations</strong>: standing sound waves whose snapshot at last scattering imprints a series of harmonic peaks in \(C_\ell\).</p>
+  <p>The peak positions are set by the sound horizon \(r_s\) projected through the angular-diameter distance \(D_A\) to last scattering,</p>
+  \[ \theta_s=\frac{r_s(z_*)}{D_A(z_*)},\qquad \ell_{\rm peak}\approx n\,\frac{\pi}{\theta_s}\ \ (n=1,2,\dots), \]
+  <p>giving the first peak near \(\ell\approx220\) and overtones near \(\ell\approx540,810,\dots\) On small scales photon diffusion (Silk damping) suppresses power, so \(D_\ell\) falls beyond \(\ell\sim1500\).</p>
+  <h3>Gravitational lensing</h3>
+  <p>Intervening large-scale structure deflects CMB photons by \(\nabla\phi\) (the lensing potential), remapping the observed temperature:</p>
+  \[ \widetilde{T}(\hat n)=T\!\bigl(\hat n+\nabla\phi(\hat n)\bigr)\approx T(\hat n)+\nabla\phi\cdot\nabla T+\tfrac12\nabla_i\phi\,\nabla_j\phi\,\nabla_i\nabla_j T+\cdots \]
+  <p>Lensing slightly smooths the acoustic peaks, transfers power to small scales, and makes the field mildly non-Gaussian. These are the <code>dT_cmblens</code> maps.</p>
+  <div class="note">Spectrum: blackbody. In thermodynamic temperature units \(\Delta T\) is <strong>independent of observing frequency</strong> &mdash; so the CMB sounds and looks identical in every band, and is stored once.</div>
+</section>
+
+<section id="tsz">
+  <h2><span class="tag tsz">tSZ</span> Thermal Sunyaev&ndash;Zel'dovich effect</h2>
+  <p>CMB photons passing through the hot \((T_e\sim10^{7\text{–}8}\,\mathrm{K})\) electron gas in galaxy clusters get <strong>inverse-Compton</strong> up-scattered. The strength along a line of sight is the dimensionless Compton-\(y\) parameter:</p>
+  \[ y=\int \frac{k_B T_e}{m_e c^2}\,n_e\,\sigma_T\,d\ell, \]
+  <p>with \(n_e\) the electron density and \(\sigma_T\) the Thomson cross-section. The resulting temperature change has a distinctive <strong>frequency dependence</strong>:</p>
+  \[ \frac{\Delta T(\nu)}{T_{\rm CMB}}=g(x)\,y,\qquad g(x)=x\coth\!\frac{x}{2}-4=x\,\frac{e^{x}+1}{e^{x}-1}-4, \]
+  \[ x\equiv\frac{h\nu}{k_B T_{\rm CMB}}=\frac{\nu}{56.8\,\mathrm{GHz}}. \]
+  <p>So \(g(x)<0\) (a <strong>decrement</strong>) below \(\sim\!217\,\)GHz, passes through <strong>zero at \(x\approx3.83\) (\(\nu\approx217\,\)GHz)</strong>, and becomes an increment above. This is exactly why, in the tools, tSZ nearly vanishes at the 225 GHz band and returns by 353 GHz.</p>
+  <p>The tSZ power spectrum is dominated by the most massive clusters (a Poisson "one-halo" term), peaking around \(\ell\sim2000\text{–}3000\); its amplitude is steeply sensitive to \(\sigma_8\) and cluster physics. These are the <code>dT_tsz</code> maps, built from a Compton-\(y\) map times \(g(x)\,T_{\rm CMB}\).</p>
+</section>
+
+<section id="cib">
+  <h2><span class="tag cib">CIB</span> Cosmic infrared background</h2>
+  <p>Roughly half of all starlight ever emitted was absorbed by dust and re-radiated in the infrared. Integrated over cosmic history, that dust glow from star-forming galaxies is the CIB. A single galaxy radiates as a <strong>modified blackbody (greybody)</strong>:</p>
+  \[ S_\nu \propto \nu^{\beta}\,B_\nu(T_d),\qquad B_\nu(T_d)=\frac{2h\nu^3}{c^2}\frac{1}{e^{h\nu/k_BT_d}-1}, \]
+  <p>with emissivity index \(\beta\approx1.5\text{–}2\) and dust temperature \(T_d\approx20\text{–}40\,\)K. Summed over redshift the CIB rises steeply toward higher (sub-mm) frequencies &mdash; which is why it is faint at 93 GHz but dominates by 353 GHz.</p>
+  <p>Its anisotropy spectrum has two parts: galaxy <strong>clustering</strong> (a 2-halo term, important at low \(\ell\)) plus <strong>shot noise</strong> from discrete sources (Poisson, flat in \(C_\ell\), so \(D_\ell\propto\ell^2\) at high \(\ell\)). The net \(D_\ell\) keeps climbing to small scales.</p>
+  <h3>Intensity &rarr; temperature</h3>
+  <p>To put the CIB on the same thermodynamic-temperature footing as the CMB, an intensity fluctuation \(\Delta I_\nu\) is divided by the CMB's brightness&ndash;temperature derivative:</p>
+  \[ \frac{dB_\nu}{dT}\bigg|_{T_{\rm CMB}}=\frac{2k_B\nu^2}{c^2}\,\frac{x^2e^{x}}{(e^{x}-1)^2},\qquad \Delta T=\frac{\Delta I_\nu}{dB_\nu/dT}. \]
+  <p>These are the <code>dT_cib</code> maps (one per band, since the conversion and SED depend on \(\nu\)).</p>
+</section>
+
+<section id="ksz">
+  <h2><span class="tag ksz">kSZ</span> Kinetic Sunyaev&ndash;Zel'dovich effect</h2>
+  <p>If the scattering electrons have a bulk <strong>peculiar velocity</strong> \(\mathbf v\) along the line of sight, the scattered CMB is Doppler-shifted. Unlike tSZ this is a simple shift of the blackbody, so it is <strong>frequency-independent</strong>:</p>
+  \[ \frac{\Delta T}{T_{\rm CMB}}=-\int \frac{\mathbf v\cdot\hat n}{c}\,n_e\,\sigma_T\,d\ell=-\int \frac{\mathbf v\cdot\hat n}{c}\,d\tau, \]
+  <p>with optical depth element \(d\tau=n_e\sigma_T\,d\ell\). Because it is sourced by the product of density and velocity (the momentum field), and gets contributions from both reionization and late times, the kSZ is small (\(\sim\mu\)K), peaks at high \(\ell\), and is hard to isolate. It is stored once (frequency-independent) as <code>dT_ksz</code>.</p>
+  <div class="note">In the tools kSZ is a faint voice/colour by design &mdash; that is physically honest, not a bug.</div>
+</section>
+
+<section id="total">
+  <h2><span class="tag tot">Total</span> The combined sky</h2>
+  <p>At a given band the observed temperature is the sum</p>
+  \[ T_{\rm tot}(\nu)=\Delta T_{\rm CMB}+\Delta T_{\rm tSZ}(\nu)+\Delta T_{\rm CIB}(\nu). \]
+  <p>Because the spherical-harmonic transform is linear, the total coefficients are just the sum of the components',</p>
+  \[ a_{\ell m}^{\rm tot}=a_{\ell m}^{\rm CMB}+a_{\ell m}^{\rm tSZ}+a_{\ell m}^{\rm CIB}, \]
+  <p>so the total spectrum carries cross-terms:</p>
+  \[ C_\ell^{\rm tot}=C_\ell^{\rm CMB}+C_\ell^{\rm tSZ}+C_\ell^{\rm CIB}+2\,\mathrm{Re}\,\bigl(C_\ell^{\rm CMB\times tSZ}+\cdots\bigr). \]
+  <p>For (nearly) independent components the cross-spectra are small, but they are captured <em>exactly</em> by summing the \(a_{\ell m}\) and then forming \(C_\ell^{\rm tot}\) &mdash; which is how the tools reconstruct Total per band (rather than summing the component \(C_\ell\)). Listening across bands you hear the CMB-dominated low frequencies give way to CIB-dominated high frequencies.</p>
+</section>
+
+<section id="synth">
+  <h2>Synthesis: turning \(D_\ell\) into sound</h2>
+  <p>Given the \(\ell\!\to\!f\) map, four methods render the same \(D_\ell\) differently.</p>
+  <h3>Shaped noise</h3>
+  <p>White noise \(w(t)\) is filtered so its audio power spectrum matches \(D_\ell\): for each audio bin at frequency \(f\) we find the corresponding \(\ell\) and set the amplitude response \(|H(f)|\propto\sqrt{D_{\ell(f)}}\). The output's spectral density <em>is</em> the angular power spectrum &mdash; the most faithful rendering.</p>
+  <h3>Additive</h3>
+  <p>A bank of sine tones, one per log-\(\ell\) bin:</p>
+  \[ s(t)=\sum_i \sqrt{D_{\ell_i}}\;\sin\!\bigl(2\pi f(\ell_i)\,t+\varphi_i\bigr), \]
+  <p>with random phases \(\varphi_i\). More tonal; discrete peaks become audible pitches.</p>
+  <h3>Scale layers</h3>
+  <p>Three \(\ell\)-bands as three timbres: a bass drone \((\ell<100)\), harmonic tones at the CMB peaks \((\ell=220,540,810)\), and high-\(\ell\) bandpass noise &mdash; each weighted by \(\sqrt{\langle D_\ell\rangle}\) in its band.</p>
+  <h3>Instruments</h3>
+  <p>Continuous gliding voices: the <strong>octave</strong> is set by \(\ell\) (log), the <strong>note</strong> by the band, and the <strong>loudness</strong> by \(\sqrt{\langle D_\ell\rangle}\) integrated over an octave-wide window around the current \(\ell\).</p>
+</section>
+
+<section id="explorer">
+  <h2>The Sky Explorer</h2>
+  <p>The sky is shown in an equirectangular (plate&ndash;carr&eacute;e) projection: pixel \((x,y)\) maps to \((\phi,\theta)=(360^\circ x/W,\ 180^\circ y/H)\), so panning in longitude wraps seamlessly. A tiny overview loads instantly; a high-resolution image streams in behind it for sharp zoom.</p>
+  <p>Components are drawn as single-hue glows (intensity \(=|\Delta T|/\Delta T_{\rm max}\), gamma-lifted) in their colours and <strong>composited additively</strong>, so overlapping components combine like a multi-wavelength image. Massive clusters (\(M>5\times10^{14}M_\odot\)) are overlaid as points sized by \(\log M\).</p>
+  <h3>Scanning (audio)</h3>
+  <p>Each selected component is a voice. Its <strong>pitch</strong> reads the true (signed) sky value \(v\in[-1,1]\) under the cursor &mdash; cold low, hot high:</p>
+  \[ f_{\rm voice}=f_{\rm base}\cdot 2^{\,v}. \]
+  <p>Its <strong>loudness</strong> is weighted by how strong the component is at the selected band, relative to its strongest band:</p>
+  \[ w_c(\nu)=\sqrt{\frac{\langle D_\ell\rangle_{c,\nu}}{\max_{\nu'}\langle D_\ell\rangle_{c,\nu'}}}, \]
+  <p>so tSZ nearly silences at the \(225\,\)GHz null and CIB swells toward \(353\,\)GHz, while the frequency-independent CMB and kSZ hold steady. Nearby clusters add mass-pitched pings.</p>
+</section>
+
+<section id="repro">
+  <h2>Software &amp; reproducibility</h2>
+  <p>The pipeline starts from HalfDome spherical-harmonic maps (\(\ell_{\max}=9000\), \(2'\) beam): <code>precompute_cls.py</code> forms \(C_\ell\) (and reconstructs Total by summing \(a_{\ell m}\)); <code>export_web_data.py</code> writes the spectra and low-resolution sky textures; <code>export_sky_images.py</code> renders the high-resolution Sky Explorer images and faithful value maps.</p>
+  <p>The web app synthesizes all audio in the browser with the Web Audio API and renders with the Canvas 2D context &mdash; no server and no JavaScript dependencies (this docs page additionally loads MathJax from a CDN to typeset the equations).</p>
+  <p class="muted">See the accompanying writeup for the full method and references.</p>
+</section>
+
+</div>
+<script>
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById(t.dataset.tab).classList.add('active');
+  window.scrollTo(0,0);
+}));
+</script>
 </body>
 </html>
