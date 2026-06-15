@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sky Explorer &mdash; Multi-Probe Sky</title>
+<script>
+(function(){
+  var k='sonify_auth';
+  if(sessionStorage.getItem(k)==='1') return;
+  var p=prompt('Enter password:');
+  if(p==='4halfdomes'){sessionStorage.setItem(k,'1');}
+  else{document.documentElement.innerHTML='<body style="background:#0a0e1a;color:#c8cde0;display:flex;justify-content:center;align-items:center;height:100vh;font-family:system-ui"><h2>Access denied</h2></body>';throw'blocked';}
+})();
+</script>
+<style>
+:root{
+  --bg:#0a0e1a; --panel:#131829; --border:#1e2744; --text:#c8cde0; --accent:#4a9eff;
+  --cmb:#4a9eff; --tsz:#ff9f43; --cib:#2ed573; --ksz:#b86bff; --tot:#a8a8a8;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;}
+header{display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid var(--border);}
+header h1{font-size:1.05em;font-weight:600;color:#e8ecf4;}
+header .sub{font-size:0.78em;color:#6b7394;}
+a.back{color:var(--accent);text-decoration:none;font-size:0.82em;border:1px solid var(--border);padding:4px 10px;border-radius:6px;}
+a.back:hover{background:#1e2744;}
+
+.controls{display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border);}
+.cgroup{display:flex;align-items:center;gap:6px;}
+.clabel{font-size:0.68em;text-transform:uppercase;letter-spacing:0.6px;color:#6b7394;}
+.btn{padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text);cursor:pointer;font-size:0.8em;}
+.btn.active{background:var(--accent);color:var(--bg);border-color:var(--accent);}
+.btn:hover{background:#1e2744;}
+.comp-btn{border-width:2px;}
+.comp-btn[data-comp="dT_cmblens"]{border-color:var(--cmb);} .comp-btn[data-comp="dT_cmblens"].active{background:var(--cmb);color:var(--bg);}
+.comp-btn[data-comp="dT_tsz"]{border-color:var(--tsz);} .comp-btn[data-comp="dT_tsz"].active{background:var(--tsz);color:var(--bg);}
+.comp-btn[data-comp="dT_cib"]{border-color:var(--cib);} .comp-btn[data-comp="dT_cib"].active{background:var(--cib);color:var(--bg);}
+.comp-btn[data-comp="dT_ksz"]{border-color:var(--ksz);} .comp-btn[data-comp="dT_ksz"].active{background:var(--ksz);color:var(--bg);}
+.comp-btn[data-comp="T_tot"]{border-color:var(--tot);} .comp-btn[data-comp="T_tot"].active{background:var(--tot);color:var(--bg);}
+.freq-group{display:flex;align-items:center;gap:3px;padding:2px 6px;border:1px solid var(--border);border-radius:6px;}
+.freq-group .clabel{margin-right:2px;}
+#wrap{position:relative;width:100vw;height:calc(100vh - 96px);}
+#map{display:block;width:100%;height:100%;cursor:grab;touch-action:none;background:#0a0e1a;}
+#map.grabbing{cursor:grabbing;}
+#map.scan{cursor:cell;}
+.readout{position:absolute;left:10px;bottom:10px;font-size:0.75em;color:#9aa3c4;background:rgba(10,14,26,0.7);
+  padding:4px 8px;border-radius:6px;pointer-events:none;}
+.readout b{color:var(--accent);}
+.hint{position:absolute;right:10px;bottom:10px;font-size:0.72em;color:#6b7394;background:rgba(10,14,26,0.7);
+  padding:4px 8px;border-radius:6px;pointer-events:none;max-width:46%;text-align:right;}
+.slider-val{font-size:0.8em;color:var(--accent);min-width:38px;text-align:right;}
+input[type=range]{accent-color:var(--accent);}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Sky Explorer</h1>
+  <span class="sub">drag to pan &middot; wheel/buttons to zoom &middot; longitude wraps</span>
+  <a class="back" href="index.html">&larr; Sonifier</a>
+</header>
+
+<div class="controls">
+  <div class="cgroup">
+    <span class="clabel">Component</span>
+    <button class="btn comp-btn active" data-comp="dT_cmblens">CMB</button>
+    <button class="btn comp-btn" data-comp="dT_tsz">tSZ</button>
+    <button class="btn comp-btn" data-comp="dT_cib">CIB</button>
+    <button class="btn comp-btn" data-comp="dT_ksz">kSZ</button>
+    <button class="btn comp-btn" data-comp="T_tot">Total</button>
+  </div>
+  <div class="cgroup">
+    <span class="clabel">Frequency</span>
+    <div class="freq-group"><span class="clabel">SO MF</span>
+      <button class="btn freq-btn" data-freq="93">93</button>
+      <button class="btn freq-btn" data-freq="145">145</button></div>
+    <div class="freq-group"><span class="clabel">SO HF</span>
+      <button class="btn freq-btn" data-freq="225">225</button>
+      <button class="btn freq-btn" data-freq="280">280</button></div>
+    <div class="freq-group"><span class="clabel">Planck</span>
+      <button class="btn freq-btn active" data-freq="143">143</button>
+      <button class="btn freq-btn" data-freq="353">353</button></div>
+  </div>
+  <div class="cgroup">
+    <span class="clabel">Zoom</span>
+    <button class="btn" id="zoomOut">&minus;</button>
+    <button class="btn" id="zoomIn">+</button>
+    <button class="btn" id="zoomReset">reset</button>
+  </div>
+  <div class="cgroup">
+    <button class="btn" id="scanBtn" title="Sonify the sky under the cursor while dragging">Scan audio</button>
+    <span class="clabel">Vol</span>
+    <input type="range" id="vol" min="0" max="100" value="70" style="width:80px;">
+  </div>
+</div>
+
+<div id="wrap">
+  <canvas id="map"></canvas>
+  <div class="readout" id="readout">&mdash;</div>
+  <div class="hint" id="hint"></div>
+</div>
+
+<script>
+const V = {
+  meta:null, halos:null, img:null, imgW:1, imgH:1,
+  scale:1, minScale:1, maxScale:4, panX:0, panY:0,
+  comp:'dT_cmblens', freq:'143',
+  dragging:false, moved:false, lastX:0, lastY:0,
+  scan:false, volume:0.7, scanLast:0,
+  audioCtx:null, gain:null, limiter:null,
+  off:null, offCtx:null,
+};
+const COMP_LABELS={dT_cmblens:'CMB', dT_tsz:'tSZ', dT_cib:'CIB', dT_ksz:'kSZ', T_tot:'Total'};
+
+const canvas=document.getElementById('map');
+const ctx=canvas.getContext('2d');
+
+function isIndep(comp){ return V.comp!=='T_tot'; }
+function imgName(){ return V.comp==='T_tot' ? ('T_tot_f'+V.freq) : V.comp; }
+function imgPath(){ return 'sky_img/'+imgName()+'.jpg'; }
+
+function resize(){
+  const r=document.getElementById('wrap').getBoundingClientRect();
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=Math.round(r.width*dpr); canvas.height=Math.round(r.height*dpr);
+  canvas.style.width=r.width+'px'; canvas.style.height=r.height+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  V.cw=r.width; V.ch=r.height;
+  V.minScale=V.ch/V.imgH;
+  V.maxScale=Math.max(V.minScale*8, 3);
+  draw();
+}
+
+function clampView(){
+  if(V.scale<V.minScale) V.scale=V.minScale;
+  if(V.scale>V.maxScale) V.scale=V.maxScale;
+  const sH=V.imgH*V.scale;
+  // vertical: clamp so image stays within view (or centered if smaller)
+  if(sH<=V.ch) V.panY=(V.ch-sH)/2;
+  else V.panY=Math.min(0, Math.max(V.ch-sH, V.panY));
+  // horizontal wraps freely
+}
+
+function draw(){
+  if(!V.cw) return;
+  ctx.fillStyle='#0a0e1a'; ctx.fillRect(0,0,V.cw,V.ch);
+  if(!V.img||!V.img.complete||!V.img.width){ return; }
+  const sW=V.imgW*V.scale, sH=V.imgH*V.scale;
+  let baseX=V.panX % sW; if(baseX>0) baseX-=sW;
+  ctx.imageSmoothingEnabled=true;
+  for(let x=baseX; x<V.cw; x+=sW){
+    ctx.drawImage(V.img, x, V.panY, sW, sH);
+  }
+  drawHalos(baseX, sW, sH);
+}
+
+function drawHalos(baseX, sW, sH){
+  if(!V.halos) return;
+  ctx.save();
+  for(let i=0;i<V.halos.n;i++){
+    const ix=(V.halos.phi[i]/360)*V.imgW, iy=(V.halos.theta[i]/180)*V.imgH;
+    const y=V.panY+iy*V.scale;
+    if(y<-4||y>V.ch+4) continue;
+    const logM=V.halos.log_mass[i];
+    const sz=Math.max(1.2,(logM-14.5)*3.2);
+    for(let x=baseX+ix*V.scale; x<V.cw+sz; x+=sW){
+      if(x<-sz) continue;
+      ctx.globalAlpha=Math.min(0.85,(logM-14.5)*0.7+0.2);
+      ctx.fillStyle='#ffd58a';
+      ctx.beginPath(); ctx.arc(x,y,sz,0,2*Math.PI); ctx.fill();
+      if(logM>15.0){ ctx.globalAlpha=0.9; ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(x,y,sz+1,0,2*Math.PI); ctx.stroke(); }
+    }
+  }
+  ctx.restore();
+}
+
+// screen (sx,sy) -> sky (theta deg, phi deg) and image pixel
+function screenToSky(sx,sy){
+  const sW=V.imgW*V.scale;
+  let imgX=((sx-V.panX)/V.scale)%V.imgW; if(imgX<0) imgX+=V.imgW;
+  let imgY=(sy-V.panY)/V.scale;
+  if(imgY<0||imgY>V.imgH) return null;
+  const phi=(imgX/V.imgW)*360, theta=(imgY/V.imgH)*180;
+  return {phi, theta, imgX, imgY};
+}
+
+// ============= image loading =============
+function loadImage(){
+  if(!V.meta) return;
+  const im=new Image();
+  document.getElementById('hint').textContent='loading '+COMP_LABELS[V.comp]+(V.comp==='T_tot'?(' @ '+V.freq+' GHz'):'')+'…';
+  im.onload=()=>{
+    V.img=im; V.imgW=im.naturalWidth; V.imgH=im.naturalHeight;
+    setupOffscreen();
+    if(V.scale<=0||!isFinite(V.scale)) V.scale=V.ch/V.imgH;
+    V.minScale=V.ch/V.imgH;
+    clampView();
+    document.getElementById('hint').textContent='';
+    draw();
+  };
+  im.onerror=()=>{ document.getElementById('hint').textContent='could not load image (serve over http)'; };
+  im.src=imgPath();
+}
+
+function setupOffscreen(){
+  // native-resolution copy for per-pixel value sampling (audio)
+  V.off=document.createElement('canvas'); V.off.width=V.imgW; V.off.height=V.imgH;
+  V.offCtx=V.off.getContext('2d', {willReadFrequently:true});
+  V.offCtx.drawImage(V.img,0,0);
+}
+
+function sampleLuminance(imgX,imgY){
+  if(!V.offCtx) return 0.5;
+  try{
+    const d=V.offCtx.getImageData(Math.floor(imgX),Math.floor(imgY),1,1).data;
+    return (0.299*d[0]+0.587*d[1]+0.114*d[2])/255;
+  }catch(e){ return 0.5; }
+}
+
+// ============= audio =============
+function initAudio(){
+  if(V.audioCtx) return;
+  V.audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  V.gain=V.audioCtx.createGain(); V.gain.gain.value=V.volume;
+  V.limiter=V.audioCtx.createDynamicsCompressor();
+  V.limiter.threshold.value=-3; V.limiter.ratio.value=12; V.limiter.attack.value=0.003; V.limiter.release.value=0.25;
+  V.gain.connect(V.limiter); V.limiter.connect(V.audioCtx.destination);
+}
+function blip(lum){
+  initAudio(); if(V.audioCtx.state==='suspended') V.audioCtx.resume();
+  const ctx=V.audioCtx, now=ctx.currentTime;
+  const freq=150*Math.pow(8, lum);          // brightness -> pitch (150..1200 Hz)
+  const o=ctx.createOscillator(), g=ctx.createGain();
+  o.type='triangle'; o.frequency.value=freq;
+  g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.25,now+0.01);
+  g.gain.exponentialRampToValueAtTime(0.001,now+0.25);
+  o.connect(g); g.connect(V.gain); o.start(now); o.stop(now+0.3);
+}
+function haloPing(logM){
+  initAudio(); if(V.audioCtx.state==='suspended') V.audioCtx.resume();
+  const ctx=V.audioCtx, now=ctx.currentTime;
+  const frac=Math.min(1,Math.max(0,(logM-14.5)/0.9));
+  const freq=200+frac*1100;
+  const o=ctx.createOscillator(), o2=ctx.createOscillator(), g=ctx.createGain();
+  o.type='sine'; o.frequency.value=freq; o2.type='sine'; o2.frequency.value=freq*2;
+  const g2=ctx.createGain(); g2.gain.value=0.3;
+  g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.3,now+0.008);
+  g.gain.exponentialRampToValueAtTime(0.001,now+0.5);
+  o.connect(g); o2.connect(g2); g2.connect(g); g.connect(V.gain);
+  o.start(now); o.stop(now+0.55); o2.start(now); o2.stop(now+0.4);
+}
+function sonifyAt(sx,sy){
+  const sk=screenToSky(sx,sy); if(!sk) return;
+  blip(sampleLuminance(sk.imgX,sk.imgY));
+  if(V.halos){
+    const cphi=sk.phi, cth=sk.theta, sinT=Math.sin(sk.theta*Math.PI/180);
+    for(let i=0;i<V.halos.n;i++){
+      let dp=Math.abs(V.halos.phi[i]-cphi); if(dp>180) dp=360-dp;
+      const dt=V.halos.theta[i]-cth;
+      const dist=Math.sqrt(dt*dt+dp*dp*sinT*sinT);
+      if(dist<3.0) haloPing(V.halos.log_mass[i]);
+    }
+  }
+  document.getElementById('readout').innerHTML=
+    'l/b &asymp; <b>'+sk.phi.toFixed(0)+'&deg;, '+(90-sk.theta).toFixed(0)+'&deg;</b> &nbsp; '+COMP_LABELS[V.comp];
+}
+
+// ============= interaction =============
+function zoomAt(sx,sy,factor){
+  const ns=Math.min(V.maxScale,Math.max(V.minScale,V.scale*factor));
+  const f=ns/V.scale;
+  V.panX=sx-(sx-V.panX)*f;
+  V.panY=sy-(sy-V.panY)*f;
+  V.scale=ns; clampView(); draw();
+}
+
+canvas.addEventListener('mousedown',e=>{ V.dragging=true; V.moved=false; V.lastX=e.clientX; V.lastY=e.clientY; canvas.classList.add('grabbing'); });
+window.addEventListener('mousemove',e=>{
+  if(!V.dragging) return;
+  const dx=e.clientX-V.lastX, dy=e.clientY-V.lastY; V.lastX=e.clientX; V.lastY=e.clientY;
+  if(Math.abs(dx)+Math.abs(dy)>2) V.moved=true;
+  if(V.scan){
+    const r=canvas.getBoundingClientRect();
+    if(Date.now()-V.scanLast>150){ sonifyAt(e.clientX-r.left,e.clientY-r.top); V.scanLast=Date.now(); }
+  } else {
+    V.panX+=dx; V.panY+=dy; clampView(); draw();
+  }
+});
+window.addEventListener('mouseup',()=>{ V.dragging=false; canvas.classList.remove('grabbing'); });
+canvas.addEventListener('click',e=>{
+  if(V.moved) return;
+  const r=canvas.getBoundingClientRect();
+  sonifyAt(e.clientX-r.left,e.clientY-r.top);
+});
+canvas.addEventListener('wheel',e=>{ e.preventDefault();
+  const r=canvas.getBoundingClientRect();
+  zoomAt(e.clientX-r.left,e.clientY-r.top, e.deltaY<0?1.15:1/1.15);
+},{passive:false});
+
+// touch: one finger pan/scan, two finger pinch zoom
+let pinchD=0;
+canvas.addEventListener('touchstart',e=>{
+  if(e.touches.length===1){ V.dragging=true; V.moved=false; V.lastX=e.touches[0].clientX; V.lastY=e.touches[0].clientY; }
+  else if(e.touches.length===2){ V.dragging=false; pinchD=touchDist(e); }
+  e.preventDefault();
+},{passive:false});
+canvas.addEventListener('touchmove',e=>{
+  const r=canvas.getBoundingClientRect();
+  if(e.touches.length===1 && V.dragging){
+    const t=e.touches[0], dx=t.clientX-V.lastX, dy=t.clientY-V.lastY; V.lastX=t.clientX; V.lastY=t.clientY;
+    if(Math.abs(dx)+Math.abs(dy)>2) V.moved=true;
+    if(V.scan){ if(Date.now()-V.scanLast>150){ sonifyAt(t.clientX-r.left,t.clientY-r.top); V.scanLast=Date.now(); } }
+    else { V.panX+=dx; V.panY+=dy; clampView(); draw(); }
+  } else if(e.touches.length===2){
+    const d=touchDist(e); if(pinchD>0){ const cx=(e.touches[0].clientX+e.touches[1].clientX)/2-r.left, cy=(e.touches[0].clientY+e.touches[1].clientY)/2-r.top; zoomAt(cx,cy,d/pinchD); } pinchD=d;
+  }
+  e.preventDefault();
+},{passive:false});
+canvas.addEventListener('touchend',e=>{
+  if(e.touches.length===0 && V.dragging && !V.moved){ const t=e.changedTouches[0]; const r=canvas.getBoundingClientRect(); sonifyAt(t.clientX-r.left,t.clientY-r.top); }
+  V.dragging=false; pinchD=0; e.preventDefault();
+},{passive:false});
+function touchDist(e){ const a=e.touches[0],b=e.touches[1]; return Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY); }
+
+// controls
+document.querySelectorAll('.comp-btn').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.comp-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active');
+  V.comp=b.dataset.comp; loadImage();
+}));
+document.querySelectorAll('.freq-btn').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.freq-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active');
+  V.freq=b.dataset.freq; if(V.comp==='T_tot') loadImage();
+}));
+document.getElementById('zoomIn').addEventListener('click',()=>zoomAt(V.cw/2,V.ch/2,1.4));
+document.getElementById('zoomOut').addEventListener('click',()=>zoomAt(V.cw/2,V.ch/2,1/1.4));
+document.getElementById('zoomReset').addEventListener('click',()=>{ V.scale=V.minScale; V.panX=0; clampView(); draw(); });
+document.getElementById('scanBtn').addEventListener('click',()=>{
+  V.scan=!V.scan; document.getElementById('scanBtn').classList.toggle('active',V.scan);
+  canvas.classList.toggle('scan',V.scan);
+  if(V.scan) initAudio();
+});
+document.getElementById('vol').addEventListener('input',e=>{ V.volume=e.target.value/100; if(V.gain) V.gain.gain.value=V.volume; });
+window.addEventListener('resize',resize);
+
+// init
+async function init(){
+  document.getElementById('hint').textContent='loading…';
+  try{
+    const [a,b]=await Promise.all([fetch('sky_img/sky_img.json'),fetch('halos.json')]);
+    if(!a.ok) throw new Error('sky_img.json HTTP '+a.status);
+    V.meta=await a.json(); V.imgW=V.meta.width; V.imgH=V.meta.height;
+    V.halos = b.ok ? await b.json() : null;
+    resize();
+    loadImage();
+  }catch(err){
+    document.getElementById('hint').textContent='Load failed: '+err.message+(location.protocol==='file:'?' (serve over http, not file://)':'');
+  }
+}
+init();
+</script>
+</body>
+</html>
