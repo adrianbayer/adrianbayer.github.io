@@ -16,7 +16,7 @@
 <style>
 :root{
   --bg:#0a0e1a; --panel:#131829; --border:#1e2744; --text:#c8cde0; --accent:#4a9eff;
-  --cmb:#4a9eff; --tsz:#ff9f43; --cib:#2ed573; --ksz:#b86bff; --tot:#a8a8a8;
+  --cmb:#4a9eff; --tsz:#ff9f43; --cib:#2ed573; --ksz:#b86bff; --tot:#ebebeb;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;}
@@ -25,37 +25,29 @@ header h1{font-size:1.05em;font-weight:600;color:#e8ecf4;}
 header .sub{font-size:0.78em;color:#6b7394;}
 a.back{color:var(--accent);text-decoration:none;font-size:0.82em;border:1px solid var(--border);padding:4px 10px;border-radius:6px;}
 a.back:hover{background:#1e2744;}
-
 .controls{display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border);}
 .cgroup{display:flex;align-items:center;gap:6px;}
 .clabel{font-size:0.68em;text-transform:uppercase;letter-spacing:0.6px;color:#6b7394;}
 .btn{padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text);cursor:pointer;font-size:0.8em;}
 .btn.active{background:var(--accent);color:var(--bg);border-color:var(--accent);}
-.btn:hover{background:#1e2744;}
+.btn:hover{filter:brightness(1.15);}
 .comp-btn{border-width:2px;}
-.comp-btn[data-comp="dT_cmblens"]{border-color:var(--cmb);} .comp-btn[data-comp="dT_cmblens"].active{background:var(--cmb);color:var(--bg);}
-.comp-btn[data-comp="dT_tsz"]{border-color:var(--tsz);} .comp-btn[data-comp="dT_tsz"].active{background:var(--tsz);color:var(--bg);}
-.comp-btn[data-comp="dT_cib"]{border-color:var(--cib);} .comp-btn[data-comp="dT_cib"].active{background:var(--cib);color:var(--bg);}
-.comp-btn[data-comp="dT_ksz"]{border-color:var(--ksz);} .comp-btn[data-comp="dT_ksz"].active{background:var(--ksz);color:var(--bg);}
-.comp-btn[data-comp="T_tot"]{border-color:var(--tot);} .comp-btn[data-comp="T_tot"].active{background:var(--tot);color:var(--bg);}
-.lis-btn{border-width:2px;}
-.lis-btn[data-lis="dT_cmblens"]{border-color:var(--cmb);} .lis-btn[data-lis="dT_cmblens"].active{background:var(--cmb);color:var(--bg);}
-.lis-btn[data-lis="dT_tsz"]{border-color:var(--tsz);} .lis-btn[data-lis="dT_tsz"].active{background:var(--tsz);color:var(--bg);}
-.lis-btn[data-lis="dT_cib"]{border-color:var(--cib);} .lis-btn[data-lis="dT_cib"].active{background:var(--cib);color:var(--bg);}
-.lis-btn[data-lis="dT_ksz"]{border-color:var(--ksz);} .lis-btn[data-lis="dT_ksz"].active{background:var(--ksz);color:var(--bg);}
-.lis-btn[data-lis="T_tot"]{border-color:var(--tot);} .lis-btn[data-lis="T_tot"].active{background:var(--tot);color:var(--bg);}
+.comp-btn[data-comp="dT_cmblens"]{border-color:var(--cmb);} .comp-btn[data-comp="dT_cmblens"].active{background:var(--cmb);color:#06101f;}
+.comp-btn[data-comp="dT_tsz"]{border-color:var(--tsz);} .comp-btn[data-comp="dT_tsz"].active{background:var(--tsz);color:#06101f;}
+.comp-btn[data-comp="dT_cib"]{border-color:var(--cib);} .comp-btn[data-comp="dT_cib"].active{background:var(--cib);color:#06101f;}
+.comp-btn[data-comp="dT_ksz"]{border-color:var(--ksz);} .comp-btn[data-comp="dT_ksz"].active{background:var(--ksz);color:#06101f;}
+.comp-btn[data-comp="T_tot"]{border-color:var(--tot);} .comp-btn[data-comp="T_tot"].active{background:var(--tot);color:#06101f;}
 .freq-group{display:flex;align-items:center;gap:3px;padding:2px 6px;border:1px solid var(--border);border-radius:6px;}
 .freq-group .clabel{margin-right:2px;}
 #wrap{position:relative;width:100vw;height:calc(100vh - 96px);}
-#map{display:block;width:100%;height:100%;cursor:grab;touch-action:none;background:#0a0e1a;}
+#map{display:block;width:100%;height:100%;cursor:grab;touch-action:none;background:#04060c;}
 #map.grabbing{cursor:grabbing;}
 #map.scan{cursor:cell;}
-.readout{position:absolute;left:10px;bottom:10px;font-size:0.75em;color:#9aa3c4;background:rgba(10,14,26,0.7);
+.readout{position:absolute;left:10px;bottom:10px;font-size:0.75em;color:#9aa3c4;background:rgba(4,6,12,0.72);
   padding:4px 8px;border-radius:6px;pointer-events:none;}
 .readout b{color:var(--accent);}
-.hint{position:absolute;right:10px;bottom:10px;font-size:0.72em;color:#6b7394;background:rgba(10,14,26,0.7);
+.hint{position:absolute;right:10px;bottom:10px;font-size:0.72em;color:#6b7394;background:rgba(4,6,12,0.72);
   padding:4px 8px;border-radius:6px;pointer-events:none;max-width:46%;text-align:right;}
-.slider-val{font-size:0.8em;color:var(--accent);min-width:38px;text-align:right;}
 input[type=range]{accent-color:var(--accent);}
 </style>
 </head>
@@ -63,7 +55,7 @@ input[type=range]{accent-color:var(--accent);}
 
 <header>
   <h1>Sky Explorer</h1>
-  <span class="sub">drag to pan &middot; wheel/buttons to zoom &middot; longitude wraps</span>
+  <span class="sub">drag to pan &middot; wheel/buttons to zoom &middot; longitude wraps &middot; components overlay</span>
   <a class="back" href="index.html">&larr; All toys</a>
   <a class="back" href="sonifier.html">Sonifier</a>
   <a class="back" href="about.html">How it works</a>
@@ -71,20 +63,12 @@ input[type=range]{accent-color:var(--accent);}
 
 <div class="controls">
   <div class="cgroup">
-    <span class="clabel" title="What the map shows">View</span>
+    <span class="clabel" title="Toggle components: the map overlays them and the scanner sonifies them">Components</span>
     <button class="btn comp-btn active" data-comp="dT_cmblens">CMB</button>
     <button class="btn comp-btn" data-comp="dT_tsz">tSZ</button>
     <button class="btn comp-btn" data-comp="dT_cib">CIB</button>
     <button class="btn comp-btn" data-comp="dT_ksz">kSZ</button>
     <button class="btn comp-btn" data-comp="T_tot">Total</button>
-  </div>
-  <div class="cgroup">
-    <span class="clabel" title="Components you hear while scanning (overlaid; cold=low, hot=high)">Listen</span>
-    <button class="btn lis-btn active" data-lis="dT_cmblens">CMB</button>
-    <button class="btn lis-btn" data-lis="dT_tsz">tSZ</button>
-    <button class="btn lis-btn" data-lis="dT_cib">CIB</button>
-    <button class="btn lis-btn" data-lis="dT_ksz">kSZ</button>
-    <button class="btn lis-btn" data-lis="T_tot">Total</button>
   </div>
   <div class="cgroup">
     <span class="clabel">Frequency</span>
@@ -119,28 +103,30 @@ input[type=range]{accent-color:var(--accent);}
 
 <script>
 const V = {
-  meta:null, halos:null, img:null, imgW:1, imgH:1,
-  scale:1, minScale:1, maxScale:4, panX:0, panY:0,
-  comp:'dT_cmblens', freq:'143',
-  listen:new Set(['dT_cmblens']), valMaps:{}, cl:null,
+  meta:null, halos:null, cl:null,
+  metaW:4096, metaH:2048,
+  scale:1, minScale:1, maxScale:2, panX:0, panY:0,
+  comps:new Set(['dT_cmblens']), freq:'143',
+  layers:{}, valMaps:{},
   dragging:false, moved:false, lastX:0, lastY:0,
   scan:false, volume:0.7, scanLast:0,
   audioCtx:null, gain:null, limiter:null,
 };
+const ORDER=['dT_cmblens','dT_ksz','dT_tsz','dT_cib','T_tot'];
 const COMP_LABELS={dT_cmblens:'CMB', dT_tsz:'tSZ', dT_cib:'CIB', dT_ksz:'kSZ', T_tot:'Total'};
 
 const canvas=document.getElementById('map');
 const ctx=canvas.getContext('2d');
 
-function imgName(){ return V.comp==='T_tot' ? ('T_tot_f'+V.freq) : V.comp; }
-let loadToken=0;
+function layerKey(comp){ return comp==='T_tot' ? ('T_tot_f'+V.freq) : comp; }
+
+// ============= geometry / view =============
 function recomputeScaleLimits(){
-  V.minScale = V.ch/V.imgH;
-  V.maxScale = Math.max(V.minScale, (V.meta?V.meta.width:V.imgW)*2/V.imgW);
+  V.minScale = V.ch/V.metaH;
+  V.maxScale = Math.max(V.minScale, 2);   // 1 = hi-res native width; allow 2x
   if(V.scale<V.minScale) V.scale=V.minScale;
   if(V.scale>V.maxScale) V.scale=V.maxScale;
 }
-
 function resize(){
   const r=document.getElementById('wrap').getBoundingClientRect();
   const dpr=window.devicePixelRatio||1;
@@ -148,112 +134,96 @@ function resize(){
   canvas.style.width=r.width+'px'; canvas.style.height=r.height+'px';
   ctx.setTransform(dpr,0,0,dpr,0,0);
   V.cw=r.width; V.ch=r.height;
-  recomputeScaleLimits();
-  clampView();
-  draw();
+  recomputeScaleLimits(); clampView(); draw();
 }
-
 function clampView(){
   if(V.scale<V.minScale) V.scale=V.minScale;
   if(V.scale>V.maxScale) V.scale=V.maxScale;
-  const sH=V.imgH*V.scale;
-  // vertical: clamp so image stays within view (or centered if smaller)
+  const sH=V.metaH*V.scale;
   if(sH<=V.ch) V.panY=(V.ch-sH)/2;
   else V.panY=Math.min(0, Math.max(V.ch-sH, V.panY));
-  // horizontal wraps freely
+}
+function screenToSky(sx,sy){
+  let fx=(sx-V.panX)/(V.metaW*V.scale); fx-=Math.floor(fx);     // longitude wraps
+  const fy=(sy-V.panY)/(V.metaH*V.scale);
+  if(fy<0||fy>1) return null;
+  return {fx, fy, phi:fx*360, theta:fy*180};
 }
 
+// ============= image layers (one per component, additive composite) =============
+function layerImg(key){ const L=V.layers[key]; return L ? (L.hi||L.lo) : null; }
+function ensureLayers(){
+  let anyLoading=false;
+  for(const c of V.comps){
+    const key=layerKey(c);
+    let L=V.layers[key]; if(!L){ L=V.layers[key]={lo:null,hi:null,loLoading:false,hiLoading:false}; }
+    if(!L.lo && !L.loLoading){
+      L.loLoading=true; anyLoading=true;
+      const im=new Image();
+      im.onload=()=>{ L.lo=im; draw(); loadHiLayer(key); updateHint(); };
+      im.onerror=()=>{ L.loLoading=false; };
+      im.src='sky_img/'+key+'_lo.jpg';
+    } else if(!L.hi && !L.hiLoading){ loadHiLayer(key); }
+  }
+  updateHint();
+}
+function loadHiLayer(key){
+  const L=V.layers[key]; if(!L||L.hi||L.hiLoading) return;
+  L.hiLoading=true;
+  const im=new Image();
+  im.onload=()=>{ L.hi=im; draw(); };
+  im.onerror=()=>{ L.hiLoading=false; };
+  im.src='sky_img/'+key+'.jpg';
+}
+function updateHint(){
+  for(const c of V.comps){ if(!layerImg(layerKey(c))){ document.getElementById('hint').textContent='loading…'; return; } }
+  document.getElementById('hint').textContent='';
+}
+
+// ============= draw =============
 function draw(){
   if(!V.cw) return;
-  ctx.fillStyle='#0a0e1a'; ctx.fillRect(0,0,V.cw,V.ch);
-  if(!V.img||!V.img.complete||!V.img.width){ return; }
-  const sW=V.imgW*V.scale, sH=V.imgH*V.scale;
+  ctx.globalCompositeOperation='source-over';
+  ctx.fillStyle='#04060c'; ctx.fillRect(0,0,V.cw,V.ch);
+  const sW=V.metaW*V.scale, sH=V.metaH*V.scale;
   let baseX=V.panX % sW; if(baseX>0) baseX-=sW;
   ctx.imageSmoothingEnabled=true;
-  for(let x=baseX; x<V.cw; x+=sW){
-    ctx.drawImage(V.img, x, V.panY, sW, sH);
+  ctx.globalCompositeOperation='lighter';      // additive: components glow & combine
+  for(const c of ORDER){
+    if(!V.comps.has(c)) continue;
+    const img=layerImg(layerKey(c)); if(!img) continue;
+    for(let x=baseX; x<V.cw; x+=sW) ctx.drawImage(img, x, V.panY, sW, sH);
   }
+  ctx.globalCompositeOperation='source-over';
   drawHalos(baseX, sW, sH);
 }
-
 function drawHalos(baseX, sW, sH){
   if(!V.halos) return;
-  ctx.save();
   for(let i=0;i<V.halos.n;i++){
-    const ix=(V.halos.phi[i]/360)*V.imgW, iy=(V.halos.theta[i]/180)*V.imgH;
-    const y=V.panY+iy*V.scale;
+    const iy=(V.halos.theta[i]/180)*V.metaH, y=V.panY+iy*V.scale;
     if(y<-4||y>V.ch+4) continue;
-    const logM=V.halos.log_mass[i];
+    const ix=(V.halos.phi[i]/360)*V.metaW, logM=V.halos.log_mass[i];
     const sz=Math.max(1.2,(logM-14.5)*3.2);
     for(let x=baseX+ix*V.scale; x<V.cw+sz; x+=sW){
       if(x<-sz) continue;
-      ctx.globalAlpha=Math.min(0.85,(logM-14.5)*0.7+0.2);
+      ctx.globalAlpha=Math.min(0.8,(logM-14.5)*0.7+0.2);
       ctx.fillStyle='#ffd58a';
       ctx.beginPath(); ctx.arc(x,y,sz,0,2*Math.PI); ctx.fill();
       if(logM>15.0){ ctx.globalAlpha=0.9; ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(x,y,sz+1,0,2*Math.PI); ctx.stroke(); }
     }
   }
-  ctx.restore();
+  ctx.globalAlpha=1;
 }
 
-// screen (sx,sy) -> sky (theta deg, phi deg) and image pixel
-function screenToSky(sx,sy){
-  const sW=V.imgW*V.scale;
-  let imgX=((sx-V.panX)/V.scale)%V.imgW; if(imgX<0) imgX+=V.imgW;
-  let imgY=(sy-V.panY)/V.scale;
-  if(imgY<0||imgY>V.imgH) return null;
-  const phi=(imgX/V.imgW)*360, theta=(imgY/V.imgH)*180;
-  return {phi, theta, imgX, imgY};
-}
-
-// ============= image loading =============
-function loadImage(){
-  if(!V.meta) return;
-  const key=imgName();
-  const token=++loadToken;
-  const prevDispW = (V.img && isFinite(V.scale)) ? V.imgW*V.scale : null;  // keep view across switches
-  document.getElementById('hint').textContent='loading…';
-  // 1) tiny overview, shown instantly
-  const lo=new Image();
-  lo.onload=()=>{
-    if(token!==loadToken) return;
-    V.img=lo; V.imgW=lo.naturalWidth; V.imgH=lo.naturalHeight;
-    recomputeScaleLimits();
-    V.scale = prevDispW ? prevDispW/V.imgW : V.minScale;
-    clampView(); draw();
-    loadHi(key, token);
-  };
-  lo.onerror=()=>{ if(token===loadToken) document.getElementById('hint').textContent='could not load image (serve over http)'; };
-  lo.src='sky_img/'+key+'_lo.jpg';
-}
-
-// 2) high-res, loaded in the background; swaps in without moving the view
-function loadHi(key, token){
-  document.getElementById('hint').textContent='sharpening…';
-  const hi=new Image();
-  hi.onload=()=>{
-    if(token!==loadToken) return;           // user switched component/band
-    const dispW=V.imgW*V.scale;             // preserve displayed size
-    V.img=hi; V.imgW=hi.naturalWidth; V.imgH=hi.naturalHeight;
-    V.scale=dispW/V.imgW;
-    recomputeScaleLimits();
-    clampView(); draw();
-    document.getElementById('hint').textContent='';
-  };
-  hi.onerror=()=>{ if(token===loadToken) document.getElementById('hint').textContent=''; };
-  hi.src='sky_img/'+key+'.jpg';
-}
-
-// ============= value maps (faithful per-component sky values for audio) =============
-function valKey(comp){ return comp==='T_tot' ? ('T_tot_f'+V.freq) : comp; }
+// ============= value maps (faithful per-component values for audio) =============
 function valInfo(comp){
   if(!V.meta) return null;
   const im=V.meta.images;
   return comp==='T_tot' ? (im.T_tot&&im.T_tot[V.freq]) : im[comp];
 }
 function loadValMap(comp){
-  const key=valKey(comp);
-  if(V.valMaps[key]) return;             // loaded or loading
+  const key=layerKey(comp);
+  if(V.valMaps[key]) return;
   const info=valInfo(comp); if(!info||!info.val) return;
   V.valMaps[key]='loading';
   const im=new Image();
@@ -265,10 +235,9 @@ function loadValMap(comp){
   im.onerror=()=>{ delete V.valMaps[key]; };
   im.src='sky_img/'+info.val;
 }
-function ensureListenMaps(){ for(const c of V.listen) loadValMap(c); }
-// returns signed value in [-1,1] (cold/low .. hot/high), or null if not ready
-function sampleValue(comp, fx, fy){
-  const vm=V.valMaps[valKey(comp)];
+function loadValMaps(){ for(const c of V.comps) loadValMap(c); }
+function sampleValue(comp, fx, fy){          // signed [-1,1], cold/low..hot/high, or null
+  const vm=V.valMaps[layerKey(comp)];
   if(!vm || vm==='loading') return null;
   const x=Math.min(vm.w-1,Math.max(0,Math.floor(fx*vm.w)));
   const y=Math.min(vm.h-1,Math.max(0,Math.floor(fy*vm.h)));
@@ -285,17 +254,13 @@ function initAudio(){
   V.limiter.threshold.value=-3; V.limiter.ratio.value=12; V.limiter.attack.value=0.003; V.limiter.release.value=0.25;
   V.gain.connect(V.limiter); V.limiter.connect(V.audioCtx.destination);
 }
-// Each component is a distinct voice (timbre + register) so overlaid voices are
-// distinguishable. Pitch = base * 2^(signed value): cold/low region -> down to one
-// octave below base, hot/high -> up to one octave above, average -> base.
 const VOICES={
-  dT_cmblens:{base:196, type:'sine',     vol:0.20},  // G3
-  dT_ksz:    {base:147, type:'square',   vol:0.13},  // D3
-  dT_tsz:    {base:294, type:'triangle', vol:0.20},  // D4
-  dT_cib:    {base:494, type:'sawtooth', vol:0.15},  // B4
-  T_tot:     {base:262, type:'sine',     vol:0.18},  // C4
+  dT_cmblens:{base:196, type:'sine',     vol:0.20},
+  dT_ksz:    {base:147, type:'square',   vol:0.13},
+  dT_tsz:    {base:294, type:'triangle', vol:0.20},
+  dT_cib:    {base:494, type:'sawtooth', vol:0.15},
+  T_tot:     {base:262, type:'sine',     vol:0.18},
 };
-// mean D_ell of a component at a band (proxy for its power), from cl_data.json
 function compMeanDl(comp, band){
   const sp=V.cl.spectra[comp]; if(!sp) return 0;
   const arr=(V.cl.freq_indep && V.cl.freq_indep.indexOf(comp)>=0) ? sp : sp[band];
@@ -303,10 +268,7 @@ function compMeanDl(comp, band){
   let s=0,n=0; for(let i=0;i<arr.length;i++){ if(arr[i]>0){ s+=arr[i]; n++; } }
   return n ? s/n : 0;
 }
-// loudness weight in [0,1]: this component's amplitude at the current band,
-// relative to its loudest band. Frequency-independent components -> 1.
-// So tSZ nearly silences at its ~217 GHz null (225), CIB swells toward 353.
-function bandFactor(comp){
+function bandFactor(comp){     // loudness vs this component's strongest band (freq-indep -> 1)
   if(!V.cl || (V.cl.freq_indep && V.cl.freq_indep.indexOf(comp)>=0)) return 1;
   let mx=0; for(const b of V.cl.freqs){ const a=compMeanDl(comp,String(b)); if(a>mx) mx=a; }
   if(mx<=0) return 1;
@@ -317,9 +279,9 @@ function playVoice(comp, norm){
   const vol=cfg.vol*bandFactor(comp);
   if(vol<0.004) return;                       // band-suppressed (e.g. tSZ at the 225 null)
   initAudio(); if(V.audioCtx.state==='suspended') V.audioCtx.resume();
-  const ctx=V.audioCtx, now=ctx.currentTime;
+  const ctx2=V.audioCtx, now=ctx2.currentTime;
   const freq=cfg.base*Math.pow(2, Math.max(-1,Math.min(1,norm)));
-  const o=ctx.createOscillator(), g=ctx.createGain();
+  const o=ctx2.createOscillator(), g=ctx2.createGain();
   o.type=cfg.type; o.frequency.value=freq;
   g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(vol,now+0.01);
   g.gain.exponentialRampToValueAtTime(0.001,now+0.22);
@@ -327,12 +289,10 @@ function playVoice(comp, norm){
 }
 function haloPing(logM){
   initAudio(); if(V.audioCtx.state==='suspended') V.audioCtx.resume();
-  const ctx=V.audioCtx, now=ctx.currentTime;
-  const frac=Math.min(1,Math.max(0,(logM-14.5)/0.9));
-  const freq=200+frac*1100;
-  const o=ctx.createOscillator(), o2=ctx.createOscillator(), g=ctx.createGain();
-  o.type='sine'; o.frequency.value=freq; o2.type='sine'; o2.frequency.value=freq*2;
-  const g2=ctx.createGain(); g2.gain.value=0.3;
+  const ctx2=V.audioCtx, now=ctx2.currentTime;
+  const frac=Math.min(1,Math.max(0,(logM-14.5)/0.9)), freq=200+frac*1100;
+  const o=ctx2.createOscillator(), o2=ctx2.createOscillator(), g=ctx2.createGain(), g2=ctx2.createGain();
+  o.type='sine'; o.frequency.value=freq; o2.type='sine'; o2.frequency.value=freq*2; g2.gain.value=0.3;
   g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.3,now+0.008);
   g.gain.exponentialRampToValueAtTime(0.001,now+0.5);
   o.connect(g); o2.connect(g2); g2.connect(g); g.connect(V.gain);
@@ -340,24 +300,21 @@ function haloPing(logM){
 }
 function sonifyAt(sx,sy){
   const sk=screenToSky(sx,sy); if(!sk) return;
-  const fx=sk.imgX/V.imgW, fy=sk.imgY/V.imgH;
-  // overlay one voice per active "Listen" component, pitched by its value here
-  for(const c of ['dT_cmblens','dT_tsz','dT_cib','dT_ksz','T_tot']){
-    if(!V.listen.has(c)) continue;
-    const norm=sampleValue(c, fx, fy);
-    if(norm===null){ loadValMap(c); continue; }   // not ready yet
+  for(const c of ORDER){
+    if(!V.comps.has(c)) continue;
+    const norm=sampleValue(c, sk.fx, sk.fy);
+    if(norm===null){ loadValMap(c); continue; }
     playVoice(c, norm);
   }
   if(V.halos){
-    const cphi=sk.phi, cth=sk.theta, sinT=Math.sin(sk.theta*Math.PI/180);
+    const sinT=Math.sin(sk.theta*Math.PI/180);
     for(let i=0;i<V.halos.n;i++){
-      let dp=Math.abs(V.halos.phi[i]-cphi); if(dp>180) dp=360-dp;
-      const dt=V.halos.theta[i]-cth;
-      const dist=Math.sqrt(dt*dt+dp*dp*sinT*sinT);
-      if(dist<3.0) haloPing(V.halos.log_mass[i]);
+      let dp=Math.abs(V.halos.phi[i]-sk.phi); if(dp>180) dp=360-dp;
+      const dt=V.halos.theta[i]-sk.theta;
+      if(Math.sqrt(dt*dt+dp*dp*sinT*sinT)<3.0) haloPing(V.halos.log_mass[i]);
     }
   }
-  const heard=[...V.listen].map(c=>COMP_LABELS[c]).join('+') || '—';
+  const heard=ORDER.filter(c=>V.comps.has(c)).map(c=>COMP_LABELS[c]).join('+')||'—';
   document.getElementById('readout').innerHTML=
     'l/b &asymp; <b>'+sk.phi.toFixed(0)+'&deg;, '+(90-sk.theta).toFixed(0)+'&deg;</b> &nbsp;|&nbsp; hearing: '+heard;
 }
@@ -365,36 +322,21 @@ function sonifyAt(sx,sy){
 // ============= interaction =============
 function zoomAt(sx,sy,factor){
   const ns=Math.min(V.maxScale,Math.max(V.minScale,V.scale*factor));
-  const f=ns/V.scale;
-  V.panX=sx-(sx-V.panX)*f;
-  V.panY=sy-(sy-V.panY)*f;
+  const f=ns/V.scale; V.panX=sx-(sx-V.panX)*f; V.panY=sy-(sy-V.panY)*f;
   V.scale=ns; clampView(); draw();
 }
-
 canvas.addEventListener('mousedown',e=>{ V.dragging=true; V.moved=false; V.lastX=e.clientX; V.lastY=e.clientY; canvas.classList.add('grabbing'); });
 window.addEventListener('mousemove',e=>{
   if(!V.dragging) return;
   const dx=e.clientX-V.lastX, dy=e.clientY-V.lastY; V.lastX=e.clientX; V.lastY=e.clientY;
   if(Math.abs(dx)+Math.abs(dy)>2) V.moved=true;
-  if(V.scan){
-    const r=canvas.getBoundingClientRect();
-    if(Date.now()-V.scanLast>150){ sonifyAt(e.clientX-r.left,e.clientY-r.top); V.scanLast=Date.now(); }
-  } else {
-    V.panX+=dx; V.panY+=dy; clampView(); draw();
-  }
+  if(V.scan){ const r=canvas.getBoundingClientRect(); if(Date.now()-V.scanLast>150){ sonifyAt(e.clientX-r.left,e.clientY-r.top); V.scanLast=Date.now(); } }
+  else { V.panX+=dx; V.panY+=dy; clampView(); draw(); }
 });
 window.addEventListener('mouseup',()=>{ V.dragging=false; canvas.classList.remove('grabbing'); });
-canvas.addEventListener('click',e=>{
-  if(V.moved) return;
-  const r=canvas.getBoundingClientRect();
-  sonifyAt(e.clientX-r.left,e.clientY-r.top);
-});
-canvas.addEventListener('wheel',e=>{ e.preventDefault();
-  const r=canvas.getBoundingClientRect();
-  zoomAt(e.clientX-r.left,e.clientY-r.top, e.deltaY<0?1.15:1/1.15);
-},{passive:false});
+canvas.addEventListener('click',e=>{ if(V.moved) return; const r=canvas.getBoundingClientRect(); sonifyAt(e.clientX-r.left,e.clientY-r.top); });
+canvas.addEventListener('wheel',e=>{ e.preventDefault(); const r=canvas.getBoundingClientRect(); zoomAt(e.clientX-r.left,e.clientY-r.top, e.deltaY<0?1.15:1/1.15); },{passive:false});
 
-// touch: one finger pan/scan, two finger pinch zoom
 let pinchD=0;
 canvas.addEventListener('touchstart',e=>{
   if(e.touches.length===1){ V.dragging=true; V.moved=false; V.lastX=e.touches[0].clientX; V.lastY=e.touches[0].clientY; }
@@ -421,19 +363,17 @@ function touchDist(e){ const a=e.touches[0],b=e.touches[1]; return Math.hypot(a.
 
 // controls
 document.querySelectorAll('.comp-btn').forEach(b=>b.addEventListener('click',()=>{
-  document.querySelectorAll('.comp-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active');
-  V.comp=b.dataset.comp; loadImage();
-}));
-document.querySelectorAll('.lis-btn').forEach(b=>b.addEventListener('click',()=>{
-  const c=b.dataset.lis;
-  if(V.listen.has(c)) V.listen.delete(c); else { V.listen.add(c); loadValMap(c); }
-  b.classList.toggle('active', V.listen.has(c));
+  const c=b.dataset.comp;
+  if(V.comps.has(c)){ if(V.comps.size>1) V.comps.delete(c); }   // keep at least one on
+  else { V.comps.add(c); loadValMap(c); }
+  b.classList.toggle('active', V.comps.has(c));
+  ensureLayers(); draw();
 }));
 document.querySelectorAll('.freq-btn').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('.freq-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active');
   V.freq=b.dataset.freq;
-  if(V.comp==='T_tot') loadImage();
-  if(V.listen.has('T_tot')) loadValMap('T_tot');   // Total's value map is per-band
+  if(V.comps.has('T_tot')){ ensureLayers(); loadValMap('T_tot'); }   // Total is per-band
+  draw();
 }));
 document.getElementById('zoomIn').addEventListener('click',()=>zoomAt(V.cw/2,V.ch/2,1.4));
 document.getElementById('zoomOut').addEventListener('click',()=>zoomAt(V.cw/2,V.ch/2,1/1.4));
@@ -441,7 +381,7 @@ document.getElementById('zoomReset').addEventListener('click',()=>{ V.scale=V.mi
 document.getElementById('scanBtn').addEventListener('click',()=>{
   V.scan=!V.scan; document.getElementById('scanBtn').classList.toggle('active',V.scan);
   canvas.classList.toggle('scan',V.scan);
-  if(V.scan){ initAudio(); ensureListenMaps(); }
+  if(V.scan){ initAudio(); loadValMaps(); }
 });
 document.getElementById('vol').addEventListener('input',e=>{ V.volume=e.target.value/100; if(V.gain) V.gain.gain.value=V.volume; });
 window.addEventListener('resize',resize);
@@ -452,12 +392,12 @@ async function init(){
   try{
     const [a,b,e]=await Promise.all([fetch('sky_img/sky_img.json'),fetch('halos.json'),fetch('cl_data.json')]);
     if(!a.ok) throw new Error('sky_img.json HTTP '+a.status);
-    V.meta=await a.json(); V.imgW=V.meta.width; V.imgH=V.meta.height;
+    V.meta=await a.json(); V.metaW=V.meta.width; V.metaH=V.meta.height;
     V.halos = b.ok ? await b.json() : null;
     V.cl = e.ok ? await e.json() : null;
     resize();
-    loadImage();
-    ensureListenMaps();
+    ensureLayers();
+    loadValMaps();
   }catch(err){
     document.getElementById('hint').textContent='Load failed: '+err.message+(location.protocol==='file:'?' (serve over http, not file://)':'');
   }
