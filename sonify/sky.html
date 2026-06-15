@@ -112,7 +112,7 @@ const V = {
   scan:false, volume:0.7, scanLast:0,
   audioCtx:null, gain:null, limiter:null,
 };
-const ORDER=['dT_cmblens','dT_ksz','dT_tsz','dT_cib','T_tot'];
+const ORDER=['dT_cmblens','T_tot','dT_ksz','dT_tsz','dT_cib'];  // background-like first, emission on top
 const COMP_LABELS={dT_cmblens:'CMB', dT_tsz:'tSZ', dT_cib:'CIB', dT_ksz:'kSZ', T_tot:'Total'};
 
 const canvas=document.getElementById('map');
@@ -188,11 +188,14 @@ function draw(){
   const sW=V.metaW*V.scale, sH=V.metaH*V.scale;
   let baseX=V.panX % sW; if(baseX>0) baseX-=sW;
   ctx.imageSmoothingEnabled=true;
-  ctx.globalCompositeOperation='lighter';      // additive: components glow & combine
+  let first=true;
   for(const c of ORDER){
     if(!V.comps.has(c)) continue;
     const img=layerImg(layerKey(c)); if(!img) continue;
+    // first (background) layer painted opaque; emission layers (magma/inferno) add on top
+    ctx.globalCompositeOperation = first ? 'source-over' : 'lighter';
     for(let x=baseX; x<V.cw; x+=sW) ctx.drawImage(img, x, V.panY, sW, sH);
+    first=false;
   }
   ctx.globalCompositeOperation='source-over';
   drawHalos(baseX, sW, sH);

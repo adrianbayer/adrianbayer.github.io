@@ -176,7 +176,7 @@ mjx-container{overflow-x:auto;overflow-y:hidden;max-width:100%;}
 <section id="explorer">
   <h2>The Sky Explorer</h2>
   <p>The sky is shown in an equirectangular (plate&ndash;carr&eacute;e) projection: pixel \((x,y)\) maps to \((\phi,\theta)=(360^\circ x/W,\ 180^\circ y/H)\), so panning in longitude wraps seamlessly. A tiny overview loads instantly; a high-resolution image streams in behind it for sharp zoom.</p>
-  <p>Components are drawn as single-hue glows (intensity \(=|\Delta T|/\Delta T_{\rm max}\), gamma-lifted) in their colours and <strong>composited additively</strong>, so overlapping components combine like a multi-wavelength image. Massive clusters (\(M>5\times10^{14}M_\odot\)) are overlaid as points sized by \(\log M\).</p>
+  <p>Each component is drawn in a scientific colormap &mdash; CMB, kSZ and Total as a diverging red&ndash;blue map, tSZ in <em>magma</em>, CIB in <em>inferno</em>. When several are selected, the diverging "background" is painted first and the dark-at-zero tSZ/CIB maps are <strong>added on top</strong>, so cluster and dusty-galaxy signals glow over the CMB. Massive clusters (\(M>5\times10^{14}M_\odot\)) are overlaid as points sized by \(\log M\).</p>
   <h3>Scanning (audio)</h3>
   <p>Each selected component is a voice. Its <strong>pitch</strong> reads the true (signed) sky value \(v\in[-1,1]\) under the cursor &mdash; cold low, hot high:</p>
   \[ f_{\rm voice}=f_{\rm base}\cdot 2^{\,v}. \]
@@ -189,7 +189,6 @@ mjx-container{overflow-x:auto;overflow-y:hidden;max-width:100%;}
   <h2>Software &amp; reproducibility</h2>
   <p>The pipeline starts from HalfDome spherical-harmonic maps (\(\ell_{\max}=9000\), \(2'\) beam): <code>precompute_cls.py</code> forms \(C_\ell\) (and reconstructs Total by summing \(a_{\ell m}\)); <code>export_web_data.py</code> writes the spectra and low-resolution sky textures; <code>export_sky_images.py</code> renders the high-resolution Sky Explorer images and faithful value maps.</p>
   <p>The web app synthesizes all audio in the browser with the Web Audio API and renders with the Canvas 2D context &mdash; no server and no JavaScript dependencies (this docs page additionally loads MathJax from a CDN to typeset the equations).</p>
-  <p class="muted">See the accompanying writeup for the full method and references.</p>
 </section>
 
 </div>
