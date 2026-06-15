@@ -122,7 +122,7 @@ const V = {
   meta:null, halos:null, img:null, imgW:1, imgH:1,
   scale:1, minScale:1, maxScale:4, panX:0, panY:0,
   comp:'dT_cmblens', freq:'143',
-  listen:new Set(['dT_cmblens']), valMaps:{},
+  listen:new Set(['dT_cmblens']), valMaps:{}, cl:null,
   dragging:false, moved:false, lastX:0, lastY:0,
   scan:false, volume:0.7, scanLast:0,
   audioCtx:null, gain:null, limiter:null,
@@ -295,13 +295,33 @@ const VOICES={
   dT_cib:    {base:494, type:'sawtooth', vol:0.15},  // B4
   T_tot:     {base:262, type:'sine',     vol:0.18},  // C4
 };
+// mean D_ell of a component at a band (proxy for its power), from cl_data.json
+function compMeanDl(comp, band){
+  const sp=V.cl.spectra[comp]; if(!sp) return 0;
+  const arr=(V.cl.freq_indep && V.cl.freq_indep.indexOf(comp)>=0) ? sp : sp[band];
+  if(!arr) return 0;
+  let s=0,n=0; for(let i=0;i<arr.length;i++){ if(arr[i]>0){ s+=arr[i]; n++; } }
+  return n ? s/n : 0;
+}
+// loudness weight in [0,1]: this component's amplitude at the current band,
+// relative to its loudest band. Frequency-independent components -> 1.
+// So tSZ nearly silences at its ~217 GHz null (225), CIB swells toward 353.
+function bandFactor(comp){
+  if(!V.cl || (V.cl.freq_indep && V.cl.freq_indep.indexOf(comp)>=0)) return 1;
+  let mx=0; for(const b of V.cl.freqs){ const a=compMeanDl(comp,String(b)); if(a>mx) mx=a; }
+  if(mx<=0) return 1;
+  return Math.sqrt(compMeanDl(comp,V.freq)/mx);
+}
 function playVoice(comp, norm){
+  const cfg=VOICES[comp]||VOICES.T_tot;
+  const vol=cfg.vol*bandFactor(comp);
+  if(vol<0.004) return;                       // band-suppressed (e.g. tSZ at the 225 null)
   initAudio(); if(V.audioCtx.state==='suspended') V.audioCtx.resume();
-  const cfg=VOICES[comp]||VOICES.T_tot, ctx=V.audioCtx, now=ctx.currentTime;
+  const ctx=V.audioCtx, now=ctx.currentTime;
   const freq=cfg.base*Math.pow(2, Math.max(-1,Math.min(1,norm)));
   const o=ctx.createOscillator(), g=ctx.createGain();
   o.type=cfg.type; o.frequency.value=freq;
-  g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(cfg.vol,now+0.01);
+  g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(vol,now+0.01);
   g.gain.exponentialRampToValueAtTime(0.001,now+0.22);
   o.connect(g); g.connect(V.gain); o.start(now); o.stop(now+0.26);
 }
@@ -430,10 +450,11 @@ window.addEventListener('resize',resize);
 async function init(){
   document.getElementById('hint').textContent='loading…';
   try{
-    const [a,b]=await Promise.all([fetch('sky_img/sky_img.json'),fetch('halos.json')]);
+    const [a,b,e]=await Promise.all([fetch('sky_img/sky_img.json'),fetch('halos.json'),fetch('cl_data.json')]);
     if(!a.ok) throw new Error('sky_img.json HTTP '+a.status);
     V.meta=await a.json(); V.imgW=V.meta.width; V.imgH=V.meta.height;
     V.halos = b.ok ? await b.json() : null;
+    V.cl = e.ok ? await e.json() : null;
     resize();
     loadImage();
     ensureListenMaps();
