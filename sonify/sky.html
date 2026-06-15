@@ -38,6 +38,12 @@ a.back:hover{background:#1e2744;}
 .comp-btn[data-comp="dT_cib"]{border-color:var(--cib);} .comp-btn[data-comp="dT_cib"].active{background:var(--cib);color:var(--bg);}
 .comp-btn[data-comp="dT_ksz"]{border-color:var(--ksz);} .comp-btn[data-comp="dT_ksz"].active{background:var(--ksz);color:var(--bg);}
 .comp-btn[data-comp="T_tot"]{border-color:var(--tot);} .comp-btn[data-comp="T_tot"].active{background:var(--tot);color:var(--bg);}
+.lis-btn{border-width:2px;}
+.lis-btn[data-lis="dT_cmblens"]{border-color:var(--cmb);} .lis-btn[data-lis="dT_cmblens"].active{background:var(--cmb);color:var(--bg);}
+.lis-btn[data-lis="dT_tsz"]{border-color:var(--tsz);} .lis-btn[data-lis="dT_tsz"].active{background:var(--tsz);color:var(--bg);}
+.lis-btn[data-lis="dT_cib"]{border-color:var(--cib);} .lis-btn[data-lis="dT_cib"].active{background:var(--cib);color:var(--bg);}
+.lis-btn[data-lis="dT_ksz"]{border-color:var(--ksz);} .lis-btn[data-lis="dT_ksz"].active{background:var(--ksz);color:var(--bg);}
+.lis-btn[data-lis="T_tot"]{border-color:var(--tot);} .lis-btn[data-lis="T_tot"].active{background:var(--tot);color:var(--bg);}
 .freq-group{display:flex;align-items:center;gap:3px;padding:2px 6px;border:1px solid var(--border);border-radius:6px;}
 .freq-group .clabel{margin-right:2px;}
 #wrap{position:relative;width:100vw;height:calc(100vh - 96px);}
@@ -65,12 +71,20 @@ input[type=range]{accent-color:var(--accent);}
 
 <div class="controls">
   <div class="cgroup">
-    <span class="clabel">Component</span>
+    <span class="clabel" title="What the map shows">View</span>
     <button class="btn comp-btn active" data-comp="dT_cmblens">CMB</button>
     <button class="btn comp-btn" data-comp="dT_tsz">tSZ</button>
     <button class="btn comp-btn" data-comp="dT_cib">CIB</button>
     <button class="btn comp-btn" data-comp="dT_ksz">kSZ</button>
     <button class="btn comp-btn" data-comp="T_tot">Total</button>
+  </div>
+  <div class="cgroup">
+    <span class="clabel" title="Components you hear while scanning (overlaid; cold=low, hot=high)">Listen</span>
+    <button class="btn lis-btn active" data-lis="dT_cmblens">CMB</button>
+    <button class="btn lis-btn" data-lis="dT_tsz">tSZ</button>
+    <button class="btn lis-btn" data-lis="dT_cib">CIB</button>
+    <button class="btn lis-btn" data-lis="dT_ksz">kSZ</button>
+    <button class="btn lis-btn" data-lis="T_tot">Total</button>
   </div>
   <div class="cgroup">
     <span class="clabel">Frequency</span>
@@ -108,10 +122,10 @@ const V = {
   meta:null, halos:null, img:null, imgW:1, imgH:1,
   scale:1, minScale:1, maxScale:4, panX:0, panY:0,
   comp:'dT_cmblens', freq:'143',
+  listen:new Set(['dT_cmblens']), valMaps:{},
   dragging:false, moved:false, lastX:0, lastY:0,
   scan:false, volume:0.7, scanLast:0,
   audioCtx:null, gain:null, limiter:null,
-  off:null, offCtx:null,
 };
 const COMP_LABELS={dT_cmblens:'CMB', dT_tsz:'tSZ', dT_cib:'CIB', dT_ksz:'kSZ', T_tot:'Total'};
 
@@ -204,7 +218,6 @@ function loadImage(){
   lo.onload=()=>{
     if(token!==loadToken) return;
     V.img=lo; V.imgW=lo.naturalWidth; V.imgH=lo.naturalHeight;
-    setupOffscreen();
     recomputeScaleLimits();
     V.scale = prevDispW ? prevDispW/V.imgW : V.minScale;
     clampView(); draw();
@@ -223,7 +236,6 @@ function loadHi(key, token){
     const dispW=V.imgW*V.scale;             // preserve displayed size
     V.img=hi; V.imgW=hi.naturalWidth; V.imgH=hi.naturalHeight;
     V.scale=dispW/V.imgW;
-    setupOffscreen();
     recomputeScaleLimits();
     clampView(); draw();
     document.getElementById('hint').textContent='';
@@ -232,19 +244,36 @@ function loadHi(key, token){
   hi.src='sky_img/'+key+'.jpg';
 }
 
-function setupOffscreen(){
-  // native-resolution copy for per-pixel value sampling (audio)
-  V.off=document.createElement('canvas'); V.off.width=V.imgW; V.off.height=V.imgH;
-  V.offCtx=V.off.getContext('2d', {willReadFrequently:true});
-  V.offCtx.drawImage(V.img,0,0);
+// ============= value maps (faithful per-component sky values for audio) =============
+function valKey(comp){ return comp==='T_tot' ? ('T_tot_f'+V.freq) : comp; }
+function valInfo(comp){
+  if(!V.meta) return null;
+  const im=V.meta.images;
+  return comp==='T_tot' ? (im.T_tot&&im.T_tot[V.freq]) : im[comp];
 }
-
-function sampleLuminance(imgX,imgY){
-  if(!V.offCtx) return 0.5;
-  try{
-    const d=V.offCtx.getImageData(Math.floor(imgX),Math.floor(imgY),1,1).data;
-    return (0.299*d[0]+0.587*d[1]+0.114*d[2])/255;
-  }catch(e){ return 0.5; }
+function loadValMap(comp){
+  const key=valKey(comp);
+  if(V.valMaps[key]) return;             // loaded or loading
+  const info=valInfo(comp); if(!info||!info.val) return;
+  V.valMaps[key]='loading';
+  const im=new Image();
+  im.onload=()=>{
+    const c=document.createElement('canvas'); c.width=im.naturalWidth; c.height=im.naturalHeight;
+    const cx=c.getContext('2d',{willReadFrequently:true}); cx.drawImage(im,0,0);
+    V.valMaps[key]={cx, w:c.width, h:c.height, mode:info.mode};
+  };
+  im.onerror=()=>{ delete V.valMaps[key]; };
+  im.src='sky_img/'+info.val;
+}
+function ensureListenMaps(){ for(const c of V.listen) loadValMap(c); }
+// returns signed value in [-1,1] (cold/low .. hot/high), or null if not ready
+function sampleValue(comp, fx, fy){
+  const vm=V.valMaps[valKey(comp)];
+  if(!vm || vm==='loading') return null;
+  const x=Math.min(vm.w-1,Math.max(0,Math.floor(fx*vm.w)));
+  const y=Math.min(vm.h-1,Math.max(0,Math.floor(fy*vm.h)));
+  let g; try{ g=vm.cx.getImageData(x,y,1,1).data[0]; }catch(e){ return null; }
+  return vm.mode==='sym' ? (g-128)/127 : (g/255)*2-1;
 }
 
 // ============= audio =============
@@ -256,15 +285,25 @@ function initAudio(){
   V.limiter.threshold.value=-3; V.limiter.ratio.value=12; V.limiter.attack.value=0.003; V.limiter.release.value=0.25;
   V.gain.connect(V.limiter); V.limiter.connect(V.audioCtx.destination);
 }
-function blip(lum){
+// Each component is a distinct voice (timbre + register) so overlaid voices are
+// distinguishable. Pitch = base * 2^(signed value): cold/low region -> down to one
+// octave below base, hot/high -> up to one octave above, average -> base.
+const VOICES={
+  dT_cmblens:{base:196, type:'sine',     vol:0.20},  // G3
+  dT_ksz:    {base:147, type:'square',   vol:0.13},  // D3
+  dT_tsz:    {base:294, type:'triangle', vol:0.20},  // D4
+  dT_cib:    {base:494, type:'sawtooth', vol:0.15},  // B4
+  T_tot:     {base:262, type:'sine',     vol:0.18},  // C4
+};
+function playVoice(comp, norm){
   initAudio(); if(V.audioCtx.state==='suspended') V.audioCtx.resume();
-  const ctx=V.audioCtx, now=ctx.currentTime;
-  const freq=150*Math.pow(8, lum);          // brightness -> pitch (150..1200 Hz)
+  const cfg=VOICES[comp]||VOICES.T_tot, ctx=V.audioCtx, now=ctx.currentTime;
+  const freq=cfg.base*Math.pow(2, Math.max(-1,Math.min(1,norm)));
   const o=ctx.createOscillator(), g=ctx.createGain();
-  o.type='triangle'; o.frequency.value=freq;
-  g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.25,now+0.01);
-  g.gain.exponentialRampToValueAtTime(0.001,now+0.25);
-  o.connect(g); g.connect(V.gain); o.start(now); o.stop(now+0.3);
+  o.type=cfg.type; o.frequency.value=freq;
+  g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(cfg.vol,now+0.01);
+  g.gain.exponentialRampToValueAtTime(0.001,now+0.22);
+  o.connect(g); g.connect(V.gain); o.start(now); o.stop(now+0.26);
 }
 function haloPing(logM){
   initAudio(); if(V.audioCtx.state==='suspended') V.audioCtx.resume();
@@ -281,7 +320,14 @@ function haloPing(logM){
 }
 function sonifyAt(sx,sy){
   const sk=screenToSky(sx,sy); if(!sk) return;
-  blip(sampleLuminance(sk.imgX,sk.imgY));
+  const fx=sk.imgX/V.imgW, fy=sk.imgY/V.imgH;
+  // overlay one voice per active "Listen" component, pitched by its value here
+  for(const c of ['dT_cmblens','dT_tsz','dT_cib','dT_ksz','T_tot']){
+    if(!V.listen.has(c)) continue;
+    const norm=sampleValue(c, fx, fy);
+    if(norm===null){ loadValMap(c); continue; }   // not ready yet
+    playVoice(c, norm);
+  }
   if(V.halos){
     const cphi=sk.phi, cth=sk.theta, sinT=Math.sin(sk.theta*Math.PI/180);
     for(let i=0;i<V.halos.n;i++){
@@ -291,8 +337,9 @@ function sonifyAt(sx,sy){
       if(dist<3.0) haloPing(V.halos.log_mass[i]);
     }
   }
+  const heard=[...V.listen].map(c=>COMP_LABELS[c]).join('+') || '—';
   document.getElementById('readout').innerHTML=
-    'l/b &asymp; <b>'+sk.phi.toFixed(0)+'&deg;, '+(90-sk.theta).toFixed(0)+'&deg;</b> &nbsp; '+COMP_LABELS[V.comp];
+    'l/b &asymp; <b>'+sk.phi.toFixed(0)+'&deg;, '+(90-sk.theta).toFixed(0)+'&deg;</b> &nbsp;|&nbsp; hearing: '+heard;
 }
 
 // ============= interaction =============
@@ -357,9 +404,16 @@ document.querySelectorAll('.comp-btn').forEach(b=>b.addEventListener('click',()=
   document.querySelectorAll('.comp-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active');
   V.comp=b.dataset.comp; loadImage();
 }));
+document.querySelectorAll('.lis-btn').forEach(b=>b.addEventListener('click',()=>{
+  const c=b.dataset.lis;
+  if(V.listen.has(c)) V.listen.delete(c); else { V.listen.add(c); loadValMap(c); }
+  b.classList.toggle('active', V.listen.has(c));
+}));
 document.querySelectorAll('.freq-btn').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('.freq-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active');
-  V.freq=b.dataset.freq; if(V.comp==='T_tot') loadImage();
+  V.freq=b.dataset.freq;
+  if(V.comp==='T_tot') loadImage();
+  if(V.listen.has('T_tot')) loadValMap('T_tot');   // Total's value map is per-band
 }));
 document.getElementById('zoomIn').addEventListener('click',()=>zoomAt(V.cw/2,V.ch/2,1.4));
 document.getElementById('zoomOut').addEventListener('click',()=>zoomAt(V.cw/2,V.ch/2,1/1.4));
@@ -367,7 +421,7 @@ document.getElementById('zoomReset').addEventListener('click',()=>{ V.scale=V.mi
 document.getElementById('scanBtn').addEventListener('click',()=>{
   V.scan=!V.scan; document.getElementById('scanBtn').classList.toggle('active',V.scan);
   canvas.classList.toggle('scan',V.scan);
-  if(V.scan) initAudio();
+  if(V.scan){ initAudio(); ensureListenMaps(); }
 });
 document.getElementById('vol').addEventListener('input',e=>{ V.volume=e.target.value/100; if(V.gain) V.gain.gain.value=V.volume; });
 window.addEventListener('resize',resize);
@@ -382,6 +436,7 @@ async function init(){
     V.halos = b.ok ? await b.json() : null;
     resize();
     loadImage();
+    ensureListenMaps();
   }catch(err){
     document.getElementById('hint').textContent='Load failed: '+err.message+(location.protocol==='file:'?' (serve over http, not file://)':'');
   }
