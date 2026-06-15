@@ -23,6 +23,7 @@
   --cmb: #4a9eff;
   --tsz: #ff9f43;
   --cib: #2ed573;
+  --ksz: #b86bff;
   --tot: #a8a8a8;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -73,6 +74,8 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
 .toggle-btn[data-comp="dT_tsz"].active { background: var(--tsz); }
 .toggle-btn[data-comp="dT_cib"] { border-color: var(--cib); }
 .toggle-btn[data-comp="dT_cib"].active { background: var(--cib); }
+.toggle-btn[data-comp="dT_ksz"] { border-color: var(--ksz); }
+.toggle-btn[data-comp="dT_ksz"].active { background: var(--ksz); }
 .toggle-btn[data-comp="T_tot"] { border-color: var(--tot); }
 .toggle-btn[data-comp="T_tot"].active { background: var(--tot); }
 
@@ -83,6 +86,13 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
 }
 .sm-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
 .sm-btn:hover { background: #1e2744; }
+
+/* Frequency survey groups */
+.freq-groups { display: flex; gap: 8px; flex-wrap: wrap; }
+.freq-group { display: flex; align-items: center; gap: 4px; padding: 3px 6px;
+  border: 1px solid var(--border); border-radius: 6px; }
+.freq-group-label { font-size: 0.66em; color: #6b7394; text-transform: uppercase;
+  letter-spacing: 0.5px; }
 
 /* Sliders */
 .slider-row { display: flex; align-items: center; gap: 8px; }
@@ -180,16 +190,29 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
         <button class="toggle-btn active" data-comp="dT_cmblens">CMB</button>
         <button class="toggle-btn" data-comp="dT_tsz">tSZ</button>
         <button class="toggle-btn" data-comp="dT_cib">CIB</button>
+        <button class="toggle-btn" data-comp="dT_ksz">kSZ</button>
         <button class="toggle-btn" data-comp="T_tot">Total</button>
       </div>
     </div>
 
     <div class="control-group">
-      <label>Observing Frequency</label>
-      <div class="btn-row">
-        <button class="sm-btn freq-btn" data-freq="93">93 GHz</button>
-        <button class="sm-btn freq-btn active" data-freq="143">143 GHz</button>
-        <button class="sm-btn freq-btn" data-freq="353">353 GHz</button>
+      <label>Observing Frequency (GHz)</label>
+      <div class="freq-groups">
+        <div class="freq-group">
+          <span class="freq-group-label">SO MF</span>
+          <button class="sm-btn freq-btn" data-freq="93">93</button>
+          <button class="sm-btn freq-btn" data-freq="145">145</button>
+        </div>
+        <div class="freq-group">
+          <span class="freq-group-label">SO HF</span>
+          <button class="sm-btn freq-btn" data-freq="225">225</button>
+          <button class="sm-btn freq-btn" data-freq="280">280</button>
+        </div>
+        <div class="freq-group">
+          <span class="freq-group-label">Planck</span>
+          <button class="sm-btn freq-btn active" data-freq="143">143</button>
+          <button class="sm-btn freq-btn" data-freq="353">353</button>
+        </div>
       </div>
     </div>
 
@@ -246,8 +269,20 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
           <option value="synth">synth pad</option>
         </select>
       </div>
+      <div class="slider-row">
+        <span style="color:var(--ksz);font-size:0.8em;min-width:40px;">kSZ</span>
+        <select id="instKsz" class="inst-select">
+          <option value="piano">piano</option>
+          <option value="violin">violin</option>
+          <option value="guitar">electric guitar</option>
+          <option value="flute">flute</option>
+          <option value="bass">bass</option>
+          <option value="synth" selected>synth pad</option>
+        </select>
+      </div>
       <div style="font-size:0.72em;color:#6b7394;margin-top:4px;">
-        &#8467; &rarr; octave, &nbsp; &#957; &rarr; note (93=A, 143=C#, 353=E), &nbsp; D<sub>&#8467;</sub> &rarr; volume
+        &#8467; &rarr; octave, &nbsp; &#957; &rarr; note, &nbsp; D<sub>&#8467;</sub> &rarr; volume.
+        CMB &amp; kSZ are frequency-independent.
       </div>
     </div>
 
@@ -345,13 +380,17 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
         <button class="sm-btn sky-comp-btn active" data-skycomp="dT_cmblens">CMB</button>
         <button class="sm-btn sky-comp-btn" data-skycomp="dT_tsz">tSZ</button>
         <button class="sm-btn sky-comp-btn" data-skycomp="dT_cib">CIB</button>
+        <button class="sm-btn sky-comp-btn" data-skycomp="dT_ksz">kSZ</button>
         <button class="sm-btn sky-comp-btn" data-skycomp="T_tot">Total</button>
       </div>
-      <label style="margin-top:4px;">Map frequency</label>
+      <label style="margin-top:4px;">Map frequency <span style="text-transform:none;font-size:0.9em;">(Total only)</span></label>
       <div class="btn-row">
-        <button class="sm-btn sky-freq-btn" data-skyfreq="93">93 GHz</button>
-        <button class="sm-btn sky-freq-btn active" data-skyfreq="143">143 GHz</button>
-        <button class="sm-btn sky-freq-btn" data-skyfreq="353">353 GHz</button>
+        <button class="sm-btn sky-freq-btn" data-skyfreq="93">93</button>
+        <button class="sm-btn sky-freq-btn active" data-skyfreq="143">143</button>
+        <button class="sm-btn sky-freq-btn" data-skyfreq="145">145</button>
+        <button class="sm-btn sky-freq-btn" data-skyfreq="225">225</button>
+        <button class="sm-btn sky-freq-btn" data-skyfreq="280">280</button>
+        <button class="sm-btn sky-freq-btn" data-skyfreq="353">353</button>
       </div>
     </div>
   </div>
@@ -366,6 +405,16 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
     globally normalized so variations in D<sub>&#8467;</sub> are preserved during sweeps
     (otherwise per-buffer normalization would flatten the dynamic range).</p>
 
+    <p style="margin-bottom:8px;"><strong>Components &amp; bands.</strong>
+    Five components: the lensed <strong>CMB</strong>, thermal SZ (<strong>tSZ</strong>),
+    cosmic infrared background (<strong>CIB</strong>), kinetic SZ (<strong>kSZ</strong>),
+    and their sum <strong>Total</strong>. Six observing bands are grouped by survey:
+    <strong>SO MF</strong> (93, 145), <strong>SO HF</strong> (225, 280), and
+    <strong>Planck</strong> (143, 353). Only tSZ and CIB depend on frequency &mdash;
+    the CMB and kSZ are frequency-independent in thermodynamic units, so switching
+    bands leaves them (and their sky maps) unchanged and only the tSZ/CIB/Total mix
+    moves. The tSZ in particular nearly vanishes near its ~217 GHz null.</p>
+
     <p style="margin-bottom:8px;"><strong>Synthesis methods.</strong>
     <em>Shaped Noise</em> filters white noise so its spectrum matches D<sub>&#8467;</sub>
     &mdash; the most faithful representation, sounds textural.
@@ -379,7 +428,7 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
     each component gets its own instrument (piano/violin/guitar/flute/bass/synth,
     assignable via dropdown or palette preset). The <strong>octave</strong>
     is set by &#8467;, the <strong>note name</strong> by observing frequency
-    (93 GHz = A, 143 GHz = C#, 353 GHz = E), and the <strong>volume</strong>
+    (each band maps to a note of an ascending pentatonic), and the <strong>volume</strong>
     by &radic;&lang;D<sub>&#8467;</sub>&rang; <em>integrated over an octave-wide band</em>
     around the current &#8467;, not just the single point. Each instrument
     has its own articulation rhythm (piano: re-strikes with per-harmonic
@@ -446,7 +495,7 @@ const S = {
   activeComponents: new Set(['dT_cmblens']),
   freq: 143, ellMin: 2, ellMax: 6000, volume: 0.7,
   method: 'noise',       // 'noise', 'additive', 'layers', 'instruments'
-  instruments: {dT_cmblens:'piano', dT_tsz:'violin', dT_cib:'guitar'},
+  instruments: {dT_cmblens:'piano', dT_tsz:'violin', dT_cib:'guitar', dT_ksz:'synth'},
   stereoMode: 'mono',    // 'mono', 'comp', 'freq'
   playing: false,
   sweeping: false, sweepPos: 0, sweepSpeed: 10, sweepDir: 1,
@@ -461,8 +510,12 @@ const S = {
   sourceNodes: [], _rebuildTimer: null,
 };
 
-const COLORS = { dT_cmblens:'#4a9eff', dT_tsz:'#ff9f43', dT_cib:'#2ed573', T_tot:'#a8a8a8' };
-const COMP_LABELS = { dT_cmblens:'CMB', dT_tsz:'tSZ', dT_cib:'CIB', T_tot:'Total' };
+const COLORS = { dT_cmblens:'#4a9eff', dT_tsz:'#ff9f43', dT_cib:'#2ed573', dT_ksz:'#b86bff', T_tot:'#a8a8a8' };
+const COMP_LABELS = { dT_cmblens:'CMB', dT_tsz:'tSZ', dT_cib:'CIB', dT_ksz:'kSZ', T_tot:'Total' };
+
+// Components whose spectrum does not depend on observing frequency (CMB, kSZ):
+// the JSON stores a single array for these instead of one per frequency.
+function isFreqIndep(comp){ return !!(S.clData && S.clData.freq_indep && S.clData.freq_indep.indexOf(comp) >= 0); }
 
 const ELL_MIN=2, ELL_MAX=6000, F_MIN=40, F_MAX=8000;
 
@@ -572,7 +625,7 @@ function initAudio() {
 
 // Look up Dl for a given ell, component, frequency
 function lookupDl(ell, comp, nu) {
-  const clArr = S.clData.cl[comp]?.[String(nu)];
+  const clArr = isFreqIndep(comp) ? S.clData.cl[comp] : S.clData.cl[comp]?.[String(nu)];
   const ellArr = S.clData.ell_cl;
   if (!clArr||!ellArr) return 0;
   // Binary search for nearest ell
@@ -869,11 +922,9 @@ function noteToFreq(noteName, octave) {
 
 // Map observing frequency (GHz) to a musical note name
 function freqToNoteName(nu) {
-  nu = parseInt(nu);
-  if (nu===93) return 'A';
-  if (nu===143) return 'C#';
-  if (nu===353) return 'E';
-  return 'A';
+  // Ascending A-minor-pentatonic across the observing bands (consonant).
+  const map = {93:'A', 143:'C', 145:'D', 225:'E', 280:'G', 353:'A'};
+  return map[parseInt(nu)] || 'A';
 }
 
 // Map ell to octave (log)
@@ -1048,7 +1099,7 @@ function playBigBang() {
   stopAll();
 
   const ctx = S.audioCtx;
-  const cl = S.clData?.cl?.dT_cmblens?.['143'];
+  const cl = S.clData?.cl?.dT_cmblens;  // CMB is frequency-independent
   const ellArr = S.clData?.ell_cl;
   if (!cl || !ellArr) return;
 
@@ -1462,9 +1513,9 @@ function startInstrumentSeq() {
   S.sweeping = true; // use sweep cursor/animation
   S.sweepPos = 0;
 
-  // One voice per component (all three). Only active components will be audible.
+  // One voice per component. Only active components will be audible.
   const voices = {};
-  const comps = ['dT_cmblens','dT_tsz','dT_cib'];
+  const comps = ['dT_cmblens','dT_tsz','dT_cib','dT_ksz'];
   for (const c of comps) {
     const inst = S.instruments[c] || 'piano';
     voices[c] = createVoice(inst, S.audioCtx, S.gainNode);
@@ -1684,9 +1735,9 @@ function startFreqSweep() {
   S.freqSweepPos = 0;
   S.playing = true;
 
-  const freqs = [93, 143, 353];
+  const freqs = [93, 143, 145, 225, 280, 353];
   let idx = 0;
-  const phaseDur = S.sweepSpeed / 3;
+  const phaseDur = S.sweepSpeed / freqs.length;
 
   function playFreq() {
     if (!S.freqSweep || idx >= freqs.length) {
@@ -1833,8 +1884,9 @@ function drawSpectrum() {
 
   // Draw spectra
   const nu=String(S.freq);
-  for(const comp of['dT_cmblens','dT_tsz','dT_cib','T_tot']){
-    const ells=S.clData.ell, dls=S.clData.spectra[comp]?.[nu];
+  for(const comp of['dT_cmblens','dT_tsz','dT_cib','dT_ksz','T_tot']){
+    const ells=S.clData.ell;
+    const dls=isFreqIndep(comp)?S.clData.spectra[comp]:S.clData.spectra[comp]?.[nu];
     if(!dls)continue;
     const active=S.activeComponents.has(comp);
     ctx.globalAlpha=active?1:0.12;
@@ -1868,7 +1920,7 @@ function drawSpectrum() {
     // Amplitude marker: find D_ell at current ell for each active component, draw dot
     let totalDl=0;
     for(const comp of S.activeComponents){
-      const dlArr=S.clData.spectra[comp]?.[nu];
+      const dlArr=isFreqIndep(comp)?S.clData.spectra[comp]:S.clData.spectra[comp]?.[nu];
       const ells=S.clData.ell;
       if(!dlArr)continue;
       // Nearest ell bin
@@ -1898,7 +1950,7 @@ function drawSpectrum() {
 
   // Legend
   let ly=pad.top+12;ctx.font='10px system-ui';ctx.textAlign='left';
-  for(const c of['dT_cmblens','dT_tsz','dT_cib','T_tot']){
+  for(const c of['dT_cmblens','dT_tsz','dT_cib','dT_ksz','T_tot']){
     const act=S.activeComponents.has(c);
     ctx.globalAlpha=act?1:0.25;ctx.fillStyle=COLORS[c];
     ctx.fillRect(W-110,ly-7,12,3);
@@ -1920,13 +1972,23 @@ const SKY = { rotLon: 0, rotLat: 0.3, dragging: false, lastX: 0, lastY: 0,
 let skyTexture = null;
 let skyTextureSrc = '';
 
+// True for sky components whose texture doesn't depend on frequency (CMB, kSZ,
+// and the tSZ/CIB patterns). Only T_tot's sky pattern varies with band.
+function skyFreqIndep(mn){ return !!(S.skyData && S.skyData.freq_indep && S.skyData.freq_indep.indexOf(mn) >= 0); }
+
+function skyMapInfo(mn, nu){
+  const m = S.skyData?.maps?.[mn];
+  if(!m) return null;
+  return skyFreqIndep(mn) ? m : m[nu];
+}
+
 function buildSkyTexture() {
   const mn=S.skyComp||'dT_cmblens', nu=S.skyFreq||'143';
-  const key = mn+'_'+nu;
+  const key = skyFreqIndep(mn) ? mn : mn+'_'+nu;
   if(skyTextureSrc===key && skyTexture) return;
   skyTextureSrc = key;
 
-  const mapInfo=S.skyData?.maps[mn]?.[nu];
+  const mapInfo=skyMapInfo(mn, nu);
   if(!mapInfo) return;
   const mW=mapInfo.width, mH=mapInfo.height, data=mapInfo.data;
 
@@ -2194,7 +2256,7 @@ function sonifyPoint(theta, phi, playTemp=true){
   SKY.clickTheta=theta; SKY.clickPhi=phi;
 
   let mn=S._skyMn||'dT_cmblens', nu=S._skyNu||'143';
-  const mapInfo=S.skyData.maps[mn]?.[nu];
+  const mapInfo=skyMapInfo(mn, nu);
   if(!mapInfo?.patch_variance)return;
 
   const npix=S.skyData.npix;
@@ -2350,14 +2412,18 @@ function setup(){
     S.instruments['dT_cib']=e.target.value;
     if (S.method==='instruments' && S.playing) { stopAll(); startPlaying(); }
   });
+  document.getElementById('instKsz').addEventListener('change',e=>{
+    S.instruments['dT_ksz']=e.target.value;
+    if (S.method==='instruments' && S.playing) { stopAll(); startPlaying(); }
+  });
 
   // Preset palettes
   const presets = {
-    classical: { dT_cmblens:'piano', dT_tsz:'violin', dT_cib:'flute' },
-    ambient:   { dT_cmblens:'synth', dT_tsz:'synth', dT_cib:'flute' },
-    cosmic:    { dT_cmblens:'synth', dT_tsz:'flute', dT_cib:'bass' },
-    rock:      { dT_cmblens:'guitar', dT_tsz:'bass', dT_cib:'guitar' },
-    jazz:      { dT_cmblens:'piano', dT_tsz:'bass', dT_cib:'guitar' },
+    classical: { dT_cmblens:'piano', dT_tsz:'violin', dT_cib:'flute', dT_ksz:'bass' },
+    ambient:   { dT_cmblens:'synth', dT_tsz:'synth', dT_cib:'flute', dT_ksz:'synth' },
+    cosmic:    { dT_cmblens:'synth', dT_tsz:'flute', dT_cib:'bass', dT_ksz:'synth' },
+    rock:      { dT_cmblens:'guitar', dT_tsz:'bass', dT_cib:'guitar', dT_ksz:'bass' },
+    jazz:      { dT_cmblens:'piano', dT_tsz:'bass', dT_cib:'guitar', dT_ksz:'piano' },
   };
   document.querySelectorAll('.preset-btn').forEach(b=>b.addEventListener('click',()=>{
     const p = presets[b.dataset.preset];
@@ -2368,6 +2434,7 @@ function setup(){
     document.getElementById('instCmb').value = p.dT_cmblens;
     document.getElementById('instTsz').value = p.dT_tsz;
     document.getElementById('instCib').value = p.dT_cib;
+    document.getElementById('instKsz').value = p.dT_ksz;
     if (S.method==='instruments' && S.playing) { stopAll(); startPlaying(); }
   }));
 
