@@ -116,9 +116,14 @@ const COMP_LABELS={dT_cmblens:'CMB', dT_tsz:'tSZ', dT_cib:'CIB', dT_ksz:'kSZ', T
 const canvas=document.getElementById('map');
 const ctx=canvas.getContext('2d');
 
-function isIndep(comp){ return V.comp!=='T_tot'; }
 function imgName(){ return V.comp==='T_tot' ? ('T_tot_f'+V.freq) : V.comp; }
-function imgPath(){ return 'sky_img/'+imgName()+'.jpg'; }
+let loadToken=0;
+function recomputeScaleLimits(){
+  V.minScale = V.ch/V.imgH;
+  V.maxScale = Math.max(V.minScale, (V.meta?V.meta.width:V.imgW)*2/V.imgW);
+  if(V.scale<V.minScale) V.scale=V.minScale;
+  if(V.scale>V.maxScale) V.scale=V.maxScale;
+}
 
 function resize(){
   const r=document.getElementById('wrap').getBoundingClientRect();
@@ -127,8 +132,8 @@ function resize(){
   canvas.style.width=r.width+'px'; canvas.style.height=r.height+'px';
   ctx.setTransform(dpr,0,0,dpr,0,0);
   V.cw=r.width; V.ch=r.height;
-  V.minScale=V.ch/V.imgH;
-  V.maxScale=Math.max(V.minScale*8, 3);
+  recomputeScaleLimits();
+  clampView();
   draw();
 }
 
@@ -188,19 +193,41 @@ function screenToSky(sx,sy){
 // ============= image loading =============
 function loadImage(){
   if(!V.meta) return;
-  const im=new Image();
-  document.getElementById('hint').textContent='loading '+COMP_LABELS[V.comp]+(V.comp==='T_tot'?(' @ '+V.freq+' GHz'):'')+'…';
-  im.onload=()=>{
-    V.img=im; V.imgW=im.naturalWidth; V.imgH=im.naturalHeight;
+  const key=imgName();
+  const token=++loadToken;
+  const prevDispW = (V.img && isFinite(V.scale)) ? V.imgW*V.scale : null;  // keep view across switches
+  document.getElementById('hint').textContent='loading…';
+  // 1) tiny overview, shown instantly
+  const lo=new Image();
+  lo.onload=()=>{
+    if(token!==loadToken) return;
+    V.img=lo; V.imgW=lo.naturalWidth; V.imgH=lo.naturalHeight;
     setupOffscreen();
-    if(V.scale<=0||!isFinite(V.scale)) V.scale=V.ch/V.imgH;
-    V.minScale=V.ch/V.imgH;
-    clampView();
-    document.getElementById('hint').textContent='';
-    draw();
+    recomputeScaleLimits();
+    V.scale = prevDispW ? prevDispW/V.imgW : V.minScale;
+    clampView(); draw();
+    loadHi(key, token);
   };
-  im.onerror=()=>{ document.getElementById('hint').textContent='could not load image (serve over http)'; };
-  im.src=imgPath();
+  lo.onerror=()=>{ if(token===loadToken) document.getElementById('hint').textContent='could not load image (serve over http)'; };
+  lo.src='sky_img/'+key+'_lo.jpg';
+}
+
+// 2) high-res, loaded in the background; swaps in without moving the view
+function loadHi(key, token){
+  document.getElementById('hint').textContent='sharpening…';
+  const hi=new Image();
+  hi.onload=()=>{
+    if(token!==loadToken) return;           // user switched component/band
+    const dispW=V.imgW*V.scale;             // preserve displayed size
+    V.img=hi; V.imgW=hi.naturalWidth; V.imgH=hi.naturalHeight;
+    V.scale=dispW/V.imgW;
+    setupOffscreen();
+    recomputeScaleLimits();
+    clampView(); draw();
+    document.getElementById('hint').textContent='';
+  };
+  hi.onerror=()=>{ if(token===loadToken) document.getElementById('hint').textContent=''; };
+  hi.src='sky_img/'+key+'.jpg';
 }
 
 function setupOffscreen(){
