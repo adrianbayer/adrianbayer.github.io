@@ -279,6 +279,14 @@ function initThree(){
 }
 function onResize(){ const view=document.getElementById('view'); camera.aspect=view.clientWidth/view.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(view.clientWidth, view.clientHeight); }
 
+function galaxyTexture(){   // soft round glow so clusters read as galaxies, not squares
+  const s=64, c=document.createElement('canvas'); c.width=c.height=s; const x=c.getContext('2d');
+  const g=x.createRadialGradient(s/2,s/2,0, s/2,s/2,s/2);
+  g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(0.22,'rgba(255,244,210,0.95)');
+  g.addColorStop(0.5,'rgba(255,200,120,0.4)'); g.addColorStop(1,'rgba(255,170,80,0)');
+  x.fillStyle=g; x.beginPath(); x.arc(s/2,s/2,s/2,0,2*Math.PI); x.fill();
+  return new THREE.CanvasTexture(c);
+}
 function buildHalos(){
   if(!V.halos) return;
   const n=V.halos.n, pos=new Float32Array(n*3), col=new Float32Array(n*3);
@@ -291,7 +299,7 @@ function buildHalos(){
   const g=new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos,3));
   g.setAttribute('color', new THREE.BufferAttribute(col,3));
-  const m=new THREE.PointsMaterial({size:0.022, sizeAttenuation:true, vertexColors:true, transparent:true, opacity:0.95, depthWrite:false});
+  const m=new THREE.PointsMaterial({size:0.04, map:galaxyTexture(), sizeAttenuation:true, vertexColors:true, transparent:true, blending:THREE.AdditiveBlending, depthWrite:false});
   haloPoints=new THREE.Points(g, m); scene.add(haloPoints);
 }
 

@@ -54,12 +54,12 @@ canvas{display:block;}
   <input type="range" id="vol" min="0" max="100" value="70" style="width:80px;">
 </div>
 <div id="view"></div>
-<div class="readout" id="readout">drag to look around &middot; wheel to move in/out &middot; click a cluster or the CMB</div>
+<div class="readout" id="readout">drag to look &middot; <b>WASD</b>/arrows to fly, Q/E down&middot;up &middot; wheel zoom &middot; click a cluster or the CMB</div>
 <div class="hint" id="hint">loading…</div>
 
 <script>
 const V = { meta:null, halos:null, cl:null, comps:new Set(['dT_cmblens']),
-  valMaps:{}, volume:0.7, audioCtx:null, gain:null, limiter:null };
+  valMaps:{}, volume:0.7, audioCtx:null, gain:null, limiter:null, keys:{} };
 const R_CMB = 12, R_HALO_MAX = 9;
 const ORDER=['dT_cmblens'];
 const canvas_unused=null;
@@ -120,7 +120,7 @@ function initThree(){
   const view=document.getElementById('view');
   scene=new THREE.Scene();
   camera=new THREE.PerspectiveCamera(60, view.clientWidth/view.clientHeight, 0.01, 200);
-  camera.position.set(0,0,5);
+  camera.position.set(0,0,3);
   renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
   renderer.setSize(view.clientWidth, view.clientHeight); renderer.setClearColor(0x04060c,1);
   view.appendChild(renderer.domElement);
@@ -153,6 +153,14 @@ function initThree(){
   });
   window.addEventListener('resize',()=>{ camera.aspect=view.clientWidth/view.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(view.clientWidth, view.clientHeight); });
 }
+function galaxyTexture(){   // soft round glow so clusters read as galaxies, not squares
+  const s=64, c=document.createElement('canvas'); c.width=c.height=s; const x=c.getContext('2d');
+  const g=x.createRadialGradient(s/2,s/2,0, s/2,s/2,s/2);
+  g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(0.22,'rgba(255,244,210,0.95)');
+  g.addColorStop(0.5,'rgba(255,200,120,0.4)'); g.addColorStop(1,'rgba(255,170,80,0)');
+  x.fillStyle=g; x.beginPath(); x.arc(s/2,s/2,s/2,0,2*Math.PI); x.fill();
+  return new THREE.CanvasTexture(c);
+}
 function buildHalos(){
   if(!V.halos) return; const n=V.halos.n, pos=new Float32Array(n*3), col=new Float32Array(n*3);
   const Dc4=comoving(4)||1;
@@ -167,10 +175,23 @@ function buildHalos(){
   const g=new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos,3));
   g.setAttribute('color', new THREE.BufferAttribute(col,3));
-  haloPoints=new THREE.Points(g, new THREE.PointsMaterial({size:0.10, sizeAttenuation:true, vertexColors:true, transparent:true, opacity:0.95, depthWrite:false}));
+  haloPoints=new THREE.Points(g, new THREE.PointsMaterial({size:0.22, map:galaxyTexture(), sizeAttenuation:true, vertexColors:true, transparent:true, blending:THREE.AdditiveBlending, depthWrite:false}));
   scene.add(haloPoints);
 }
-function animate(){ requestAnimationFrame(animate); if(controls) controls.update(); if(renderer) renderer.render(scene,camera); }
+function moveCamera(){   // WASD/arrows fly through the volume; Q/E (or Shift/Space) down/up
+  if(!controls) return; const sp=0.08, K=V.keys; let f=0,r=0,u=0;
+  if(K['KeyW']||K['ArrowUp']) f+=1; if(K['KeyS']||K['ArrowDown']) f-=1;
+  if(K['KeyD']||K['ArrowRight']) r+=1; if(K['KeyA']||K['ArrowLeft']) r-=1;
+  if(K['KeyE']||K['Space']) u+=1; if(K['KeyQ']||K['ShiftLeft']) u-=1;
+  if(!f&&!r&&!u) return;
+  const fwd=new THREE.Vector3().subVectors(controls.target, camera.position).normalize();
+  const right=new THREE.Vector3().crossVectors(fwd, camera.up).normalize();
+  const mv=new THREE.Vector3();
+  mv.addScaledVector(fwd, f*sp); mv.addScaledVector(right, r*sp); mv.addScaledVector(new THREE.Vector3(0,1,0), u*sp);
+  camera.position.add(mv); controls.target.add(mv);
+  const maxR=R_CMB*1.4; if(camera.position.length()>maxR) camera.position.setLength(maxR);
+}
+function animate(){ requestAnimationFrame(animate); moveCamera(); if(controls) controls.update(); if(renderer) renderer.render(scene,camera); }
 
 function wireControls(){
   document.getElementById('spinBtn').addEventListener('click',()=>{ controls.autoRotate=!controls.autoRotate; controls.autoRotateSpeed=0.6; document.getElementById('spinBtn').classList.toggle('active',controls.autoRotate); });
@@ -179,6 +200,8 @@ function wireControls(){
   document.getElementById('recenterBtn').addEventListener('click',()=>{ camera.position.set(0,0,5); controls.target.set(0,0,0); controls.update(); });
   document.getElementById('haloRecBtn').addEventListener('click', recordHaloSound);
   document.getElementById('vol').addEventListener('input',e=>{ V.volume=e.target.value/100; if(V.gain) V.gain.gain.value=V.volume; });
+  window.addEventListener('keydown',e=>{ if(e.target.tagName==='INPUT') return; V.keys[e.code]=true; if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].indexOf(e.code)>=0) e.preventDefault(); });
+  window.addEventListener('keyup',e=>{ V.keys[e.code]=false; });
 }
 
 async function init(){
