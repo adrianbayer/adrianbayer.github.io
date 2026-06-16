@@ -76,7 +76,7 @@ mjx-container{overflow-x:auto;overflow-y:hidden;max-width:100%;}
 
 <section class="active" id="overview">
   <h1>How it works</h1>
-  <p class="lead">Turning the multi-probe microwave sky from the HalfDome simulations into sound and an explorable map &mdash; component by component, with the math.</p>
+  <p class="lead">Turning the multi-probe microwave sky from the <a class="inline" href="https://halfdomesims.github.io" target="_blank" rel="noopener">HalfDome simulations</a> into sound and an explorable map &mdash; component by component, with the math.</p>
   <p>In cosmology the <strong>angular power spectrum</strong> \(C_\ell\) is the central summary statistic: it measures how much structure the sky has at each angular scale, indexed by the multipole \(\ell\) (roughly an inverse angle, \(\theta\approx 180^\circ/\ell\)). The analogy to audio is exact &mdash; the power spectrum of a <em>sound</em> is what gives it its timbre &mdash; so mapping \(C_\ell\) to an audible spectrum makes the same mathematical object perceptible to the ear. Large angular scales (small \(\ell\)) become low pitches; fine scales (large \(\ell\)) become treble.</p>
   <p>The sky is a sum of physically distinct <strong>components</strong>, each with its own spectrum, frequency behaviour, and spatial texture:</p>
   <ul>
@@ -189,6 +189,9 @@ mjx-container{overflow-x:auto;overflow-y:hidden;max-width:100%;}
   <h2>Software &amp; reproducibility</h2>
   <p>The pipeline starts from HalfDome spherical-harmonic maps (\(\ell_{\max}=9000\), \(2'\) beam): <code>precompute_cls.py</code> forms \(C_\ell\) (and reconstructs Total by summing \(a_{\ell m}\)); <code>export_web_data.py</code> writes the spectra and low-resolution sky textures; <code>export_sky_images.py</code> renders the high-resolution Sky Explorer images and faithful value maps.</p>
   <p>The web app synthesizes all audio in the browser with the Web Audio API and renders with the Canvas 2D context &mdash; no server and no JavaScript dependencies (this docs page additionally loads MathJax from a CDN to typeset the equations).</p>
+  <h2>The HalfDome simulations</h2>
+  <p>Website: <a class="inline" href="https://halfdomesims.github.io" target="_blank" rel="noopener">halfdomesims.github.io</a>
+  &nbsp;&middot;&nbsp; Paper: <a class="inline" href="https://arxiv.org/abs/2407.17462" target="_blank" rel="noopener">Bayer et al. 2025, JCAP (arXiv:2407.17462)</a>.</p>
 </section>
 
 </div>
