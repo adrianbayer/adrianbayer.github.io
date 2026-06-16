@@ -69,6 +69,7 @@ mjx-container{overflow-x:auto;overflow-y:hidden;max-width:100%;}
   <div class="tab ksz" data-tab="ksz">kSZ</div>
   <div class="tab" data-tab="total">Total</div>
   <div class="tab" data-tab="synth">Synthesis</div>
+  <div class="tab" data-tab="controls">Controls</div>
   <div class="tab" data-tab="explorer">Sky Explorer</div>
   <div class="tab" data-tab="repro">Reproducibility</div>
 </div>
@@ -170,7 +171,44 @@ mjx-container{overflow-x:auto;overflow-y:hidden;max-width:100%;}
   <h3>Scale layers</h3>
   <p>Three \(\ell\)-bands as three timbres: a bass drone \((\ell<100)\), harmonic tones at the CMB peaks \((\ell=220,540,810)\), and high-\(\ell\) bandpass noise &mdash; each weighted by \(\sqrt{\langle D_\ell\rangle}\) in its band.</p>
   <h3>Instruments</h3>
-  <p>Continuous gliding voices: the <strong>octave</strong> is set by \(\ell\) (log), the <strong>note</strong> by the band, and the <strong>loudness</strong> by \(\sqrt{\langle D_\ell\rangle}\) integrated over an octave-wide window around the current \(\ell\).</p>
+  <p>Continuous gliding voices: the <strong>octave</strong> is set by \(\ell\) (log), the <strong>note</strong> by the band, and the <strong>loudness</strong> by \(\sqrt{\langle D_\ell\rangle}\) integrated over an octave-wide window around the current \(\ell\). Optionally the glide is <strong>snapped to a pentatonic scale</strong>, so each scale becomes a discrete, consonant note instead of a continuous slide.</p>
+  <h3>Duet &mdash; cross-correlation as harmony</h3>
+  <p>Two probes \(X,Y\) play at once, one voice each, with loudness set by their band power as above. Their <em>harmony</em> tracks the scale-dependent <strong>correlation coefficient</strong></p>
+  \[ r_\ell=\frac{C_\ell^{XY}}{\sqrt{C_\ell^{XX}\,C_\ell^{YY}}}\in[-1,1], \]
+  <p>where \(C_\ell^{XY}\) is the cross-spectrum of the two maps (computed from the \(a_{\ell m}\), binned in \(\log\ell\)). As \(\ell\) sweeps, \(r_\ell\) drives both the musical interval between the voices and their stereo placement: <strong>correlated</strong> \((r\!\to\!+1)\) &rarr; a consonant unison locked in the centre; <strong>independent</strong> \((r\!\approx\!0)\) &rarr; a mild interval, modestly spread; <strong>anti-correlated</strong> \((r\!\to\!-1)\) &rarr; a dissonant interval, hard-panned apart. Because tSZ and CIB are frequency-dependent, switching the observing band changes the cross-correlation audibly &mdash; e.g.\ tSZ&times;CIB is <em>anti</em>-correlated at \(143\,\)GHz but <em>correlated</em> at \(353\,\)GHz, a direct echo of the \(217\,\)GHz tSZ null.</p>
+</section>
+
+<section id="controls">
+  <h2>Sonifier controls &mdash; every option</h2>
+  <p>A reference for each control on the <a class="inline" href="sonifier.html">Power Spectrum Sonifier</a>, panel by panel.</p>
+
+  <h3>Components</h3>
+  <p>Toggle any combination of <span class="tag cmb">CMB</span> (lensed), <span class="tag tsz">tSZ</span>, <span class="tag cib">CIB</span>, <span class="tag ksz">kSZ</span>, and <span class="tag tot">Total</span> on or off; selected components are mixed together. <strong>Total</strong> is the summed sky, CMB\(+\)tSZ\(+\)CIB (reconstructed from the \(a_{\ell m}\), so cross-terms are correct).</p>
+
+  <h3>Observing frequency (band)</h3>
+  <p>Choose a band from <strong>SO MF</strong> (93, 145 GHz), <strong>SO HF</strong> (225, 280 GHz) or <strong>Planck</strong> (143, 353 GHz). The band sets the amplitude of the frequency-dependent components: tSZ nearly vanishes near its \(217\,\)GHz null (quiet at 225) and the CIB grows strongly toward 353 GHz, while CMB and kSZ are band-independent (their sound does not change with the band).</p>
+
+  <h3>Synthesis method</h3>
+  <p><strong>Shaped Noise</strong>, <strong>Additive</strong>, <strong>Scale Layers</strong>, <strong>Instruments</strong> and <strong>Duet</strong> render the same \(D_\ell\) in different ways &mdash; see the <a class="inline" href="#" onclick="document.querySelector('.tab[data-tab=synth]').click();return false;">Synthesis</a> tab. Instruments and Duet reveal extra options (below).</p>
+
+  <h3>Playback &amp; actions</h3>
+  <p><strong>&#9654; Play</strong> sounds the current \(\ell\) range as a steady tone. <strong>&#8467;-Sweep</strong> glides from large to small scales (low to high \(\ell\)); <strong>&#957;-Sweep</strong> instead sweeps the observing frequency so you hear tSZ/CIB rise and fall across the bands. <strong>Build-Up</strong> enters layer by layer (CMB \(\rightarrow +\)tSZ \(\rightarrow +\)CIB). <strong>&#9632; Stop</strong> halts everything.</p>
+  <p><strong>&#127775; Big Bang</strong> plays the CMB acoustic-peak sequence as a short motif. <strong>3D Spatial</strong> places each component at a fixed direction in HRTF 3D audio (best with headphones). <strong>&#9654; Tour</strong> runs a short guided walkthrough. <strong>&#9210; Record</strong> captures the live audio to a downloadable clip; <strong>&#128279; Share</strong> copies a link that reopens the app with your current settings.</p>
+
+  <h3>Stereo mode</h3>
+  <p><strong>Mono</strong> (centred), <strong>Components L/R</strong> (each component panned across the stereo field), or <strong>93&thinsp;|&thinsp;353 GHz</strong> (spread by observing frequency, low&rarr;left, high&rarr;right).</p>
+
+  <h3>Ranges &amp; sliders</h3>
+  <p><strong>\(\ell\) range</strong> restricts the multipoles that are sounded (the angular scales). <strong>Volume</strong> is the master level. <strong>Sweep speed</strong> sets how fast \(\ell\)- and \(\nu\)-sweeps move; <strong>Sweep position</strong> lets you drag (scrub) the sweep cursor by hand.</p>
+
+  <h3>Sweep options</h3>
+  <p><strong>log volume</strong> applies a compressed (logarithmic) loudness map so faint scales stay audible; <strong>linear \(\ell\)-sweep</strong> moves linearly in \(\ell\) rather than logarithmically; <strong>ping-pong</strong> bounces the sweep back and forth; <strong>fixed pitch</strong> holds the audio pitch constant and lets only amplitude and timbre vary.</p>
+
+  <h3>Instrument options</h3>
+  <p>Visible in <strong>Instruments</strong> mode. Pick a <strong>preset</strong> (Classical, Ambient, Cosmic, Rock, Jazz) or set the <strong>instrument per component</strong> individually. <strong>Snap notes to a scale</strong> quantizes the glide to a pentatonic scale (on by default).</p>
+
+  <h3>Duet options</h3>
+  <p>Visible in <strong>Duet</strong> mode. Choose probe <strong>A</strong> and probe <strong>B</strong>; the meter and the harmony then track their cross-correlation \(r_\ell\) (see the Synthesis tab).</p>
 </section>
 
 <section id="explorer">
