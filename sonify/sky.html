@@ -119,6 +119,12 @@ const canvas=document.getElementById('map');
 const ctx=canvas.getContext('2d');
 
 function layerKey(comp){ return comp==='T_tot' ? ('T_tot_f'+V.freq) : comp; }
+// Display image basenames: a single selected component shows the classic
+// (white-centred) map; when >=2 are overlaid, the diverging ones switch to a
+// dark-centred '_dk' variant so the composite stays clear.
+function isDiverging(c){ return c==='dT_cmblens'||c==='dT_ksz'||c==='T_tot'; }
+function whiteBase(c){ return c==='T_tot' ? ('T_tot_f'+V.freq) : c; }
+function imgBase(c){ return (V.comps.size>=2 && isDiverging(c)) ? (whiteBase(c)+'_dk') : whiteBase(c); }
 
 // ============= geometry / view =============
 function recomputeScaleLimits(){
@@ -153,12 +159,11 @@ function screenToSky(sx,sy){
 // ============= image layers (one per component, additive composite) =============
 function layerImg(key){ const L=V.layers[key]; return L ? (L.hi||L.lo) : null; }
 function ensureLayers(){
-  let anyLoading=false;
   for(const c of V.comps){
-    const key=layerKey(c);
+    const key=imgBase(c);
     let L=V.layers[key]; if(!L){ L=V.layers[key]={lo:null,hi:null,loLoading:false,hiLoading:false}; }
     if(!L.lo && !L.loLoading){
-      L.loLoading=true; anyLoading=true;
+      L.loLoading=true;
       const im=new Image();
       im.onload=()=>{ L.lo=im; draw(); loadHiLayer(key); updateHint(); };
       im.onerror=()=>{ L.loLoading=false; };
@@ -176,7 +181,7 @@ function loadHiLayer(key){
   im.src='sky_img/'+key+'.jpg';
 }
 function updateHint(){
-  for(const c of V.comps){ if(!layerImg(layerKey(c))){ document.getElementById('hint').textContent='loading…'; return; } }
+  for(const c of V.comps){ if(!(layerImg(imgBase(c))||layerImg(whiteBase(c)))){ document.getElementById('hint').textContent='loading…'; return; } }
   document.getElementById('hint').textContent='';
 }
 
@@ -188,14 +193,14 @@ function draw(){
   const sW=V.metaW*V.scale, sH=V.metaH*V.scale;
   let baseX=V.panX % sW; if(baseX>0) baseX-=sW;
   ctx.imageSmoothingEnabled=true;
-  let first=true;
+  // single component -> classic colormap (opaque); overlay (>=2) -> dark-centred
+  // variants combined by per-channel max ('lighten') so it never washes to white.
+  const multi = V.comps.size>=2;
   for(const c of ORDER){
     if(!V.comps.has(c)) continue;
-    const img=layerImg(layerKey(c)); if(!img) continue;
-    // first (background) layer painted opaque; emission layers (magma/inferno) add on top
-    ctx.globalCompositeOperation = first ? 'source-over' : 'lighter';
+    const img=layerImg(imgBase(c))||layerImg(whiteBase(c)); if(!img) continue;
+    ctx.globalCompositeOperation = multi ? 'lighten' : 'source-over';
     for(let x=baseX; x<V.cw; x+=sW) ctx.drawImage(img, x, V.panY, sW, sH);
-    first=false;
   }
   ctx.globalCompositeOperation='source-over';
   drawHalos(baseX, sW, sH);
