@@ -336,6 +336,8 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
       <div class="transport" style="margin-top:6px;">
         <button class="transport-btn action-btn" id="bigBangBtn" style="background:linear-gradient(90deg,#ff9f43,#cc3333);color:white;">&#127775; Big Bang</button>
         <button class="transport-btn action-btn" id="spatialBtn" title="3D spatial audio (use headphones)">3D Spatial</button>
+        <button class="transport-btn action-btn" id="recBtn" title="Record what you hear to an audio file">&#9210; Record</button>
+        <button class="transport-btn action-btn" id="shareBtn" title="Copy a link that restores this setup">&#128279; Share</button>
       </div>
     </div>
 
@@ -517,6 +519,8 @@ function initAudio() {
   S.limiterNode.release.value = 0.25;
   S.gainNode.connect(S.limiterNode);
   S.limiterNode.connect(S.audioCtx.destination);
+  // Tap for recording: MediaRecorder captures exactly what you hear
+  try { S.recDest = S.audioCtx.createMediaStreamDestination(); S.limiterNode.connect(S.recDest); } catch(e) {}
   S.analyserNode = S.audioCtx.createAnalyser();
   S.analyserNode.fftSize = 256;
   S.gainNode.connect(S.analyserNode);
@@ -2525,8 +2529,70 @@ function setup(){
     skyC.style.cursor = S.scanMode ? 'cell' : 'grab';
   });
 
+  // Record + Share
+  document.getElementById('recBtn').addEventListener('click', toggleRecord);
+  document.getElementById('shareBtn').addEventListener('click', shareLink);
+
   // Resize
   window.addEventListener('resize',()=>{drawSpectrum();drawSkyMap();});
+}
+
+// ============================================================
+// Record (capture the live audio) + Share (state permalink)
+// ============================================================
+function toggleRecord(){
+  const btn=document.getElementById('recBtn');
+  if(typeof MediaRecorder==='undefined'){ btn.textContent='no rec'; return; }
+  initAudio(); if(S.audioCtx.state==='suspended') S.audioCtx.resume();
+  if(S._recorder && S._recorder.state==='recording'){ S._recorder.stop(); return; }
+  if(!S.recDest) return;
+  const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm'
+             : (MediaRecorder.isTypeSupported('audio/ogg') ? 'audio/ogg' : '');
+  const rec = new MediaRecorder(S.recDest.stream, mime?{mimeType:mime}:undefined);
+  const chunks=[];
+  rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+  rec.onstop=()=>{
+    const blob=new Blob(chunks, {type: mime||'audio/webm'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='multiprobe_sky.'+((mime.indexOf('ogg')>=0)?'ogg':'webm');
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+    btn.innerHTML='&#9210; Record'; btn.classList.remove('active'); btn.style.background=''; btn.style.color='';
+    S._recorder=null;
+  };
+  rec.start(); S._recorder=rec;
+  btn.innerHTML='&#9632; Stop rec'; btn.classList.add('active'); btn.style.background='#cc3333'; btn.style.color='#fff';
+}
+
+function shareParams(){
+  const p=new URLSearchParams();
+  p.set('c', [...S.activeComponents].join(','));
+  p.set('f', S.freq); p.set('m', S.method); p.set('s', S.stereoMode);
+  p.set('lo', S.ellMin); p.set('hi', S.ellMax);
+  return p.toString();
+}
+function shareLink(){
+  const url=location.origin+location.pathname+'#'+shareParams();
+  const btn=document.getElementById('shareBtn');
+  const done=()=>{ const t=btn.innerHTML; btn.innerHTML='&#10003; Copied'; setTimeout(()=>{btn.innerHTML=t;}, 1400); };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, ()=>prompt('Copy this link:', url));
+  else prompt('Copy this link:', url);
+}
+function applyShareParams(){
+  const h=location.hash.slice(1); if(!h) return;
+  const p=new URLSearchParams(h);
+  if(p.get('c')!=null){ S.activeComponents=new Set(p.get('c').split(',').filter(Boolean));
+    document.querySelectorAll('.toggle-btn').forEach(b=>b.classList.toggle('active', S.activeComponents.has(b.dataset.comp))); }
+  if(p.get('f')){ S.freq=parseInt(p.get('f'));
+    document.querySelectorAll('.freq-btn').forEach(b=>b.classList.toggle('active', parseInt(b.dataset.freq)===S.freq)); }
+  if(p.get('m')){ S.method=p.get('m');
+    document.querySelectorAll('.method-btn').forEach(b=>b.classList.toggle('active', b.dataset.method===S.method));
+    const ic=document.getElementById('instrumentControls'); if(ic) ic.style.display=(S.method==='instruments')?'flex':'none'; }
+  if(p.get('s')){ S.stereoMode=p.get('s');
+    document.querySelectorAll('.stereo-btn').forEach(b=>b.classList.toggle('active', b.dataset.stereo===S.stereoMode)); }
+  if(p.get('lo')){ S.ellMin=parseInt(p.get('lo')); const e=document.getElementById('ellMinSlider'); if(e){e.value=S.ellMin; document.getElementById('ellMinVal').textContent=S.ellMin;} }
+  if(p.get('hi')){ S.ellMax=parseInt(p.get('hi')); const e=document.getElementById('ellMaxSlider'); if(e){e.value=S.ellMax; document.getElementById('ellMaxVal').textContent=S.ellMax;} }
+  drawSpectrum();
 }
 
 // ============================================================
@@ -2535,6 +2601,7 @@ function setup(){
 async function init(){
   setup();
   await loadData();
+  applyShareParams();
   requestAnimationFrame(animate);
 }
 init();
