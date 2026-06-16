@@ -370,7 +370,7 @@ function recordHaloSound(){
     setTimeout(()=>{ if(V._haloRec && V._haloRec.state==='recording') V._haloRec.stop(); }, 3000);
   }).catch(()=>{ btn.textContent='mic denied'; });
 }
-function sonifyAt(sx,sy){
+function sonifyAt(sx,sy,isClick){
   const sk=screenToSky(sx,sy); if(!sk) return;
   for(const c of ORDER){
     if(!V.comps.has(c)) continue;
@@ -378,14 +378,14 @@ function sonifyAt(sx,sy){
     if(norm===null){ loadValMap(c); continue; }
     playVoice(c, norm);
   }
-  if(V.halos){
+  if(isClick && V.halos){           // halo sound only when you click directly on a cluster
     const sinT=Math.sin(sk.theta*Math.PI/180); let near=false;
     for(let i=0;i<V.halos.n;i++){
       let dp=Math.abs(V.halos.phi[i]-sk.phi); if(dp>180) dp=360-dp;
       const dt=V.halos.theta[i]-sk.theta;
-      if(Math.sqrt(dt*dt+dp*dp*sinT*sinT)<3.0){ near=true; break; }
+      if(Math.sqrt(dt*dt+dp*dp*sinT*sinT)<1.0){ near=true; break; }
     }
-    if(near) playHaloSound();   // pass over a cluster -> your recorded sound (or "hey!")
+    if(near) playHaloSound();
   }
   const heard=ORDER.filter(c=>V.comps.has(c)).map(c=>COMP_LABELS[c]).join('+')||'—';
   document.getElementById('readout').innerHTML=
@@ -407,7 +407,7 @@ window.addEventListener('mousemove',e=>{
   else { V.panX+=dx; V.panY+=dy; clampView(); draw(); }
 });
 window.addEventListener('mouseup',()=>{ V.dragging=false; canvas.classList.remove('grabbing'); });
-canvas.addEventListener('click',e=>{ if(V.moved) return; const r=canvas.getBoundingClientRect(); sonifyAt(e.clientX-r.left,e.clientY-r.top); });
+canvas.addEventListener('click',e=>{ if(V.moved) return; const r=canvas.getBoundingClientRect(); sonifyAt(e.clientX-r.left,e.clientY-r.top, true); });
 canvas.addEventListener('wheel',e=>{ e.preventDefault(); const r=canvas.getBoundingClientRect(); zoomAt(e.clientX-r.left,e.clientY-r.top, e.deltaY<0?1.15:1/1.15); },{passive:false});
 
 let pinchD=0;
@@ -429,7 +429,7 @@ canvas.addEventListener('touchmove',e=>{
   e.preventDefault();
 },{passive:false});
 canvas.addEventListener('touchend',e=>{
-  if(e.touches.length===0 && V.dragging && !V.moved){ const t=e.changedTouches[0]; const r=canvas.getBoundingClientRect(); sonifyAt(t.clientX-r.left,t.clientY-r.top); }
+  if(e.touches.length===0 && V.dragging && !V.moved){ const t=e.changedTouches[0]; const r=canvas.getBoundingClientRect(); sonifyAt(t.clientX-r.left,t.clientY-r.top, true); }
   V.dragging=false; pinchD=0; e.preventDefault();
 },{passive:false});
 function touchDist(e){ const a=e.touches[0],b=e.touches[1]; return Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY); }

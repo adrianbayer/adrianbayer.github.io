@@ -223,7 +223,7 @@ function sonifySky(theta,phi){   // theta,phi in radians (colatitude, longitude)
   for(const c of ORDER){ if(!V.comps.has(c)) continue; const n=sampleValue(c,fx,fy); if(n===null){ loadValMap(c); continue; } playVoice(c,n); }
   if(V.halos){ const thd=theta*180/Math.PI, phd=phi*180/Math.PI, sinT=Math.sin(theta); let near=false;
     for(let i=0;i<V.halos.n;i++){ let dp=Math.abs(V.halos.phi[i]-phd); if(dp>180) dp=360-dp; const dt=V.halos.theta[i]-thd;
-      if(Math.sqrt(dt*dt+dp*dp*sinT*sinT)<3.0){ near=true; break; } }
+      if(Math.sqrt(dt*dt+dp*dp*sinT*sinT)<1.0){ near=true; break; } }   // only if you click essentially on a cluster
     if(near) playHaloSound(); }
   const heard=ORDER.filter(c=>V.comps.has(c)).map(c=>COMP_LABELS[c]).join('+')||'—';
   document.getElementById('readout').innerHTML='l/b &asymp; <b>'+phd.toFixed(0)+'&deg;, '+(90-thd).toFixed(0)+'&deg;</b> &nbsp;|&nbsp; '+heard;
@@ -298,10 +298,6 @@ function animate(){
   requestAnimationFrame(animate);
   if(V.spin && sphere){ sphere.rotation.y+=0.0016; if(haloPoints) haloPoints.rotation.y+=0.0016; }
   if(controls) controls.update();
-  // gentle audio-reactive twinkle of the clusters
-  if(haloPoints && V.analyser){ const d=new Uint8Array(V.analyser.frequencyBinCount); V.analyser.getByteTimeDomainData(d);
-    let s=0; for(let i=0;i<d.length;i++){ const x=(d[i]-128)/128; s+=x*x; } const lvl=Math.sqrt(s/d.length);
-    haloPoints.material.size=0.020+Math.min(0.03, lvl*0.12); }
   if(renderer) renderer.render(scene, camera);
 }
 
