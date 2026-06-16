@@ -222,12 +222,13 @@ function recordHaloSound(){
 function sonifySky(theta,phi){   // theta,phi in radians (colatitude, longitude)
   const fx=phi/(2*Math.PI), fy=theta/Math.PI;
   for(const c of ORDER){ if(!V.comps.has(c)) continue; const n=sampleValue(c,fx,fy); if(n===null){ loadValMap(c); continue; } playVoice(c,n); }
-  if(V.halos){ const thd=theta*180/Math.PI, phd=phi*180/Math.PI, sinT=Math.sin(theta); let near=false;
-    for(let i=0;i<V.halos.n;i++){ let dp=Math.abs(V.halos.phi[i]-phd); if(dp>180) dp=360-dp; const dt=V.halos.theta[i]-thd;
-      if(Math.sqrt(dt*dt+dp*dp*sinT*sinT)<1.0){ near=true; break; } }   // only if you click essentially on a cluster
-    if(near) playHaloSound(); }
+  const thd=theta*180/Math.PI, phd=phi*180/Math.PI; let cluster='';
+  if(V.halos){ const sinT=Math.sin(theta); let best=-1, bd=1.0;
+    for(let i=0;i<V.halos.n;i++){ let dp=Math.abs(V.halos.phi[i]-phd); if(dp>180) dp=360-dp; const dt=V.halos.theta[i]-thd; const d=Math.sqrt(dt*dt+dp*dp*sinT*sinT);
+      if(d<bd){ bd=d; best=i; } }   // only if you click essentially on a cluster
+    if(best>=0){ playHaloSound(); cluster=' &nbsp;|&nbsp; <span style="color:var(--accent)">&#9899; cluster: log&#8321;&#8320; M='+V.halos.log_mass[best].toFixed(2)+' M&#8857;, z='+(V.halos.redshift?V.halos.redshift[best]:0).toFixed(2)+'</span>'; } }
   const heard=ORDER.filter(c=>V.comps.has(c)).map(c=>COMP_LABELS[c]).join('+')||'—';
-  document.getElementById('readout').innerHTML='l/b &asymp; <b>'+phd.toFixed(0)+'&deg;, '+(90-thd).toFixed(0)+'&deg;</b> &nbsp;|&nbsp; '+heard;
+  document.getElementById('readout').innerHTML='l/b &asymp; <b>'+phd.toFixed(0)+'&deg;, '+(90-thd).toFixed(0)+'&deg;</b> &nbsp;|&nbsp; '+heard+cluster;
 }
 function loadValMaps(){ for(const c of V.comps) loadValMap(c); }
 

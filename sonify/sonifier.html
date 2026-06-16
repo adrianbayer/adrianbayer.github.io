@@ -295,6 +295,11 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
           <option value="synth" selected>synth pad</option>
         </select>
       </div>
+      <div class="slider-row" style="margin-top:8px;">
+        <label style="font-size:0.8em;display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="snapScale" checked> Snap notes to a scale (less gliding)
+        </label>
+      </div>
       <div style="font-size:0.72em;color:#6b7394;margin-top:4px;">
         &#8467; &rarr; octave, &nbsp; &#957; &rarr; note, &nbsp; D<sub>&#8467;</sub> &rarr; volume.
         CMB &amp; kSZ are frequency-independent.
@@ -400,6 +405,7 @@ const S = {
   playing: false,
   sweeping: false, sweepPos: 0, sweepSpeed: 10, sweepDir: 1,
   logVolume: false, linearSweep: false, pingPong: false, fixedPitch: false,
+  snapScale: true,       // instrument mode: snap glide to a pentatonic scale
   scrubbing: false, scanMode: false, spatialMode: false,
   buildup: false, buildupPhase: 0,  // 0=CMB, 1=+tSZ, 2=+CIB
   freqSweep: false, freqSweepPos: 0,
@@ -814,6 +820,20 @@ function noteToFreq(noteName, octave) {
   // octave = 4 means the A4=440 reference octave for the 'A' note.
   const semitones = NOTE_OFFSETS[noteName] + (octave-4)*12 - 9; // offset to A4=440
   return 440 * Math.pow(2, semitones/12);
+}
+
+// Snap a frequency to the nearest A-minor-pentatonic degree (A C D E G), any
+// octave. Turns the continuous glide into discrete, consonant notes.
+const PENTA_SEMIS = [0,3,5,7,10];   // relative to A
+function quantizeToScale(f) {
+  const semiFromA4 = 12*Math.log2(f/440);          // A4 = 0 semitones
+  const oct = Math.floor(semiFromA4/12);
+  let best = semiFromA4, bd = Infinity;
+  for (let o=oct-1; o<=oct+1; o++) for (const s of PENTA_SEMIS) {
+    const cand = o*12 + s, d = Math.abs(cand - semiFromA4);
+    if (d<bd){ bd=d; best=cand; }
+  }
+  return 440 * Math.pow(2, best/12);
 }
 
 // Map observing frequency (GHz) to a musical note name
@@ -1429,8 +1449,9 @@ function startInstrumentSeq() {
 
     const noteName = freqToNoteName(S.freq);
     const octaveF = ellToOctave(ell);
-    // Use continuous octave (fractional) for smooth glide
-    const noteFreq = noteToFreq(noteName, octaveF);
+    // Continuous octave (fractional) for a smooth glide; snap to a scale unless disabled.
+    let noteFreq = noteToFreq(noteName, octaveF);
+    if (S.snapScale) noteFreq = quantizeToScale(noteFreq);
 
     for (const c of comps) {
       const v = voices[c];
@@ -2312,6 +2333,7 @@ function setup(){
     S.instruments['dT_ksz']=e.target.value;
     if (S.method==='instruments' && S.playing) { stopAll(); startPlaying(); }
   });
+  document.getElementById('snapScale').addEventListener('change',e=>{ S.snapScale=e.target.checked; });
 
   // Preset palettes
   const presets = {

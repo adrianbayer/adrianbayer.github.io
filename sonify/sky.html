@@ -143,8 +143,8 @@ function imgBase(c){ return (V.comps.size>=2 && isDiverging(c)) ? (whiteBase(c)+
 
 // ============= geometry / view =============
 function recomputeScaleLimits(){
-  V.minScale = V.ch/V.metaH;
-  V.maxScale = Math.max(V.minScale, 2);   // 1 = hi-res native width; allow 2x
+  V.minScale = Math.min(V.cw/V.metaW, V.ch/V.metaH);   // zoomed out = whole sky fits
+  V.maxScale = Math.max(V.minScale, 2);
   if(V.scale<V.minScale) V.scale=V.minScale;
   if(V.scale>V.maxScale) V.scale=V.maxScale;
 }
@@ -368,18 +368,23 @@ function sonifyAt(sx,sy,isClick){
     if(norm===null){ loadValMap(c); continue; }
     playVoice(c, norm);
   }
+  let cluster='';
   if(isClick && V.halos){           // halo sound only when you click directly on a cluster
-    const sinT=Math.sin(sk.theta*Math.PI/180); let near=false;
+    const sinT=Math.sin(sk.theta*Math.PI/180); let best=-1, bd=1.0;
     for(let i=0;i<V.halos.n;i++){
       let dp=Math.abs(V.halos.phi[i]-sk.phi); if(dp>180) dp=360-dp;
-      const dt=V.halos.theta[i]-sk.theta;
-      if(Math.sqrt(dt*dt+dp*dp*sinT*sinT)<1.0){ near=true; break; }
+      const dt=V.halos.theta[i]-sk.theta; const d=Math.sqrt(dt*dt+dp*dp*sinT*sinT);
+      if(d<bd){ bd=d; best=i; }
     }
-    if(near) playHaloSound();
+    if(best>=0){
+      playHaloSound();
+      cluster=' &nbsp;|&nbsp; <span style="color:var(--accent)">&#9899; cluster: log&#8321;&#8320; M='+V.halos.log_mass[best].toFixed(2)
+        +' M&#8857;, z='+V.halos.redshift[best].toFixed(2)+'</span>';
+    }
   }
   const heard=ORDER.filter(c=>V.comps.has(c)).map(c=>COMP_LABELS[c]).join('+')||'—';
   document.getElementById('readout').innerHTML=
-    'l/b &asymp; <b>'+sk.phi.toFixed(0)+'&deg;, '+(90-sk.theta).toFixed(0)+'&deg;</b> &nbsp;|&nbsp; hearing: '+heard;
+    'l/b &asymp; <b>'+sk.phi.toFixed(0)+'&deg;, '+(90-sk.theta).toFixed(0)+'&deg;</b> &nbsp;|&nbsp; hearing: '+heard+cluster;
 }
 
 // ============= interaction =============

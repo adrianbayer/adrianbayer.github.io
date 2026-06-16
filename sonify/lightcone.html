@@ -145,7 +145,8 @@ function initThree(){
     const objs=[]; if(haloPoints && haloPoints.visible) objs.push(haloPoints); if(cmbSphere.visible) objs.push(cmbSphere);
     const hits=raycaster.intersectObjects(objs,false);
     if(!hits.length) return; const h=hits[0];
-    if(h.object===haloPoints){ playHaloSound(); document.getElementById('readout').textContent='cluster'; }
+    if(h.object===haloPoints){ const i=h.index; playHaloSound();
+      document.getElementById('readout').innerHTML='&#9899; cluster: log&#8321;&#8320; M='+V.halos.log_mass[i].toFixed(2)+' M&#8857;, z='+(V.halos.redshift?V.halos.redshift[i]:0).toFixed(2); }
     else if(h.uv){ const theta=(1-h.uv.y)*Math.PI, phi=h.uv.x*2*Math.PI;
       const n=sampleValue('dT_cmblens', phi/(2*Math.PI), theta/Math.PI);
       if(n===null){ loadValMap('dT_cmblens'); } else playVoice('dT_cmblens', n);
