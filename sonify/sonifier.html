@@ -159,6 +159,13 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
   .container { grid-template-columns: 1fr; }
   .full-width { grid-column: 1; }
 }
+#tourCaption {
+  position: fixed; left: 50%; transform: translateX(-50%); top: 54px; z-index: 50;
+  max-width: 680px; width: calc(100% - 32px);
+  background: rgba(19,24,41,0.96); border: 1px solid var(--accent);
+  border-radius: 10px; padding: 12px 18px; font-size: 1.0em; line-height: 1.5;
+  color: #e8ecf4; box-shadow: 0 8px 28px rgba(0,0,0,0.55); display: none; text-align: center;
+}
 </style>
 </head>
 <body>
@@ -169,6 +176,8 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
   <a href="about.html" style="color:var(--accent);text-decoration:none;">How it works</a> &nbsp;&middot;&nbsp;
   <a href="sky.html" style="color:var(--accent);text-decoration:none;">Sky Explorer &rarr;</a>
 </p>
+
+<div id="tourCaption"></div>
 
 <div class="container">
 
@@ -334,6 +343,7 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
         <button class="transport-btn stop-btn" id="stopBtn">&#9632; Stop</button>
       </div>
       <div class="transport" style="margin-top:6px;">
+        <button class="transport-btn action-btn" id="tourBtn" title="Auto-play a guided journey through the sky" style="background:linear-gradient(90deg,#4a9eff,#2ed573);color:#06101f;font-weight:700;">&#9654; Tour</button>
         <button class="transport-btn action-btn" id="bigBangBtn" style="background:linear-gradient(90deg,#ff9f43,#cc3333);color:white;">&#127775; Big Bang</button>
         <button class="transport-btn action-btn" id="spatialBtn" title="3D spatial audio (use headphones)">3D Spatial</button>
         <button class="transport-btn action-btn" id="recBtn" title="Record what you hear to an audio file">&#9210; Record</button>
@@ -2529,9 +2539,10 @@ function setup(){
     skyC.style.cursor = S.scanMode ? 'cell' : 'grab';
   });
 
-  // Record + Share
+  // Record + Share + Tour
   document.getElementById('recBtn').addEventListener('click', toggleRecord);
   document.getElementById('shareBtn').addEventListener('click', shareLink);
+  document.getElementById('tourBtn').addEventListener('click', runTour);
 
   // Resize
   window.addEventListener('resize',()=>{drawSpectrum();drawSkyMap();});
@@ -2593,6 +2604,55 @@ function applyShareParams(){
   if(p.get('lo')){ S.ellMin=parseInt(p.get('lo')); const e=document.getElementById('ellMinSlider'); if(e){e.value=S.ellMin; document.getElementById('ellMinVal').textContent=S.ellMin;} }
   if(p.get('hi')){ S.ellMax=parseInt(p.get('hi')); const e=document.getElementById('ellMaxSlider'); if(e){e.value=S.ellMax; document.getElementById('ellMaxVal').textContent=S.ellMax;} }
   drawSpectrum();
+}
+
+// ============================================================
+// Guided tour: a hands-free narrated journey through the sky
+// ============================================================
+let tourToken=0;
+function tourSetComps(arr){ S.activeComponents=new Set(arr);
+  document.querySelectorAll('.toggle-btn').forEach(b=>b.classList.toggle('active', S.activeComponents.has(b.dataset.comp))); drawSpectrum(); }
+function tourSetFreq(nu){ S.freq=nu;
+  document.querySelectorAll('.freq-btn').forEach(b=>b.classList.toggle('active', parseInt(b.dataset.freq)===nu)); drawSpectrum(); }
+function tourSetMethod(m){ S.method=m;
+  document.querySelectorAll('.method-btn').forEach(b=>b.classList.toggle('active', b.dataset.method===m));
+  const ic=document.getElementById('instrumentControls'); if(ic) ic.style.display=(m==='instruments')?'flex':'none'; }
+function tourCaption(html){ const c=document.getElementById('tourCaption'); c.innerHTML=html; c.style.display=html?'block':'none'; }
+function tourWait(ms,token){ return new Promise(r=>setTimeout(()=>r(token===tourToken), ms)); }
+function stopTour(){ tourToken++; tourCaption(''); stopAll();
+  const b=document.getElementById('tourBtn'); if(b){ b.classList.remove('active'); b.innerHTML='&#9654; Tour'; } }
+async function runTour(){
+  const btn=document.getElementById('tourBtn');
+  if(btn.classList.contains('active')){ stopTour(); return; }
+  const token=++tourToken;
+  btn.classList.add('active'); btn.innerHTML='&#9632; Stop tour';
+  initAudio(); if(S.audioCtx.state==='suspended') S.audioCtx.resume();
+  const steps=[
+    {cap:"&#127759; <b>The cosmic microwave background</b> &mdash; the universe's first light, from 380,000 years after the Big Bang. Its acoustic peaks are the bass note of creation.",
+     run:()=>{ tourSetMethod('noise'); tourSetComps(['dT_cmblens']); tourSetFreq(143); startPlaying(); }, dur:7000},
+    {cap:"Now we <b>sweep across angular scales</b> &mdash; from the largest structures (bass) down to the finest (treble).",
+     run:()=>{ tourSetComps(['dT_cmblens']); startSweep(); }, dur:9000},
+    {cap:"&#127755; <b>The thermal Sunyaev&ndash;Zel'dovich effect</b>: hot gas in galaxy clusters distorting the CMB &mdash; a midrange texture.",
+     run:()=>{ stopAll(); tourSetComps(['dT_tsz']); tourSetFreq(143); startPlaying(); }, dur:6000},
+    {cap:"Tune to <b>225 GHz</b>: the tSZ almost <b>vanishes</b> at its ~217 GHz frequency null &mdash; hear it fade out.",
+     run:()=>{ tourSetFreq(225); startPlaying(); }, dur:6500},
+    {cap:"&#10024; <b>The cosmic infrared background</b> &mdash; dusty star-forming galaxies. Barely there at 93 GHz...",
+     run:()=>{ stopAll(); tourSetComps(['dT_cib']); tourSetFreq(93); startPlaying(); }, dur:5000},
+    {cap:"...and it <b>roars by 353 GHz</b>.",
+     run:()=>{ tourSetFreq(353); startPlaying(); }, dur:5000},
+    {cap:"All together &mdash; the <b>multi-probe sky</b>. Crossfading 93 &rarr; 353 GHz, the universe shifts from CMB to dust.",
+     run:()=>{ stopAll(); tourSetComps(['dT_cmblens','dT_tsz','dT_cib']); startFreqSweep(); }, dur:11000},
+    {cap:"&#127775; And the <b>&ldquo;sound of the Big Bang&rdquo;</b> &mdash; the CMB acoustic peaks as a slowly descending chord.",
+     run:()=>{ stopAll(); playBigBang(); }, dur:12500},
+    {cap:"That's the multi-probe sky. <b>Now explore it yourself</b> &mdash; mix components, sweep, or click the sphere. &#9728;&#65039;",
+     run:()=>{ stopAll(); }, dur:6000},
+  ];
+  for(const st of steps){
+    if(token!==tourToken) return;
+    tourCaption(st.cap); try{ st.run(); }catch(e){}
+    const ok=await tourWait(st.dur, token); if(!ok) return;
+  }
+  stopTour();
 }
 
 // ============================================================
