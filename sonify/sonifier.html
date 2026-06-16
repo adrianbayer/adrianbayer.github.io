@@ -378,36 +378,16 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
     </div>
   </div>
 
-  <!-- Sky Map -->
+  <!-- Sky interaction moved to dedicated toys -->
   <div class="panel">
-    <h2>Sky Map</h2>
-    <canvas id="skyCanvas"></canvas>
-    <div class="sky-info">
-      <strong>Drag</strong> to rotate, <strong>click</strong> to sonify. Toggle <strong>Scan</strong> to sonify while dragging.<br>
-      Position: <span id="skyPos">&mdash;</span> &nbsp;|&nbsp;
-      Local RMS: <span id="skyVar">&mdash;</span>
-    </div>
-    <div class="btn-row" style="margin-top:6px;">
-      <button class="sm-btn option-btn" id="scanModeBtn">Scan mode</button>
-    </div>
-    <div class="control-group" style="margin-top:8px;">
-      <label>Map component</label>
-      <div class="btn-row">
-        <button class="sm-btn sky-comp-btn active" data-skycomp="dT_cmblens">CMB</button>
-        <button class="sm-btn sky-comp-btn" data-skycomp="dT_tsz">tSZ</button>
-        <button class="sm-btn sky-comp-btn" data-skycomp="dT_cib">CIB</button>
-        <button class="sm-btn sky-comp-btn" data-skycomp="dT_ksz">kSZ</button>
-        <button class="sm-btn sky-comp-btn" data-skycomp="T_tot">Total</button>
-      </div>
-      <label style="margin-top:4px;">Map frequency <span style="text-transform:none;font-size:0.9em;">(Total only)</span></label>
-      <div class="btn-row">
-        <button class="sm-btn sky-freq-btn" data-skyfreq="93">93</button>
-        <button class="sm-btn sky-freq-btn active" data-skyfreq="143">143</button>
-        <button class="sm-btn sky-freq-btn" data-skyfreq="145">145</button>
-        <button class="sm-btn sky-freq-btn" data-skyfreq="225">225</button>
-        <button class="sm-btn sky-freq-btn" data-skyfreq="280">280</button>
-        <button class="sm-btn sky-freq-btn" data-skyfreq="353">353</button>
-      </div>
+    <h2>Explore the sky</h2>
+    <p style="font-size:0.85em;color:#6b7394;line-height:1.6;">
+      The interactive sky now has its own toys &mdash; richer, zoomable, and clickable. Click any
+      direction to hear it, scan across the sky, and listen to galaxy clusters.
+    </p>
+    <div class="btn-row" style="margin-top:10px;">
+      <a class="transport-btn play-btn" href="globe.html" style="text-decoration:none;">&#127760; 3D Globe</a>
+      <a class="transport-btn action-btn" href="sky.html" style="text-decoration:none;">&#127759; Sky Explorer</a>
     </div>
   </div>
 
@@ -466,17 +446,11 @@ async function loadData() {
   const badge = document.getElementById('statusBadge');
   if (badge) badge.textContent = 'Loading…';
   try {
-    const [a,b,c] = await Promise.all([fetch('cl_data.json'),fetch('sky_data.json'),fetch('halos.json')]);
-    for (const r of [a,b,c]) {
-      if (!r.ok) throw new Error(`${r.url.split('/').pop()} → HTTP ${r.status}`);
-    }
+    const a = await fetch('cl_data.json');
+    if (!a.ok) throw new Error(`cl_data.json → HTTP ${a.status}`);
     S.clData = await a.json();
-    S.skyData = await b.json();
-    S.halos = await c.json();
-    console.log(`Loaded ${S.halos.n} halos`);
     if (badge) badge.textContent = 'Ready';
     drawSpectrum();
-    drawSkyMap();
   } catch (err) {
     console.error('Data load failed:', err);
     showLoadError(err);
@@ -2391,25 +2365,6 @@ function setup(){
     if(S.playing)startPlaying(); // restart with new stereo mode
   }));
 
-  // Sky map component buttons
-  document.querySelectorAll('.sky-comp-btn').forEach(b=>b.addEventListener('click',()=>{
-    document.querySelectorAll('.sky-comp-btn').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active');
-    S.skyComp=b.dataset.skycomp;
-    S.skySource=S.skyComp+'_'+S.skyFreq;
-    skyTextureSrc=''; // force rebuild
-    drawSkyMap();
-  }));
-  // Sky map frequency buttons
-  document.querySelectorAll('.sky-freq-btn').forEach(b=>b.addEventListener('click',()=>{
-    document.querySelectorAll('.sky-freq-btn').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active');
-    S.skyFreq=b.dataset.skyfreq;
-    S.skySource=S.skyComp+'_'+S.skyFreq;
-    skyTextureSrc='';
-    drawSkyMap();
-  }));
-
   // Sliders
   document.getElementById('ellMinSlider').addEventListener('input',e=>{
     S.ellMin=parseInt(e.target.value);
@@ -2472,80 +2427,13 @@ function setup(){
   });
   document.getElementById('stopBtn').addEventListener('click',stopAll);
 
-  // Sky interactions (mouse + touch)
-  const skyC=document.getElementById('skyCanvas');
-  let lastScanTime=0;
-
-  function skyDown(cx,cy){
-    SKY.dragging=true; SKY.lastX=cx; SKY.lastY=cy; SKY.downX=cx; SKY.downY=cy;
-  }
-  function skyMove(cx,cy){
-    if(!SKY.dragging)return;
-    const dx=cx-SKY.lastX, dy=cy-SKY.lastY;
-    SKY.lastX=cx; SKY.lastY=cy;
-    if(S.scanMode){
-      // Sonify at current position (throttled so tones don't overlap too much)
-      const rect=skyC.getBoundingClientRect();
-      const tp=canvasToThetaPhi(cx-rect.left, cy-rect.top);
-      if(tp && Date.now()-lastScanTime>160){
-        sonifyPoint(tp.theta, tp.phi, true);
-        lastScanTime=Date.now();
-      }
-    } else {
-      // Normal drag rotates the sphere
-      SKY.rotLon+=dx*0.01;
-      SKY.rotLat=Math.max(-Math.PI/2,Math.min(Math.PI/2, SKY.rotLat+dy*0.01));
-      drawSkyMap();
-    }
-  }
-  function skyUp(cx,cy){
-    if(!SKY.dragging) return;
-    SKY.dragging=false;
-    // Treat as a click/tap (sonify) if the pointer barely moved
-    const dx=Math.abs(cx-(SKY.downX||cx)), dy=Math.abs(cy-(SKY.downY||cy));
-    if(dx<5 && dy<5){
-      const rect=skyC.getBoundingClientRect();
-      const tp=canvasToThetaPhi(cx-rect.left, cy-rect.top);
-      if(tp) sonifyPoint(tp.theta, tp.phi, true);
-    }
-  }
-
-  // Mouse
-  skyC.addEventListener('mousedown',(e)=>skyDown(e.clientX,e.clientY));
-  window.addEventListener('mousemove',(e)=>skyMove(e.clientX,e.clientY));
-  window.addEventListener('mouseup',(e)=>skyUp(e.clientX,e.clientY));
-
-  // Touch (phones / tablets)
-  skyC.addEventListener('touchstart',(e)=>{
-    if(e.touches.length!==1) return;
-    skyDown(e.touches[0].clientX, e.touches[0].clientY);
-    e.preventDefault();
-  },{passive:false});
-  skyC.addEventListener('touchmove',(e)=>{
-    if(e.touches.length!==1) return;
-    skyMove(e.touches[0].clientX, e.touches[0].clientY);
-    e.preventDefault();
-  },{passive:false});
-  skyC.addEventListener('touchend',(e)=>{
-    const t=e.changedTouches[0];
-    if(t) skyUp(t.clientX, t.clientY); else SKY.dragging=false;
-    e.preventDefault();
-  },{passive:false});
-
-  // Scan mode toggle
-  document.getElementById('scanModeBtn').addEventListener('click',()=>{
-    S.scanMode=!S.scanMode;
-    document.getElementById('scanModeBtn').classList.toggle('active', S.scanMode);
-    skyC.style.cursor = S.scanMode ? 'cell' : 'grab';
-  });
-
   // Record + Share + Tour
   document.getElementById('recBtn').addEventListener('click', toggleRecord);
   document.getElementById('shareBtn').addEventListener('click', shareLink);
   document.getElementById('tourBtn').addEventListener('click', runTour);
 
   // Resize
-  window.addEventListener('resize',()=>{drawSpectrum();drawSkyMap();});
+  window.addEventListener('resize',()=>{drawSpectrum();});
 }
 
 // ============================================================
