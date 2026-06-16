@@ -238,6 +238,7 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
         <button class="sm-btn method-btn" data-method="additive">Additive</button>
         <button class="sm-btn method-btn" data-method="layers">Scale Layers</button>
         <button class="sm-btn method-btn" data-method="instruments">Instruments</button>
+        <button class="sm-btn method-btn" data-method="duet">Duet &#9839;</button>
       </div>
     </div>
 
@@ -303,6 +304,41 @@ h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600
       <div style="font-size:0.72em;color:#6b7394;margin-top:4px;">
         &#8467; &rarr; octave, &nbsp; &#957; &rarr; note, &nbsp; D<sub>&#8467;</sub> &rarr; volume.
         CMB &amp; kSZ are frequency-independent.
+      </div>
+    </div>
+
+    <div class="control-group" id="duetControls" style="display:none;">
+      <label>Duet &mdash; cross-correlation of two probes</label>
+      <div class="slider-row">
+        <span style="font-size:0.8em;min-width:14px;">A</span>
+        <select id="duetA" class="inst-select">
+          <option value="dT_cmblens">CMB lensing</option>
+          <option value="dT_tsz">tSZ</option>
+          <option value="dT_cib">CIB</option>
+          <option value="dT_ksz">kSZ</option>
+        </select>
+        <span style="font-size:0.8em;min-width:14px;text-align:right;">B</span>
+        <select id="duetB" class="inst-select">
+          <option value="dT_cmblens">CMB lensing</option>
+          <option value="dT_tsz" selected>tSZ</option>
+          <option value="dT_cib">CIB</option>
+          <option value="dT_ksz">kSZ</option>
+        </select>
+      </div>
+      <div style="position:relative;height:9px;margin:10px 2px 2px;border-radius:5px;
+           background:linear-gradient(90deg,#ff5b5b 0%,#2b3350 50%,#2ed573 100%);">
+        <div id="duetMarker" style="position:absolute;top:-3px;left:50%;width:3px;height:15px;
+             background:#fff;border-radius:2px;transform:translateX(-50%);transition:left .08s;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.65em;color:#6b7394;margin:2px 2px 0;">
+        <span>anti-correlated</span><span>independent</span><span>correlated</span>
+      </div>
+      <div id="duetReadout" style="font-size:0.8em;color:#9aa3c4;margin-top:6px;">press &#9654; and sweep &#8467;</div>
+      <div style="font-size:0.72em;color:#6b7394;margin-top:4px;">
+        Two voices, one per probe. Where the probes are <b>correlated</b> they lock to a
+        consonant unison in the centre; as they <b>decorrelate</b> they detune and spread apart;
+        <b>anti-correlated</b> scales turn dissonant and hard-panned. Sweep &#8467; to hear the
+        correlation change with scale, and switch bands to hear tSZ flip sign at 217&nbsp;GHz.
       </div>
     </div>
 
@@ -406,6 +442,7 @@ const S = {
   sweeping: false, sweepPos: 0, sweepSpeed: 10, sweepDir: 1,
   logVolume: false, linearSweep: false, pingPong: false, fixedPitch: false,
   snapScale: true,       // instrument mode: snap glide to a pentatonic scale
+  duetA: 'dT_cmblens', duetB: 'dT_tsz', crossData: null,  // cross-correlation duet
   scrubbing: false, scanMode: false, spatialMode: false,
   buildup: false, buildupPhase: 0,  // 0=CMB, 1=+tSZ, 2=+CIB
   freqSweep: false, freqSweepPos: 0,
@@ -446,6 +483,8 @@ async function loadData() {
     S.clData = await a.json();
     if (badge) badge.textContent = 'Ready';
     drawSpectrum();
+    // Optional: cross-correlation data for the duet (graceful if absent)
+    try { const x = await fetch('cross_data.json'); if (x.ok) S.crossData = await x.json(); } catch(e) {}
   } catch (err) {
     console.error('Data load failed:', err);
     showLoadError(err);
@@ -1481,6 +1520,90 @@ function startInstrumentSeq() {
 }
 
 // ============================================================
+// Duet mode: two voices whose harmony tracks the cross-correlation r_ell
+// ============================================================
+const DUET_SHORT = { dT_cmblens:'cmblens', dT_tsz:'tsz', dT_cib:'cib', dT_ksz:'ksz' };
+// Intervals ordered most-consonant -> most-dissonant (semitones).
+const DUET_INTERVALS = [0, 7, 5, 4, 3, 2, 1, 6];
+
+function crossPairArr(A, B) {           // -> array of r vs ell at the current band, or null
+  const cd = S.crossData; if (!cd) return null;
+  const a = DUET_SHORT[A], b = DUET_SHORT[B];
+  if (!a || !b) return null;
+  let arr = cd.pairs[a+'-'+b] || cd.pairs[b+'-'+a];
+  if (!arr) return null;
+  if (!Array.isArray(arr)) arr = arr[String(S.freq)] || arr[Object.keys(arr)[0]];  // freq-dependent
+  return arr || null;
+}
+function crossR(A, B, ell) {            // interpolate r at ell; 1 if same probe, 0 if unknown
+  if (DUET_SHORT[A] === DUET_SHORT[B]) return 1;
+  const cd = S.crossData, arr = crossPairArr(A, B);
+  if (!cd || !arr) return 0;
+  const E = cd.ell;
+  if (ell <= E[0]) return arr[0];
+  if (ell >= E[E.length-1]) return arr[arr.length-1];
+  let i = 0; while (i < E.length-1 && E[i+1] < ell) i++;
+  const t = (ell - E[i]) / (E[i+1] - E[i]);
+  return arr[i] + (arr[i+1]-arr[i]) * t;
+}
+function duetReadout(r, ell) {
+  const mk = document.getElementById('duetMarker');
+  if (mk) mk.style.left = (((r+1)/2)*100).toFixed(1) + '%';
+  const ro = document.getElementById('duetReadout'); if (!ro) return;
+  const tag = r>0.4 ? 'strongly correlated' : r>0.12 ? 'correlated'
+            : r>-0.12 ? 'nearly independent' : r>-0.4 ? 'anti-correlated' : 'strongly anti-correlated';
+  const col = r>0.12 ? '#2ed573' : r<-0.12 ? '#ff5b5b' : '#9aa3c4';
+  ro.innerHTML = '&#8467; &asymp; <b>'+Math.round(ell)+'</b> &nbsp; r = <b style="color:'+col+'">'
+    + (r>=0?'+':'') + r.toFixed(2) + '</b> &nbsp; ('+tag+')';
+}
+
+function startDuet() {
+  initAudio();
+  if (S.audioCtx.state==='suspended') S.audioCtx.resume();
+  stopAll();
+  S.playing = true; S.sweeping = true; S.sweepPos = 0;
+  const ctx = S.audioCtx;
+  const A = S.duetA, B = S.duetB;
+  const panA = ctx.createStereoPanner(); panA.connect(S.gainNode);
+  const panB = ctx.createStereoPanner(); panB.connect(S.gainNode);
+  const vA = createVoice(S.instruments[A] || 'piano', ctx, panA);
+  const vB = createVoice(S.instruments[B] || 'violin', ctx, panB);
+  S._voices = { A: vA, B: vB };
+  S._duetPans = [panA, panB];
+
+  S._instTimer = setInterval(() => {
+    if (!S.playing || S.audioCtx.state!=='running') return;
+    const frac = S.sweepPos;
+    const ell = S.linearSweep
+      ? ELL_MIN + frac*(ELL_MAX-ELL_MIN)
+      : 10**(Math.log10(ELL_MIN)+frac*(Math.log10(ELL_MAX)-Math.log10(ELL_MIN)));
+    const r = crossR(A, B, ell);
+
+    // base note (shared); B detunes by an interval set by the (lack of) correlation
+    const noteName = freqToNoteName(S.freq);
+    let f0 = noteToFreq(noteName, ellToOctave(ell));
+    if (S.snapScale) f0 = quantizeToScale(f0);
+    const idx = Math.max(0, Math.min(DUET_INTERVALS.length-1, Math.round((1-r)/2*(DUET_INTERVALS.length-1))));
+    const fB = f0 * Math.pow(2, DUET_INTERVALS[idx]/12);
+    const spread = Math.max(0, Math.min(0.92, (1-r)/2 * 0.92));
+    const now = ctx.currentTime;
+    panA.pan.setTargetAtTime(-spread, now, 0.05);
+    panB.pan.setTargetAtTime( spread, now, 0.05);
+    vA.setFreq(f0); vB.setFreq(fB);
+
+    for (const [v, c] of [[vA, A], [vB, B]]) {
+      const rawAmp = Math.sqrt(bandIntegralDl(ell, [c], S.freq, 1.0));
+      const gmx = globalMaxBandAmp([c], S.freq, 1.0);
+      let vol = gmx>0 ? (S.logVolume ? mapAmp(rawAmp, gmx) : rawAmp/gmx) : 0;
+      v.setGain(Math.min(0.32, vol*0.55));
+    }
+    duetReadout(r, ell);
+  }, 30);
+
+  updateUI();
+}
+
+// ============================================================
 // Create and play audio
 // ============================================================
 function stopAll() {
@@ -1495,6 +1618,7 @@ function stopAll() {
     for (const c in S._voices) { try { S._voices[c].stop(); } catch(e){} }
     S._voices = null;
   }
+  if (S._duetPans) { for (const p of S._duetPans) { try { p.disconnect(); } catch(e){} } S._duetPans = null; }
   S.playing=false; S.sweeping=false; S.buildup=false; S.freqSweep=false;
   updateUI();
 }
@@ -1547,6 +1671,7 @@ function startPlaying() {
   stopAll();
 
   if (S.method==='instruments') { startInstrumentSeq(); return; }
+  if (S.method==='duet') { startDuet(); return; }
 
   const dur = 2.0;
   const comps = [...S.activeComponents];
@@ -1696,6 +1821,7 @@ function startSweep() {
 
   // If we're in instrument mode, delegate to the voice-based sequencer
   if (S.method==='instruments') { startInstrumentSeq(); return; }
+  if (S.method==='duet') { startDuet(); return; }
 
   // For shaped-noise/additive/layers, create ONE continuous source.
   // Generate a long buffer with the FULL D_ell spectrum (no bandpass window),
@@ -2312,6 +2438,8 @@ function setup(){
     S.method=b.dataset.method;
     document.getElementById('instrumentControls').style.display =
       (S.method==='instruments') ? 'flex' : 'none';
+    document.getElementById('duetControls').style.display =
+      (S.method==='duet') ? 'flex' : 'none';
     if (S.playing) { stopAll(); startPlaying(); }
     else if(S._markDirty)S._markDirty();
   }));
@@ -2334,6 +2462,10 @@ function setup(){
     if (S.method==='instruments' && S.playing) { stopAll(); startPlaying(); }
   });
   document.getElementById('snapScale').addEventListener('change',e=>{ S.snapScale=e.target.checked; });
+  document.getElementById('duetA').addEventListener('change',e=>{ S.duetA=e.target.value;
+    if (S.method==='duet' && S.playing) { stopAll(); startPlaying(); } });
+  document.getElementById('duetB').addEventListener('change',e=>{ S.duetB=e.target.value;
+    if (S.method==='duet' && S.playing) { stopAll(); startPlaying(); } });
 
   // Preset palettes
   const presets = {
@@ -2497,7 +2629,8 @@ function applyShareParams(){
     document.querySelectorAll('.freq-btn').forEach(b=>b.classList.toggle('active', parseInt(b.dataset.freq)===S.freq)); }
   if(p.get('m')){ S.method=p.get('m');
     document.querySelectorAll('.method-btn').forEach(b=>b.classList.toggle('active', b.dataset.method===S.method));
-    const ic=document.getElementById('instrumentControls'); if(ic) ic.style.display=(S.method==='instruments')?'flex':'none'; }
+    const ic=document.getElementById('instrumentControls'); if(ic) ic.style.display=(S.method==='instruments')?'flex':'none';
+    const dc=document.getElementById('duetControls'); if(dc) dc.style.display=(S.method==='duet')?'flex':'none'; }
   if(p.get('s')){ S.stereoMode=p.get('s');
     document.querySelectorAll('.stereo-btn').forEach(b=>b.classList.toggle('active', b.dataset.stereo===S.stereoMode)); }
   if(p.get('lo')){ S.ellMin=parseInt(p.get('lo')); const e=document.getElementById('ellMinSlider'); if(e){e.value=S.ellMin; document.getElementById('ellMinVal').textContent=S.ellMin;} }
@@ -2515,7 +2648,8 @@ function tourSetFreq(nu){ S.freq=nu;
   document.querySelectorAll('.freq-btn').forEach(b=>b.classList.toggle('active', parseInt(b.dataset.freq)===nu)); drawSpectrum(); }
 function tourSetMethod(m){ S.method=m;
   document.querySelectorAll('.method-btn').forEach(b=>b.classList.toggle('active', b.dataset.method===m));
-  const ic=document.getElementById('instrumentControls'); if(ic) ic.style.display=(m==='instruments')?'flex':'none'; }
+  const ic=document.getElementById('instrumentControls'); if(ic) ic.style.display=(m==='instruments')?'flex':'none';
+  const dc=document.getElementById('duetControls'); if(dc) dc.style.display=(m==='duet')?'flex':'none'; }
 function tourCaption(html){ const c=document.getElementById('tourCaption'); c.innerHTML=html; c.style.display=html?'block':'none'; }
 function tourWait(ms,token){ return new Promise(r=>setTimeout(()=>r(token===tourToken), ms)); }
 function stopTour(){ tourToken++; tourCaption(''); stopAll();
