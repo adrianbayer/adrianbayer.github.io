@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inside the Lightcone &mdash; Multi-Probe Sky</title>
+<script>
+(function(){
+  var k='sonify_auth';
+  if(sessionStorage.getItem(k)==='1') return;
+  var p=prompt('Enter password:');
+  if(p==='4halfdomes'){sessionStorage.setItem(k,'1');}
+  else{document.documentElement.innerHTML='<body style="background:#0a0e1a;color:#c8cde0;display:flex;justify-content:center;align-items:center;height:100vh;font-family:system-ui"><h2>Access denied</h2></body>';throw'blocked';}
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<style>
+:root{--bg:#04060c;--panel:#131829;--border:#1e2744;--text:#c8cde0;--accent:#4a9eff;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;}
+header{display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid var(--border);position:relative;z-index:5;}
+header h1{font-size:1.05em;font-weight:600;color:#e8ecf4;}
+header .sub{font-size:0.78em;color:#6b7394;}
+a.back{color:var(--accent);text-decoration:none;font-size:0.82em;border:1px solid var(--border);padding:4px 10px;border-radius:6px;}
+a.back:hover{background:#1e2744;}
+.controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border);position:relative;z-index:5;}
+.clabel{font-size:0.68em;text-transform:uppercase;letter-spacing:0.6px;color:#6b7394;}
+.btn{padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text);cursor:pointer;font-size:0.8em;}
+.btn.active{background:var(--accent);color:var(--bg);border-color:var(--accent);}
+.btn:hover{filter:brightness(1.15);}
+input[type=range]{accent-color:var(--accent);}
+#view{position:fixed;inset:0;}
+canvas{display:block;}
+.readout{position:fixed;left:10px;bottom:10px;font-size:0.75em;color:#9aa3c4;background:rgba(4,6,12,0.7);padding:4px 8px;border-radius:6px;pointer-events:none;z-index:5;}
+.hint{position:fixed;right:10px;bottom:10px;font-size:0.72em;color:#6b7394;background:rgba(4,6,12,0.7);padding:4px 8px;border-radius:6px;pointer-events:none;z-index:5;max-width:46%;text-align:right;}
+</style>
+</head>
+<body>
+<header>
+  <h1>Inside the Lightcone</h1>
+  <span class="sub">you are at the centre &middot; clusters fill the volume by distance &middot; CMB is the outer shell</span>
+  <a class="back" href="index.html">&larr; All toys</a>
+  <a class="back" href="globe.html">3D Globe</a>
+  <a class="back" href="about.html">How it works</a>
+</header>
+<div class="controls">
+  <button class="btn" id="spinBtn">Auto-spin</button>
+  <button class="btn" id="haloBtn">Clusters: on</button>
+  <button class="btn" id="cmbBtn">CMB shell: on</button>
+  <button class="btn" id="recenterBtn">Recenter</button>
+  <button class="btn" id="haloRecBtn" title="Record a short sound (say &quot;hey!&quot;) to play on clusters">&#127908; Halo sound</button>
+  <span class="clabel">Vol</span>
+  <input type="range" id="vol" min="0" max="100" value="70" style="width:80px;">
+</div>
+<div id="view"></div>
+<div class="readout" id="readout">drag to look around &middot; wheel to move in/out &middot; click a cluster or the CMB</div>
+<div class="hint" id="hint">loading…</div>
+
+<script>
+const V = { meta:null, halos:null, cl:null, comps:new Set(['dT_cmblens']),
+  valMaps:{}, volume:0.7, audioCtx:null, gain:null, limiter:null };
+const R_CMB = 12, R_HALO_MAX = 9;
+const ORDER=['dT_cmblens'];
+const canvas_unused=null;
+
+// ---- value maps + audio (reused from the other sky toys) ----
+function valInfo(comp){ if(!V.meta) return null; return V.meta.images[comp]; }
+function loadValMap(comp){ if(V.valMaps[comp]) return; const info=valInfo(comp); if(!info||!info.val) return;
+  V.valMaps[comp]='loading'; const im=new Image(); im.crossOrigin='anonymous';
+  im.onload=()=>{ const c=document.createElement('canvas'); c.width=im.naturalWidth; c.height=im.naturalHeight;
+    const cx=c.getContext('2d',{willReadFrequently:true}); cx.drawImage(im,0,0); V.valMaps[comp]={cx,w:c.width,h:c.height,mode:info.mode}; };
+  im.onerror=()=>{ delete V.valMaps[comp]; }; im.src='sky_img/'+info.val; }
+function loadValMaps(){ for(const c of V.comps) loadValMap(c); }
+function sampleValue(comp,fx,fy){ const vm=V.valMaps[comp]; if(!vm||vm==='loading') return null;
+  const x=Math.min(vm.w-1,Math.max(0,Math.floor(fx*vm.w))), y=Math.min(vm.h-1,Math.max(0,Math.floor(fy*vm.h)));
+  let g; try{ g=vm.cx.getImageData(x,y,1,1).data[0]; }catch(e){ return null; } return vm.mode==='sym'?(g-128)/127:(g/255)*2-1; }
+function initAudio(){ if(V.audioCtx) return;
+  V.audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  V.gain=V.audioCtx.createGain(); V.gain.gain.value=V.volume;
+  V.limiter=V.audioCtx.createDynamicsCompressor(); V.limiter.threshold.value=-3; V.limiter.ratio.value=12; V.limiter.attack.value=0.003; V.limiter.release.value=0.25;
+  V.gain.connect(V.limiter); V.limiter.connect(V.audioCtx.destination); }
+function playVoice(comp,norm){ initAudio(); if(V.audioCtx.state==='suspended') V.audioCtx.resume();
+  const ctx=V.audioCtx, now=ctx.currentTime, freq=196*Math.pow(2,Math.max(-1,Math.min(1,norm)));
+  const o=ctx.createOscillator(), g=ctx.createGain(); o.type='sine'; o.frequency.value=freq;
+  g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.22,now+0.01); g.gain.exponentialRampToValueAtTime(0.001,now+0.3);
+  o.connect(g); g.connect(V.gain); o.start(now); o.stop(now+0.34); }
+function heySynth(){ initAudio(); if(V.audioCtx.state==='suspended') V.audioCtx.resume();
+  const ctx=V.audioCtx, now=ctx.currentTime;
+  const o=ctx.createOscillator(); o.type='sawtooth';
+  o.frequency.setValueAtTime(300,now); o.frequency.exponentialRampToValueAtTime(540,now+0.08); o.frequency.exponentialRampToValueAtTime(300,now+0.34);
+  const f1=ctx.createBiquadFilter(); f1.type='bandpass'; f1.frequency.value=720; f1.Q.value=5;
+  const f2=ctx.createBiquadFilter(); f2.type='bandpass'; f2.frequency.setValueAtTime(1650,now); f2.frequency.linearRampToValueAtTime(2200,now+0.22); f2.Q.value=7;
+  const g=ctx.createGain(); g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.5,now+0.03); g.gain.setValueAtTime(0.5,now+0.18); g.gain.exponentialRampToValueAtTime(0.001,now+0.36);
+  o.connect(f1); o.connect(f2); f1.connect(g); f2.connect(g); g.connect(V.gain); o.start(now); o.stop(now+0.4); }
+function playHaloSound(){ initAudio(); if(V.audioCtx.state==='suspended') V.audioCtx.resume();
+  if(V.haloBuf){ const s=V.audioCtx.createBufferSource(); s.buffer=V.haloBuf; const g=V.audioCtx.createGain(); g.gain.value=1.0; s.connect(g); g.connect(V.gain); s.start(); } else heySynth(); }
+function loadHaloSound(){ try{ const d=localStorage.getItem('haloSound'); if(!d) return;
+  fetch(d).then(r=>r.arrayBuffer()).then(ab=>{ initAudio(); V.audioCtx.decodeAudioData(ab,b=>{V.haloBuf=b;}); }).catch(()=>{}); }catch(e){} }
+function recordHaloSound(){ const btn=document.getElementById('haloRecBtn');
+  if(typeof MediaRecorder==='undefined' || !navigator.mediaDevices){ btn.textContent='no mic'; return; }
+  if(V._haloRec && V._haloRec.state==='recording'){ V._haloRec.stop(); return; }
+  navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+    const rec=new MediaRecorder(stream), chunks=[]; rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+    rec.onstop=()=>{ stream.getTracks().forEach(t=>t.stop()); const fr=new FileReader();
+      fr.onload=()=>{ try{ localStorage.setItem('haloSound', fr.result); }catch(e){} initAudio(); fetch(fr.result).then(r=>r.arrayBuffer()).then(ab=>V.audioCtx.decodeAudioData(ab,b=>{V.haloBuf=b;})).catch(()=>{}); };
+      fr.readAsDataURL(new Blob(chunks));
+      btn.innerHTML='&#127908; Halo sound'; btn.classList.remove('active'); btn.style.background=''; btn.style.color=''; V._haloRec=null; };
+    rec.start(); V._haloRec=rec; btn.innerHTML='&#9632; recording…'; btn.classList.add('active'); btn.style.background='#cc3333'; btn.style.color='#fff';
+    setTimeout(()=>{ if(V._haloRec && V._haloRec.state==='recording') V._haloRec.stop(); }, 3000);
+  }).catch(()=>{ btn.textContent='mic denied'; }); }
+
+// ---- geometry: comoving distance (flat LCDM, Om=0.31), arbitrary units ----
+function comoving(z){ const Om=0.31,OL=0.69,N=128; let s=0; for(let i=0;i<N;i++){ const zp=(i+0.5)/N*z; s+=1/Math.sqrt(Om*Math.pow(1+zp,3)+OL); } return (z/N)*s; }
+function skyToVec(theta,phi,r){ return new THREE.Vector3(-r*Math.cos(phi)*Math.sin(theta), -r*Math.cos(theta), r*Math.sin(phi)*Math.sin(theta)); }
+
+// ============================================================
+let scene, camera, renderer, controls, cmbSphere, haloPoints, raycaster, mouse;
+function initThree(){
+  const view=document.getElementById('view');
+  scene=new THREE.Scene();
+  camera=new THREE.PerspectiveCamera(60, view.clientWidth/view.clientHeight, 0.01, 200);
+  camera.position.set(0,0,5);
+  renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  renderer.setSize(view.clientWidth, view.clientHeight); renderer.setClearColor(0x04060c,1);
+  view.appendChild(renderer.domElement);
+
+  // CMB enclosing shell (seen from the inside)
+  const tex=new THREE.TextureLoader().load('sky_img/dT_cmblens.jpg', ()=>{document.getElementById('hint').textContent='';});
+  const cmbMat=new THREE.MeshBasicMaterial({map:tex, side:THREE.BackSide});
+  cmbSphere=new THREE.Mesh(new THREE.SphereGeometry(R_CMB, 96, 48), cmbMat); scene.add(cmbSphere);
+
+  controls=new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enablePan=false; controls.rotateSpeed=-0.35; controls.minDistance=0.1; controls.maxDistance=R_CMB*1.7;
+  controls.enableDamping=true; controls.dampingFactor=0.08;
+
+  raycaster=new THREE.Raycaster(); raycaster.params.Points.threshold=0.25; mouse=new THREE.Vector2();
+  let downX=0,downY=0;
+  renderer.domElement.addEventListener('pointerdown',e=>{ downX=e.clientX; downY=e.clientY; });
+  renderer.domElement.addEventListener('pointerup',e=>{
+    if(Math.abs(e.clientX-downX)+Math.abs(e.clientY-downY)>6) return;
+    const r=renderer.domElement.getBoundingClientRect();
+    mouse.x=((e.clientX-r.left)/r.width)*2-1; mouse.y=-((e.clientY-r.top)/r.height)*2+1;
+    raycaster.setFromCamera(mouse,camera);
+    const objs=[]; if(haloPoints && haloPoints.visible) objs.push(haloPoints); if(cmbSphere.visible) objs.push(cmbSphere);
+    const hits=raycaster.intersectObjects(objs,false);
+    if(!hits.length) return; const h=hits[0];
+    if(h.object===haloPoints){ playHaloSound(); document.getElementById('readout').textContent='cluster'; }
+    else if(h.uv){ const theta=(1-h.uv.y)*Math.PI, phi=h.uv.x*2*Math.PI;
+      const n=sampleValue('dT_cmblens', phi/(2*Math.PI), theta/Math.PI);
+      if(n===null){ loadValMap('dT_cmblens'); } else playVoice('dT_cmblens', n);
+      document.getElementById('readout').innerHTML='CMB &nbsp; l/b &asymp; <b>'+(phi*180/Math.PI).toFixed(0)+'&deg;, '+(90-theta*180/Math.PI).toFixed(0)+'&deg;</b>'; }
+  });
+  window.addEventListener('resize',()=>{ camera.aspect=view.clientWidth/view.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(view.clientWidth, view.clientHeight); });
+}
+function buildHalos(){
+  if(!V.halos) return; const n=V.halos.n, pos=new Float32Array(n*3), col=new Float32Array(n*3);
+  const Dc4=comoving(4)||1;
+  for(let i=0;i<n;i++){
+    const th=V.halos.theta[i]*Math.PI/180, ph=V.halos.phi[i]*Math.PI/180;
+    const z=(V.halos.redshift?V.halos.redshift[i]:1.0);
+    const r=Math.min(R_CMB-0.5, R_HALO_MAX*comoving(z)/Dc4);
+    const v=skyToVec(th,ph,r); pos[3*i]=v.x; pos[3*i+1]=v.y; pos[3*i+2]=v.z;
+    const b=Math.min(1,Math.max(0.3,(V.halos.log_mass[i]-14.5)*0.9+0.3));
+    col[3*i]=1.0*b; col[3*i+1]=0.84*b; col[3*i+2]=0.5*b;
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  g.setAttribute('color', new THREE.BufferAttribute(col,3));
+  haloPoints=new THREE.Points(g, new THREE.PointsMaterial({size:0.10, sizeAttenuation:true, vertexColors:true, transparent:true, opacity:0.95, depthWrite:false}));
+  scene.add(haloPoints);
+}
+function animate(){ requestAnimationFrame(animate); if(controls) controls.update(); if(renderer) renderer.render(scene,camera); }
+
+function wireControls(){
+  document.getElementById('spinBtn').addEventListener('click',()=>{ controls.autoRotate=!controls.autoRotate; controls.autoRotateSpeed=0.6; document.getElementById('spinBtn').classList.toggle('active',controls.autoRotate); });
+  document.getElementById('haloBtn').addEventListener('click',()=>{ if(haloPoints){ haloPoints.visible=!haloPoints.visible; const on=haloPoints.visible; document.getElementById('haloBtn').textContent='Clusters: '+(on?'on':'off'); document.getElementById('haloBtn').classList.toggle('active',on);} });
+  document.getElementById('cmbBtn').addEventListener('click',()=>{ cmbSphere.visible=!cmbSphere.visible; const on=cmbSphere.visible; document.getElementById('cmbBtn').textContent='CMB shell: '+(on?'on':'off'); document.getElementById('cmbBtn').classList.toggle('active',on); });
+  document.getElementById('recenterBtn').addEventListener('click',()=>{ camera.position.set(0,0,5); controls.target.set(0,0,0); controls.update(); });
+  document.getElementById('haloRecBtn').addEventListener('click', recordHaloSound);
+  document.getElementById('vol').addEventListener('input',e=>{ V.volume=e.target.value/100; if(V.gain) V.gain.gain.value=V.volume; });
+}
+
+async function init(){
+  if(typeof THREE==='undefined'){ document.getElementById('hint').textContent='Could not load 3D library (check connection).'; return; }
+  try{
+    const [a,b]=await Promise.all([fetch('sky_img/sky_img.json'),fetch('halos.json')]);
+    if(!a.ok) throw new Error('sky_img.json HTTP '+a.status);
+    V.meta=await a.json(); V.halos = b.ok?await b.json():null;
+  }catch(err){ document.getElementById('hint').textContent='Load failed: '+err.message+(location.protocol==='file:'?' (serve over http)':''); return; }
+  initThree(); buildHalos(); wireControls();
+  loadValMaps(); loadHaloSound();
+  document.getElementById('haloBtn').classList.add('active'); document.getElementById('cmbBtn').classList.add('active');
+  animate();
+}
+init();
+</script>
+</body>
+</html>

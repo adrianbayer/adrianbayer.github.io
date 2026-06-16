@@ -104,12 +104,6 @@ input[type=range]{accent-color:var(--accent);}
   <div class="cgroup">
     <button class="btn" id="stackBtn" title="Stack the map on the 3000 clusters and hear the mean signal">&#8853; Stack clusters</button>
   </div>
-  <div class="cgroup">
-    <button class="btn" id="timeBtn" title="Reveal clusters by look-back redshift (cosmic distance)">&#8987; Time machine</button>
-    <input type="range" id="zSlider" min="0" max="400" value="400" style="width:120px;display:none;">
-    <button class="btn" id="zPlay" style="display:none;">&#9654;</button>
-    <span class="clabel" id="zLabel" style="display:none;min-width:160px;text-transform:none;letter-spacing:0;"></span>
-  </div>
 </div>
 
 <div id="wrap">
@@ -131,7 +125,6 @@ const V = {
   layers:{}, valMaps:{},
   dragging:false, moved:false, lastX:0, lastY:0,
   scan:false, volume:0.7, scanLast:0,
-  timeOn:false, zNow:4.0, zPlaying:false,
   audioCtx:null, gain:null, limiter:null,
 };
 const ORDER=['dT_cmblens','dT_ksz','dT_tsz','dT_cib'];  // background-like first, emission on top
@@ -229,20 +222,17 @@ function draw(){
 }
 function drawHalos(baseX, sW, sH){
   if(!V.halos) return;
-  const zf=V.timeOn, zN=V.zNow, hasZ=V.halos.redshift;
   for(let i=0;i<V.halos.n;i++){
-    if(zf && hasZ && hasZ[i] > zN) continue;                     // not yet within look-back horizon
     const iy=(V.halos.theta[i]/180)*V.metaH, y=V.panY+iy*V.scale;
     if(y<-4||y>V.ch+4) continue;
     const ix=(V.halos.phi[i]/360)*V.metaW, logM=V.halos.log_mass[i];
     const sz=Math.max(1.2,(logM-14.5)*3.2);
-    const near = zf && hasZ && Math.abs(hasZ[i]-zN)<0.12;        // at the current horizon shell
     for(let x=baseX+ix*V.scale; x<V.cw+sz; x+=sW){
       if(x<-sz) continue;
-      ctx.globalAlpha=near?1.0:Math.min(0.8,(logM-14.5)*0.7+0.2);
-      ctx.fillStyle=near?'#fff3c0':'#ffd58a';
-      ctx.beginPath(); ctx.arc(x,y,near?sz+1.5:sz,0,2*Math.PI); ctx.fill();
-      if(logM>15.0 && !near){ ctx.globalAlpha=0.9; ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(x,y,sz+1,0,2*Math.PI); ctx.stroke(); }
+      ctx.globalAlpha=Math.min(0.8,(logM-14.5)*0.7+0.2);
+      ctx.fillStyle='#ffd58a';
+      ctx.beginPath(); ctx.arc(x,y,sz,0,2*Math.PI); ctx.fill();
+      if(logM>15.0){ ctx.globalAlpha=0.9; ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(x,y,sz+1,0,2*Math.PI); ctx.stroke(); }
     }
   }
   ctx.globalAlpha=1;
@@ -460,45 +450,7 @@ document.getElementById('vol').addEventListener('input',e=>{ V.volume=e.target.v
 document.getElementById('haloRecBtn').addEventListener('click', recordHaloSound);
 document.getElementById('stackBtn').addEventListener('click', stackClusters);
 document.getElementById('stackClose').addEventListener('click',()=>{ document.getElementById('stackPanel').style.display='none'; });
-document.getElementById('timeBtn').addEventListener('click',()=>setTimeMode(!V.timeOn));
-document.getElementById('zSlider').addEventListener('input',e=>{ V.zNow=parseInt(e.target.value)/100; if(V.zPlaying){V.zPlaying=false;document.getElementById('zPlay').innerHTML='&#9654;';} updateZUI(); draw(); });
-document.getElementById('zPlay').addEventListener('click', zPlayToggle);
 window.addEventListener('resize',resize);
-
-// ============= time machine (reveal clusters by look-back redshift) =============
-function lookbackGyr(z){            // flat LCDM numeric integral (Om=0.31)
-  const Om=0.31, OL=0.69, H0inv=14.45, N=200; let s=0;
-  for(let i=0;i<N;i++){ const zp=(i+0.5)/N*z; s+=1/((1+zp)*Math.sqrt(Om*Math.pow(1+zp,3)+OL)); }
-  return H0inv*(z/N)*s;
-}
-function updateZUI(){
-  document.getElementById('zSlider').value=Math.round(V.zNow*100);
-  document.getElementById('zLabel').innerHTML='look-back z &le; '+V.zNow.toFixed(2)+' &nbsp;(~'+lookbackGyr(V.zNow).toFixed(1)+' Gyr ago)';
-}
-function setTimeMode(on){
-  V.timeOn=on; document.getElementById('timeBtn').classList.toggle('active',on);
-  ['zSlider','zPlay','zLabel'].forEach(id=>document.getElementById(id).style.display=on?'':'none');
-  if(on) updateZUI(); else V.zPlaying=false;
-  draw();
-}
-function zPlayToggle(){
-  const pb=document.getElementById('zPlay');
-  if(V.zPlaying){ V.zPlaying=false; pb.innerHTML='&#9654;'; return; }
-  if(!V.timeOn) setTimeMode(true);
-  initAudio(); if(V.audioCtx.state==='suspended') V.audioCtx.resume();
-  V.zPlaying=true; V.zNow=0; pb.innerHTML='&#9632;';
-  let last=performance.now();
-  const step=(ts)=>{
-    if(!V.zPlaying) return;
-    const dt=(ts-last)/1000; last=ts; const prev=V.zNow;
-    V.zNow=Math.min(4, V.zNow + dt*(4/18));               // sweep 0 -> 4 (near -> far) over ~18s
-    let pings=0;
-    if(V.halos&&V.halos.redshift) for(let i=0;i<V.halos.n && pings<4;i++){ const zr=V.halos.redshift[i]; if(zr>prev && zr<=V.zNow){ haloPing(V.halos.log_mass[i]); pings++; } }
-    updateZUI(); draw();
-    if(V.zNow>=4){ V.zPlaying=false; pb.innerHTML='&#9654;'; } else requestAnimationFrame(step);
-  };
-  requestAnimationFrame(step);
-}
 
 // ============= stack on clusters (mean map signal around the 3000 halos) =============
 function stackClusters(){
