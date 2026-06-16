@@ -97,6 +97,7 @@ input[type=range]{accent-color:var(--accent);}
   </div>
   <div class="cgroup">
     <button class="btn" id="scanBtn" title="Sonify the sky under the cursor while dragging">Scan audio</button>
+    <button class="btn" id="haloRecBtn" title="Record a short sound (say &quot;hey!&quot;) to play on clusters">&#127908; Halo sound</button>
     <span class="clabel">Vol</span>
     <input type="range" id="vol" min="0" max="100" value="70" style="width:80px;">
   </div>
@@ -330,6 +331,45 @@ function haloPing(logM){
   o.connect(g); o2.connect(g2); g2.connect(g); g.connect(V.gain);
   o.start(now); o.stop(now+0.55); o2.start(now); o2.stop(now+0.4);
 }
+// ---- halo sound: default playful "hey!", or a clip you record (shared via localStorage) ----
+function heySynth(){
+  initAudio(); if(V.audioCtx.state==='suspended') V.audioCtx.resume();
+  const ctx=V.audioCtx, now=ctx.currentTime;
+  const o=ctx.createOscillator(); o.type='sawtooth';
+  o.frequency.setValueAtTime(300,now); o.frequency.exponentialRampToValueAtTime(540,now+0.08); o.frequency.exponentialRampToValueAtTime(300,now+0.34);
+  const f1=ctx.createBiquadFilter(); f1.type='bandpass'; f1.frequency.value=720; f1.Q.value=5;
+  const f2=ctx.createBiquadFilter(); f2.type='bandpass'; f2.frequency.setValueAtTime(1650,now); f2.frequency.linearRampToValueAtTime(2200,now+0.22); f2.Q.value=7;
+  const g=ctx.createGain(); g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.5,now+0.03); g.gain.setValueAtTime(0.5,now+0.18); g.gain.exponentialRampToValueAtTime(0.001,now+0.36);
+  o.connect(f1); o.connect(f2); f1.connect(g); f2.connect(g); g.connect(V.gain); o.start(now); o.stop(now+0.4);
+}
+function playHaloSound(){
+  initAudio(); if(V.audioCtx.state==='suspended') V.audioCtx.resume();
+  if(V.haloBuf){ const s=V.audioCtx.createBufferSource(); s.buffer=V.haloBuf; const g=V.audioCtx.createGain(); g.gain.value=1.0; s.connect(g); g.connect(V.gain); s.start(); }
+  else heySynth();
+}
+function loadHaloSound(){
+  try{ const d=localStorage.getItem('haloSound'); if(!d) return;
+    fetch(d).then(r=>r.arrayBuffer()).then(ab=>{ initAudio(); V.audioCtx.decodeAudioData(ab,b=>{V.haloBuf=b;}); }).catch(()=>{}); }catch(e){}
+}
+function recordHaloSound(){
+  const btn=document.getElementById('haloRecBtn');
+  if(typeof MediaRecorder==='undefined' || !navigator.mediaDevices){ btn.textContent='no mic'; return; }
+  if(V._haloRec && V._haloRec.state==='recording'){ V._haloRec.stop(); return; }
+  navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+    const rec=new MediaRecorder(stream), chunks=[];
+    rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+    rec.onstop=()=>{ stream.getTracks().forEach(t=>t.stop());
+      const fr=new FileReader();
+      fr.onload=()=>{ try{ localStorage.setItem('haloSound', fr.result); }catch(e){}
+        initAudio(); fetch(fr.result).then(r=>r.arrayBuffer()).then(ab=>V.audioCtx.decodeAudioData(ab,b=>{V.haloBuf=b;})).catch(()=>{}); };
+      fr.readAsDataURL(new Blob(chunks));
+      btn.innerHTML='&#127908; Halo sound'; btn.classList.remove('active'); btn.style.background=''; btn.style.color=''; V._haloRec=null;
+    };
+    rec.start(); V._haloRec=rec;
+    btn.innerHTML='&#9632; recording…'; btn.classList.add('active'); btn.style.background='#cc3333'; btn.style.color='#fff';
+    setTimeout(()=>{ if(V._haloRec && V._haloRec.state==='recording') V._haloRec.stop(); }, 3000);
+  }).catch(()=>{ btn.textContent='mic denied'; });
+}
 function sonifyAt(sx,sy){
   const sk=screenToSky(sx,sy); if(!sk) return;
   for(const c of ORDER){
@@ -339,12 +379,13 @@ function sonifyAt(sx,sy){
     playVoice(c, norm);
   }
   if(V.halos){
-    const sinT=Math.sin(sk.theta*Math.PI/180);
+    const sinT=Math.sin(sk.theta*Math.PI/180); let near=false;
     for(let i=0;i<V.halos.n;i++){
       let dp=Math.abs(V.halos.phi[i]-sk.phi); if(dp>180) dp=360-dp;
       const dt=V.halos.theta[i]-sk.theta;
-      if(Math.sqrt(dt*dt+dp*dp*sinT*sinT)<3.0) haloPing(V.halos.log_mass[i]);
+      if(Math.sqrt(dt*dt+dp*dp*sinT*sinT)<3.0){ near=true; break; }
     }
+    if(near) playHaloSound();   // pass over a cluster -> your recorded sound (or "hey!")
   }
   const heard=ORDER.filter(c=>V.comps.has(c)).map(c=>COMP_LABELS[c]).join('+')||'—';
   document.getElementById('readout').innerHTML=
@@ -416,6 +457,7 @@ document.getElementById('scanBtn').addEventListener('click',()=>{
   if(V.scan){ initAudio(); loadValMaps(); }
 });
 document.getElementById('vol').addEventListener('input',e=>{ V.volume=e.target.value/100; if(V.gain) V.gain.gain.value=V.volume; });
+document.getElementById('haloRecBtn').addEventListener('click', recordHaloSound);
 document.getElementById('stackBtn').addEventListener('click', stackClusters);
 document.getElementById('stackClose').addEventListener('click',()=>{ document.getElementById('stackPanel').style.display='none'; });
 document.getElementById('timeBtn').addEventListener('click',()=>setTimeMode(!V.timeOn));
@@ -506,6 +548,7 @@ async function init(){
     resize();
     ensureLayers();
     loadValMaps();
+    loadHaloSound();
   }catch(err){
     document.getElementById('hint').textContent='Load failed: '+err.message+(location.protocol==='file:'?' (serve over http, not file://)':'');
   }

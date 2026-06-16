@@ -80,6 +80,7 @@ input[type=range]{accent-color:var(--accent);}
   <div class="cgroup">
     <button class="btn" id="spinBtn">Auto-spin</button>
     <button class="btn" id="haloBtn">Clusters: on</button>
+    <button class="btn" id="haloRecBtn" title="Record a short sound (say &quot;hey!&quot;) to play on clusters">&#127908; Halo sound</button>
     <span class="clabel">Vol</span>
     <input type="range" id="vol" min="0" max="100" value="70" style="width:80px;">
   </div>
@@ -177,12 +178,53 @@ function haloPing(logM){ initAudio(); if(V.audioCtx.state==='suspended') V.audio
   o.type='sine'; o.frequency.value=freq; o2.type='sine'; o2.frequency.value=freq*2; g2.gain.value=0.3;
   g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.3,now+0.008); g.gain.exponentialRampToValueAtTime(0.001,now+0.5);
   o.connect(g); o2.connect(g2); g2.connect(g); g.connect(V.gain); o.start(now); o.stop(now+0.55); o2.start(now); o2.stop(now+0.4); }
+// ---- halo sound: a default playful "hey!", or a clip you record (shared via localStorage) ----
+function heySynth(){
+  initAudio(); if(V.audioCtx.state==='suspended') V.audioCtx.resume();
+  const ctx=V.audioCtx, now=ctx.currentTime;
+  const o=ctx.createOscillator(); o.type='sawtooth';
+  o.frequency.setValueAtTime(300,now); o.frequency.exponentialRampToValueAtTime(540,now+0.08); o.frequency.exponentialRampToValueAtTime(300,now+0.34);
+  const f1=ctx.createBiquadFilter(); f1.type='bandpass'; f1.frequency.value=720; f1.Q.value=5;
+  const f2=ctx.createBiquadFilter(); f2.type='bandpass'; f2.frequency.setValueAtTime(1650,now); f2.frequency.linearRampToValueAtTime(2200,now+0.22); f2.Q.value=7;
+  const g=ctx.createGain(); g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.5,now+0.03); g.gain.setValueAtTime(0.5,now+0.18); g.gain.exponentialRampToValueAtTime(0.001,now+0.36);
+  o.connect(f1); o.connect(f2); f1.connect(g); f2.connect(g); g.connect(V.gain); o.start(now); o.stop(now+0.4);
+}
+function playHaloSound(){
+  initAudio(); if(V.audioCtx.state==='suspended') V.audioCtx.resume();
+  if(V.haloBuf){ const s=V.audioCtx.createBufferSource(); s.buffer=V.haloBuf; const g=V.audioCtx.createGain(); g.gain.value=1.0; s.connect(g); g.connect(V.gain); s.start(); }
+  else heySynth();
+}
+function loadHaloSound(){
+  try{ const d=localStorage.getItem('haloSound'); if(!d) return;
+    fetch(d).then(r=>r.arrayBuffer()).then(ab=>{ initAudio(); V.audioCtx.decodeAudioData(ab,b=>{V.haloBuf=b;}); }).catch(()=>{}); }catch(e){}
+}
+function recordHaloSound(){
+  const btn=document.getElementById('haloRecBtn');
+  if(typeof MediaRecorder==='undefined' || !navigator.mediaDevices){ btn.textContent='no mic'; return; }
+  if(V._haloRec && V._haloRec.state==='recording'){ V._haloRec.stop(); return; }
+  navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+    const rec=new MediaRecorder(stream), chunks=[];
+    rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+    rec.onstop=()=>{ stream.getTracks().forEach(t=>t.stop());
+      const fr=new FileReader();
+      fr.onload=()=>{ try{ localStorage.setItem('haloSound', fr.result); }catch(e){}
+        initAudio(); fetch(fr.result).then(r=>r.arrayBuffer()).then(ab=>V.audioCtx.decodeAudioData(ab,b=>{V.haloBuf=b;})).catch(()=>{}); };
+      fr.readAsDataURL(new Blob(chunks));
+      btn.innerHTML='&#127908; Halo sound'; btn.classList.remove('active'); btn.style.background=''; btn.style.color=''; V._haloRec=null;
+    };
+    rec.start(); V._haloRec=rec;
+    btn.innerHTML='&#9632; recording…'; btn.classList.add('active'); btn.style.background='#cc3333'; btn.style.color='#fff';
+    setTimeout(()=>{ if(V._haloRec && V._haloRec.state==='recording') V._haloRec.stop(); }, 3000);  // auto-stop 3s
+  }).catch(()=>{ btn.textContent='mic denied'; });
+}
+
 function sonifySky(theta,phi){   // theta,phi in radians (colatitude, longitude)
   const fx=phi/(2*Math.PI), fy=theta/Math.PI;
   for(const c of ORDER){ if(!V.comps.has(c)) continue; const n=sampleValue(c,fx,fy); if(n===null){ loadValMap(c); continue; } playVoice(c,n); }
-  if(V.halos){ const thd=theta*180/Math.PI, phd=phi*180/Math.PI, sinT=Math.sin(theta);
+  if(V.halos){ const thd=theta*180/Math.PI, phd=phi*180/Math.PI, sinT=Math.sin(theta); let near=false;
     for(let i=0;i<V.halos.n;i++){ let dp=Math.abs(V.halos.phi[i]-phd); if(dp>180) dp=360-dp; const dt=V.halos.theta[i]-thd;
-      if(Math.sqrt(dt*dt+dp*dp*sinT*sinT)<3.0) haloPing(V.halos.log_mass[i]); } }
+      if(Math.sqrt(dt*dt+dp*dp*sinT*sinT)<3.0){ near=true; break; } }
+    if(near) playHaloSound(); }
   const heard=ORDER.filter(c=>V.comps.has(c)).map(c=>COMP_LABELS[c]).join('+')||'—';
   document.getElementById('readout').innerHTML='l/b &asymp; <b>'+phd.toFixed(0)+'&deg;, '+(90-thd).toFixed(0)+'&deg;</b> &nbsp;|&nbsp; '+heard;
 }
@@ -282,6 +324,7 @@ function wireControls(){
     if(haloPoints) haloPoints.visible=V.showHalos; document.getElementById('haloBtn').textContent='Clusters: '+(V.showHalos?'on':'off');
     document.getElementById('haloBtn').classList.toggle('active',V.showHalos); });
   document.getElementById('vol').addEventListener('input',e=>{ V.volume=e.target.value/100; if(V.gain) V.gain.gain.value=V.volume; });
+  document.getElementById('haloRecBtn').addEventListener('click', recordHaloSound);
 }
 
 async function init(){
@@ -294,6 +337,7 @@ async function init(){
   initThree(); buildHalos(); wireControls();
   ensureLayers(); loadValMaps(); composite(); animate();
   document.getElementById('haloBtn').classList.add('active');
+  loadHaloSound();
 }
 init();
 </script>
