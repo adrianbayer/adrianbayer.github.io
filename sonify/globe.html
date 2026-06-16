@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Sky Globe &mdash; Multi-Probe Sky</title>
+<script>
+(function(){
+  var k='sonify_auth';
+  if(sessionStorage.getItem(k)==='1') return;
+  var p=prompt('Enter password:');
+  if(p==='4halfdomes'){sessionStorage.setItem(k,'1');}
+  else{document.documentElement.innerHTML='<body style="background:#0a0e1a;color:#c8cde0;display:flex;justify-content:center;align-items:center;height:100vh;font-family:system-ui"><h2>Access denied</h2></body>';throw'blocked';}
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<style>
+:root{--bg:#05060c;--panel:#131829;--border:#1e2744;--text:#c8cde0;--accent:#4a9eff;
+  --cmb:#4a9eff;--tsz:#ff9f43;--cib:#2ed573;--ksz:#b86bff;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;}
+header{display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid var(--border);position:relative;z-index:5;}
+header h1{font-size:1.05em;font-weight:600;color:#e8ecf4;}
+header .sub{font-size:0.78em;color:#6b7394;}
+a.back{color:var(--accent);text-decoration:none;font-size:0.82em;border:1px solid var(--border);padding:4px 10px;border-radius:6px;}
+a.back:hover{background:#1e2744;}
+.controls{display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border);position:relative;z-index:5;}
+.cgroup{display:flex;align-items:center;gap:6px;}
+.clabel{font-size:0.68em;text-transform:uppercase;letter-spacing:0.6px;color:#6b7394;}
+.btn{padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text);cursor:pointer;font-size:0.8em;}
+.btn.active{background:var(--accent);color:var(--bg);border-color:var(--accent);}
+.btn:hover{filter:brightness(1.15);}
+.comp-btn{border-width:2px;}
+.comp-btn[data-comp="dT_cmblens"]{border-color:var(--cmb);} .comp-btn[data-comp="dT_cmblens"].active{background:var(--cmb);color:#06101f;}
+.comp-btn[data-comp="dT_tsz"]{border-color:var(--tsz);} .comp-btn[data-comp="dT_tsz"].active{background:var(--tsz);color:#06101f;}
+.comp-btn[data-comp="dT_cib"]{border-color:var(--cib);} .comp-btn[data-comp="dT_cib"].active{background:var(--cib);color:#06101f;}
+.comp-btn[data-comp="dT_ksz"]{border-color:var(--ksz);} .comp-btn[data-comp="dT_ksz"].active{background:var(--ksz);color:#06101f;}
+.freq-group{display:flex;align-items:center;gap:3px;padding:2px 6px;border:1px solid var(--border);border-radius:6px;}
+.freq-group .clabel{margin-right:2px;}
+#view{position:fixed;inset:0;top:0;}
+canvas{display:block;}
+.readout{position:fixed;left:10px;bottom:10px;font-size:0.75em;color:#9aa3c4;background:rgba(5,6,12,0.7);
+  padding:4px 8px;border-radius:6px;pointer-events:none;z-index:5;}
+.readout b{color:var(--accent);}
+.hint{position:fixed;right:10px;bottom:10px;font-size:0.72em;color:#6b7394;background:rgba(5,6,12,0.7);
+  padding:4px 8px;border-radius:6px;pointer-events:none;z-index:5;max-width:46%;text-align:right;}
+input[type=range]{accent-color:var(--accent);}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>3D Sky Globe</h1>
+  <span class="sub">drag to rotate &middot; wheel to zoom &middot; click to listen</span>
+  <a class="back" href="index.html">&larr; All toys</a>
+  <a class="back" href="sky.html">Flat map</a>
+  <a class="back" href="about.html">How it works</a>
+</header>
+<div class="controls">
+  <div class="cgroup">
+    <span class="clabel">Components</span>
+    <button class="btn comp-btn active" data-comp="dT_cmblens">CMB</button>
+    <button class="btn comp-btn" data-comp="dT_tsz">tSZ</button>
+    <button class="btn comp-btn" data-comp="dT_cib">CIB</button>
+    <button class="btn comp-btn" data-comp="dT_ksz">kSZ</button>
+  </div>
+  <div class="cgroup">
+    <span class="clabel">Frequency</span>
+    <div class="freq-group"><span class="clabel">SO MF</span>
+      <button class="btn freq-btn" data-freq="93">93</button>
+      <button class="btn freq-btn" data-freq="145">145</button></div>
+    <div class="freq-group"><span class="clabel">SO HF</span>
+      <button class="btn freq-btn" data-freq="225">225</button>
+      <button class="btn freq-btn" data-freq="280">280</button></div>
+    <div class="freq-group"><span class="clabel">Planck</span>
+      <button class="btn freq-btn active" data-freq="143">143</button>
+      <button class="btn freq-btn" data-freq="353">353</button></div>
+  </div>
+  <div class="cgroup">
+    <button class="btn" id="spinBtn">Auto-spin</button>
+    <button class="btn" id="haloBtn">Clusters: on</button>
+    <span class="clabel">Vol</span>
+    <input type="range" id="vol" min="0" max="100" value="70" style="width:80px;">
+  </div>
+</div>
+
+<div id="view"></div>
+<div class="readout" id="readout">click the globe to listen</div>
+<div class="hint" id="hint">loading…</div>
+
+<script>
+const V = {
+  meta:null, halos:null, cl:null, freq:'143',
+  comps:new Set(['dT_cmblens']), layers:{}, valMaps:{},
+  spin:false, showHalos:true, volume:0.7,
+  audioCtx:null, gain:null, limiter:null,
+};
+const ORDER=['dT_cmblens','dT_ksz','dT_tsz','dT_cib'];
+const COMP_LABELS={dT_cmblens:'CMB', dT_tsz:'tSZ', dT_cib:'CIB', dT_ksz:'kSZ'};
+const TEX_W=2048, TEX_H=1024;
+
+// ---- image basenames (classic single view; dark '_dk' variants when overlaid) ----
+function isDiverging(c){ return c==='dT_cmblens'||c==='dT_ksz'; }
+function whiteBase(c){ return c; }
+function imgBase(c){ return (V.comps.size>=2 && isDiverging(c)) ? (c+'_dk') : c; }
+function layerImg(key){ const L=V.layers[key]; return L ? (L.hi||L.lo) : null; }
+function ensureLayers(){
+  for(const c of V.comps){
+    const key=imgBase(c);
+    let L=V.layers[key]; if(!L){ L=V.layers[key]={lo:null,hi:null,loLoading:false,hiLoading:false}; }
+    if(!L.lo && !L.loLoading){ L.loLoading=true;
+      const im=new Image(); im.crossOrigin='anonymous';
+      im.onload=()=>{ L.lo=im; composite(); loadHi(key); hintCheck(); };
+      im.onerror=()=>{ L.loLoading=false; };
+      im.src='sky_img/'+key+'_lo.jpg';
+    } else if(!L.hi && !L.hiLoading){ loadHi(key); }
+  }
+  hintCheck();
+}
+function loadHi(key){ const L=V.layers[key]; if(!L||L.hi||L.hiLoading) return; L.hiLoading=true;
+  const im=new Image(); im.crossOrigin='anonymous';
+  im.onload=()=>{ L.hi=im; composite(); };
+  im.onerror=()=>{ L.hiLoading=false; };
+  im.src='sky_img/'+key+'.jpg';
+}
+function hintCheck(){ for(const c of V.comps){ if(!(layerImg(imgBase(c))||layerImg(whiteBase(c)))){ document.getElementById('hint').textContent='loading…'; return; } } document.getElementById('hint').textContent=''; }
+
+// ---- composite the selected components onto the texture canvas ----
+let texCanvas, texCtx, skyTexture;
+function composite(){
+  if(!texCtx) return;
+  texCtx.globalCompositeOperation='source-over';
+  texCtx.fillStyle='#04060c'; texCtx.fillRect(0,0,TEX_W,TEX_H);
+  const multi=V.comps.size>=2;
+  for(const c of ORDER){
+    if(!V.comps.has(c)) continue;
+    const img=layerImg(imgBase(c))||layerImg(whiteBase(c)); if(!img) continue;
+    texCtx.globalCompositeOperation = multi ? 'lighten' : 'source-over';
+    texCtx.drawImage(img, 0, 0, TEX_W, TEX_H);
+  }
+  texCtx.globalCompositeOperation='source-over';
+  if(skyTexture) skyTexture.needsUpdate=true;
+}
+
+// ---- value maps + audio (faithful per-component values; cold=low, hot=high) ----
+function valInfo(comp){ if(!V.meta) return null; const im=V.meta.images; return comp==='T_tot'?(im.T_tot&&im.T_tot[V.freq]):im[comp]; }
+function loadValMap(comp){ const key=comp; if(V.valMaps[key]) return; const info=valInfo(comp); if(!info||!info.val) return;
+  V.valMaps[key]='loading'; const im=new Image(); im.crossOrigin='anonymous';
+  im.onload=()=>{ const c=document.createElement('canvas'); c.width=im.naturalWidth; c.height=im.naturalHeight;
+    const cx=c.getContext('2d',{willReadFrequently:true}); cx.drawImage(im,0,0); V.valMaps[key]={cx,w:c.width,h:c.height,mode:info.mode}; };
+  im.onerror=()=>{ delete V.valMaps[key]; }; im.src='sky_img/'+info.val; }
+function sampleValue(comp,fx,fy){ const vm=V.valMaps[comp]; if(!vm||vm==='loading') return null;
+  const x=Math.min(vm.w-1,Math.max(0,Math.floor(fx*vm.w))), y=Math.min(vm.h-1,Math.max(0,Math.floor(fy*vm.h)));
+  let g; try{ g=vm.cx.getImageData(x,y,1,1).data[0]; }catch(e){ return null; }
+  return vm.mode==='sym'?(g-128)/127:(g/255)*2-1; }
+function initAudio(){ if(V.audioCtx) return;
+  V.audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  V.gain=V.audioCtx.createGain(); V.gain.gain.value=V.volume;
+  V.limiter=V.audioCtx.createDynamicsCompressor(); V.limiter.threshold.value=-3; V.limiter.ratio.value=12; V.limiter.attack.value=0.003; V.limiter.release.value=0.25;
+  V.gain.connect(V.limiter); V.limiter.connect(V.audioCtx.destination);
+  V.analyser=V.audioCtx.createAnalyser(); V.analyser.fftSize=256; V.gain.connect(V.analyser); }
+const VOICES={ dT_cmblens:{base:196,type:'sine',vol:0.20}, dT_ksz:{base:147,type:'square',vol:0.13}, dT_tsz:{base:294,type:'triangle',vol:0.20}, dT_cib:{base:494,type:'sawtooth',vol:0.15} };
+function compMeanDl(comp,band){ const sp=V.cl.spectra[comp]; if(!sp) return 0; const arr=(V.cl.freq_indep&&V.cl.freq_indep.indexOf(comp)>=0)?sp:sp[band]; if(!arr) return 0;
+  let s=0,n=0; for(let i=0;i<arr.length;i++){ if(arr[i]>0){ s+=arr[i]; n++; } } return n?s/n:0; }
+function bandFactor(comp){ if(!V.cl||(V.cl.freq_indep&&V.cl.freq_indep.indexOf(comp)>=0)) return 1;
+  let mx=0; for(const b of V.cl.freqs){ const a=compMeanDl(comp,String(b)); if(a>mx) mx=a; } return mx<=0?1:Math.sqrt(compMeanDl(comp,V.freq)/mx); }
+function playVoice(comp,norm){ const cfg=VOICES[comp]||VOICES.dT_cmblens, vol=cfg.vol*bandFactor(comp); if(vol<0.004) return;
+  initAudio(); if(V.audioCtx.state==='suspended') V.audioCtx.resume();
+  const ctx=V.audioCtx, now=ctx.currentTime, freq=cfg.base*Math.pow(2,Math.max(-1,Math.min(1,norm)));
+  const o=ctx.createOscillator(), g=ctx.createGain(); o.type=cfg.type; o.frequency.value=freq;
+  g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(vol,now+0.01); g.gain.exponentialRampToValueAtTime(0.001,now+0.22);
+  o.connect(g); g.connect(V.gain); o.start(now); o.stop(now+0.26); }
+function haloPing(logM){ initAudio(); if(V.audioCtx.state==='suspended') V.audioCtx.resume();
+  const ctx=V.audioCtx, now=ctx.currentTime, frac=Math.min(1,Math.max(0,(logM-14.5)/0.9)), freq=200+frac*1100;
+  const o=ctx.createOscillator(), o2=ctx.createOscillator(), g=ctx.createGain(), g2=ctx.createGain();
+  o.type='sine'; o.frequency.value=freq; o2.type='sine'; o2.frequency.value=freq*2; g2.gain.value=0.3;
+  g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.3,now+0.008); g.gain.exponentialRampToValueAtTime(0.001,now+0.5);
+  o.connect(g); o2.connect(g2); g2.connect(g); g.connect(V.gain); o.start(now); o.stop(now+0.55); o2.start(now); o2.stop(now+0.4); }
+function sonifySky(theta,phi){   // theta,phi in radians (colatitude, longitude)
+  const fx=phi/(2*Math.PI), fy=theta/Math.PI;
+  for(const c of ORDER){ if(!V.comps.has(c)) continue; const n=sampleValue(c,fx,fy); if(n===null){ loadValMap(c); continue; } playVoice(c,n); }
+  if(V.halos){ const thd=theta*180/Math.PI, phd=phi*180/Math.PI, sinT=Math.sin(theta);
+    for(let i=0;i<V.halos.n;i++){ let dp=Math.abs(V.halos.phi[i]-phd); if(dp>180) dp=360-dp; const dt=V.halos.theta[i]-thd;
+      if(Math.sqrt(dt*dt+dp*dp*sinT*sinT)<3.0) haloPing(V.halos.log_mass[i]); } }
+  const heard=ORDER.filter(c=>V.comps.has(c)).map(c=>COMP_LABELS[c]).join('+')||'—';
+  document.getElementById('readout').innerHTML='l/b &asymp; <b>'+phd.toFixed(0)+'&deg;, '+(90-thd).toFixed(0)+'&deg;</b> &nbsp;|&nbsp; '+heard;
+}
+function loadValMaps(){ for(const c of V.comps) loadValMap(c); }
+
+// ---- spherical helpers matching THREE.SphereGeometry UV (equirectangular) ----
+// vertex at sky (theta,phi): x=-r cosφ sinθ, y=-r cosθ, z=r sinφ sinθ
+function skyToVec(theta,phi,r){ return new THREE.Vector3(-r*Math.cos(phi)*Math.sin(theta), -r*Math.cos(theta), r*Math.sin(phi)*Math.sin(theta)); }
+
+// ============================================================
+// Three.js scene
+// ============================================================
+let scene, camera, renderer, controls, sphere, haloPoints, raycaster, mouse;
+function initThree(){
+  const view=document.getElementById('view');
+  scene=new THREE.Scene();
+  camera=new THREE.PerspectiveCamera(45, view.clientWidth/view.clientHeight, 0.01, 100);
+  camera.position.set(0,0,2.8);
+  renderer=new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+  renderer.setSize(view.clientWidth, view.clientHeight);
+  renderer.setClearColor(0x05060c, 1);
+  view.appendChild(renderer.domElement);
+
+  texCanvas=document.createElement('canvas'); texCanvas.width=TEX_W; texCanvas.height=TEX_H;
+  texCtx=texCanvas.getContext('2d');
+  texCtx.fillStyle='#04060c'; texCtx.fillRect(0,0,TEX_W,TEX_H);
+  skyTexture=new THREE.CanvasTexture(texCanvas);
+  const geo=new THREE.SphereGeometry(1, 96, 48);
+  const mat=new THREE.MeshBasicMaterial({map:skyTexture});
+  sphere=new THREE.Mesh(geo, mat); scene.add(sphere);
+
+  controls=new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enablePan=false; controls.rotateSpeed=0.5; controls.minDistance=1.25; controls.maxDistance=6;
+  controls.enableDamping=true; controls.dampingFactor=0.08;
+
+  raycaster=new THREE.Raycaster(); mouse=new THREE.Vector2();
+
+  // click -> raycast -> sonify (suppress if the user was dragging)
+  let downX=0,downY=0;
+  renderer.domElement.addEventListener('pointerdown',e=>{ downX=e.clientX; downY=e.clientY; });
+  renderer.domElement.addEventListener('pointerup',e=>{
+    if(Math.abs(e.clientX-downX)+Math.abs(e.clientY-downY)>6) return;  // was a drag
+    const r=renderer.domElement.getBoundingClientRect();
+    mouse.x=((e.clientX-r.left)/r.width)*2-1; mouse.y=-((e.clientY-r.top)/r.height)*2+1;
+    raycaster.setFromCamera(mouse, camera);
+    const hit=raycaster.intersectObject(sphere)[0];
+    if(hit && hit.uv){ const theta=(1-hit.uv.y)*Math.PI, phi=hit.uv.x*2*Math.PI; sonifySky(theta, phi); }
+  });
+  window.addEventListener('resize',onResize);
+}
+function onResize(){ const view=document.getElementById('view'); camera.aspect=view.clientWidth/view.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(view.clientWidth, view.clientHeight); }
+
+function buildHalos(){
+  if(!V.halos) return;
+  const n=V.halos.n, pos=new Float32Array(n*3), col=new Float32Array(n*3);
+  for(let i=0;i<n;i++){
+    const th=V.halos.theta[i]*Math.PI/180, ph=V.halos.phi[i]*Math.PI/180;
+    const v=skyToVec(th, ph, 1.012); pos[3*i]=v.x; pos[3*i+1]=v.y; pos[3*i+2]=v.z;
+    const b=Math.min(1, Math.max(0.25,(V.halos.log_mass[i]-14.5)*0.9+0.25));
+    col[3*i]=1.0*b; col[3*i+1]=0.84*b; col[3*i+2]=0.5*b;   // gold, brighter = more massive
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  g.setAttribute('color', new THREE.BufferAttribute(col,3));
+  const m=new THREE.PointsMaterial({size:0.022, sizeAttenuation:true, vertexColors:true, transparent:true, opacity:0.95, depthWrite:false});
+  haloPoints=new THREE.Points(g, m); scene.add(haloPoints);
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  if(V.spin && sphere){ sphere.rotation.y+=0.0016; if(haloPoints) haloPoints.rotation.y+=0.0016; }
+  if(controls) controls.update();
+  // gentle audio-reactive twinkle of the clusters
+  if(haloPoints && V.analyser){ const d=new Uint8Array(V.analyser.frequencyBinCount); V.analyser.getByteTimeDomainData(d);
+    let s=0; for(let i=0;i<d.length;i++){ const x=(d[i]-128)/128; s+=x*x; } const lvl=Math.sqrt(s/d.length);
+    haloPoints.material.size=0.020+Math.min(0.03, lvl*0.12); }
+  if(renderer) renderer.render(scene, camera);
+}
+
+// ============================================================
+// controls + init
+// ============================================================
+function wireControls(){
+  document.querySelectorAll('.comp-btn').forEach(b=>b.addEventListener('click',()=>{
+    const c=b.dataset.comp;
+    if(V.comps.has(c)){ if(V.comps.size>1) V.comps.delete(c); } else { V.comps.add(c); loadValMap(c); }
+    b.classList.toggle('active', V.comps.has(c));
+    ensureLayers(); composite();
+  }));
+  document.querySelectorAll('.freq-btn').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('.freq-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active');
+    V.freq=b.dataset.freq;   // affects the scanner-audio loudness weighting
+  }));
+  document.getElementById('spinBtn').addEventListener('click',()=>{ V.spin=!V.spin; document.getElementById('spinBtn').classList.toggle('active',V.spin); });
+  document.getElementById('haloBtn').addEventListener('click',()=>{ V.showHalos=!V.showHalos;
+    if(haloPoints) haloPoints.visible=V.showHalos; document.getElementById('haloBtn').textContent='Clusters: '+(V.showHalos?'on':'off');
+    document.getElementById('haloBtn').classList.toggle('active',V.showHalos); });
+  document.getElementById('vol').addEventListener('input',e=>{ V.volume=e.target.value/100; if(V.gain) V.gain.gain.value=V.volume; });
+}
+
+async function init(){
+  if(typeof THREE==='undefined'){ document.getElementById('hint').textContent='Could not load 3D library (check connection).'; return; }
+  try{
+    const [a,b,e]=await Promise.all([fetch('sky_img/sky_img.json'),fetch('halos.json'),fetch('cl_data.json')]);
+    if(!a.ok) throw new Error('sky_img.json HTTP '+a.status);
+    V.meta=await a.json(); V.halos = b.ok?await b.json():null; V.cl = e.ok?await e.json():null;
+  }catch(err){ document.getElementById('hint').textContent='Load failed: '+err.message+(location.protocol==='file:'?' (serve over http)':''); return; }
+  initThree(); buildHalos(); wireControls();
+  ensureLayers(); loadValMaps(); composite(); animate();
+  document.getElementById('haloBtn').classList.add('active');
+}
+init();
+</script>
+</body>
+</html>
