@@ -68,7 +68,6 @@ input[type=range]{accent-color:var(--accent);}
     <button class="btn comp-btn" data-comp="dT_tsz">tSZ</button>
     <button class="btn comp-btn" data-comp="dT_cib">CIB</button>
     <button class="btn comp-btn" data-comp="dT_ksz">kSZ</button>
-    <button class="btn comp-btn" data-comp="T_tot">Total</button>
   </div>
   <div class="cgroup">
     <span class="clabel">Frequency</span>
@@ -112,7 +111,7 @@ const V = {
   scan:false, volume:0.7, scanLast:0,
   audioCtx:null, gain:null, limiter:null,
 };
-const ORDER=['dT_cmblens','T_tot','dT_ksz','dT_tsz','dT_cib'];  // background-like first, emission on top
+const ORDER=['dT_cmblens','dT_ksz','dT_tsz','dT_cib'];  // background-like first, emission on top
 const COMP_LABELS={dT_cmblens:'CMB', dT_tsz:'tSZ', dT_cib:'CIB', dT_ksz:'kSZ', T_tot:'Total'};
 
 const canvas=document.getElementById('map');
