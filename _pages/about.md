@@ -13,7 +13,7 @@ If you'd like to read more about my projects, please check out the 'Projects' ta
 
 ---
 
-## Links
+## News
 
 <div class="feature-card"><a href="https://www.simonsfoundation.org/2026/06/03/watch-concrete-cosmos-a-short-film-on-the-shared-frequencies-of-the-universe-and-the-human-experience/" target="_blank" style="display:flex;text-decoration:none;color:inherit"><img src="https://simonsfoundation.imgix.net/wp-content/uploads/2026/05/26123506/FI_ConcreteCosmos.jpg?auto=format&w=400&q=80" alt="Concrete Cosmos short film"><div class="feature-card__text"><h3>Concrete Cosmos — a short film</h3><p>On the shared frequencies of the universe and the human experience.</p></div></a></div>
 
