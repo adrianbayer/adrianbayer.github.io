@@ -154,12 +154,15 @@ function initThree(){
   });
   window.addEventListener('resize',()=>{ camera.aspect=view.clientWidth/view.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(view.clientWidth, view.clientHeight); });
 }
-function galaxyTexture(){   // solid round dot with gentle shading (tinted per-point)
+function galaxyTexture(){   // soft round glow: bright core, smooth falloff to transparent
   const s=64, c=document.createElement('canvas'); c.width=c.height=s; const x=c.getContext('2d');
-  const g=x.createRadialGradient(s*0.40,s*0.40,1, s/2,s/2,s/2);
-  g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(0.75,'rgba(228,228,228,1)');
-  g.addColorStop(0.92,'rgba(195,195,195,1)'); g.addColorStop(0.98,'rgba(195,195,195,0)'); g.addColorStop(1,'rgba(195,195,195,0)');
-  x.fillStyle=g; x.beginPath(); x.arc(s/2,s/2,s/2,0,2*Math.PI); x.fill();
+  const g=x.createRadialGradient(s/2,s/2,0, s/2,s/2,s/2);   // centred -> no "bump" look
+  g.addColorStop(0.00,'rgba(255,255,255,1.00)');
+  g.addColorStop(0.16,'rgba(255,252,244,0.92)');
+  g.addColorStop(0.42,'rgba(255,240,214,0.42)');
+  g.addColorStop(0.72,'rgba(255,232,200,0.12)');
+  g.addColorStop(1.00,'rgba(255,232,200,0.00)');
+  x.fillStyle=g; x.fillRect(0,0,s,s);
   return new THREE.CanvasTexture(c);
 }
 function buildHalos(){
@@ -170,13 +173,14 @@ function buildHalos(){
     const z=(V.halos.redshift?V.halos.redshift[i]:1.0);
     const r=Math.min(R_CMB-0.5, R_HALO_MAX*comoving(z)/Dc4);
     const v=skyToVec(th,ph,r); pos[3*i]=v.x; pos[3*i+1]=v.y; pos[3*i+2]=v.z;
-    const b=Math.min(1,Math.max(0.3,(V.halos.log_mass[i]-14.5)*0.9+0.3));
-    col[3*i]=1.0*b; col[3*i+1]=0.84*b; col[3*i+2]=0.5*b;
+    const b=Math.min(1,Math.max(0.35,(V.halos.log_mass[i]-14.5)*0.9+0.35));
+    const t=Math.min(1,Math.max(0,(V.halos.log_mass[i]-14.6)/0.9));   // mass ramp: warm gold -> hot white
+    col[3*i]=1.0*b; col[3*i+1]=(0.80+0.16*t)*b; col[3*i+2]=(0.52+0.40*t)*b;
   }
   const g=new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos,3));
   g.setAttribute('color', new THREE.BufferAttribute(col,3));
-  haloPoints=new THREE.Points(g, new THREE.PointsMaterial({size:0.16, map:galaxyTexture(), sizeAttenuation:true, vertexColors:true, alphaTest:0.5, depthWrite:true}));
+  haloPoints=new THREE.Points(g, new THREE.PointsMaterial({size:0.2, map:galaxyTexture(), sizeAttenuation:true, vertexColors:true, transparent:true, depthWrite:false, blending:THREE.NormalBlending}));
   scene.add(haloPoints);
 }
 function moveCamera(){   // WASD/arrows fly through the volume; Q/E (or Shift/Space) down/up
