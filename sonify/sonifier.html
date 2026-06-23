@@ -631,6 +631,20 @@ function globalMaxBandAmp(comps, nu, widthOctaves) {
   return mx;
 }
 
+// Cross-frequency normalization: the loudness reference is the loudest the
+// component(s) get over ALL observing bands, not just the current one. This is
+// what makes the frequency dependence audible — CIB explodes toward 353 GHz and
+// tSZ nearly vanishes at its ~217 null — instead of each band being silently
+// re-normalized to its own peak. Frequency-independent components (CMB, kSZ)
+// are unaffected (their max is the same in every band).
+function allBands() { return (S.clData && S.clData.freqs) ? S.clData.freqs : [S.freq]; }
+function globalMaxAmpXF(comps) {
+  let mx = 0; for (const nu of allBands()) { const m = globalMaxAmp(comps, nu); if (m>mx) mx=m; } return mx;
+}
+function globalMaxBandAmpXF(comps, widthOctaves) {
+  let mx = 0; for (const nu of allBands()) { const m = globalMaxBandAmp(comps, nu, widthOctaves); if (m>mx) mx=m; } return mx;
+}
+
 // Compute the current sweep ell based on sweepPos + linear/log mode
 function currentSweepEll() {
   if (S.linearSweep) {
@@ -656,7 +670,7 @@ function buildTarget(comps, nu) {
   const numBins = fftSize/2+1;
   const target = new Float32Array(numBins);
 
-  const globalMx = globalMaxAmp(comps, nu);
+  const globalMx = globalMaxAmpXF(comps);
   if (globalMx <= 0) return target;
 
   // Fixed pitch mode: single band around a reference pitch (~440 Hz),
@@ -1497,7 +1511,7 @@ function startInstrumentSeq() {
       if (!S.activeComponents.has(c)) { v.setGain(0); continue; }
       // Band integration over ~1 octave (matches the perceived octave of the note)
       const rawAmp = Math.sqrt(bandIntegralDl(ell, [c], S.freq, 1.0));
-      const globalMx = globalMaxBandAmp([c], S.freq, 1.0);
+      const globalMx = globalMaxBandAmpXF([c], 1.0);
       let vol = 0;
       if (globalMx>0) {
         vol = S.logVolume ? mapAmp(rawAmp, globalMx) : rawAmp/globalMx;
@@ -1592,7 +1606,7 @@ function startDuet() {
 
     for (const [v, c] of [[vA, A], [vB, B]]) {
       const rawAmp = Math.sqrt(bandIntegralDl(ell, [c], S.freq, 1.0));
-      const gmx = globalMaxBandAmp([c], S.freq, 1.0);
+      const gmx = globalMaxBandAmpXF([c], 1.0);
       let vol = gmx>0 ? (S.logVolume ? mapAmp(rawAmp, gmx) : rawAmp/gmx) : 0;
       v.setGain(Math.min(0.32, vol*0.55));
     }
@@ -1866,7 +1880,7 @@ function startSweep() {
     const comps2 = [...S.activeComponents];
     // Band integration over ~0.6 octaves (matches BiquadFilter Q≈3 bandwidth)
     const rawAmp = Math.sqrt(bandIntegralDl(ell, comps2, S.freq, 0.6));
-    const globalMx = globalMaxBandAmp(comps2, S.freq, 0.6);
+    const globalMx = globalMaxBandAmpXF(comps2, 0.6);
     let vol = 0;
     if (globalMx>0) vol = S.logVolume ? mapAmp(rawAmp, globalMx) : rawAmp/globalMx;
     vol = Math.min(1.0, vol * 2.5);
