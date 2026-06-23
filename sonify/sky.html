@@ -49,13 +49,6 @@ a.back:hover{background:#1e2744;}
 .hint{position:absolute;right:10px;bottom:10px;font-size:0.72em;color:#6b7394;background:rgba(4,6,12,0.72);
   padding:4px 8px;border-radius:6px;pointer-events:none;max-width:46%;text-align:right;}
 input[type=range]{accent-color:var(--accent);}
-#stackPanel{position:fixed;top:96px;right:10px;z-index:8;background:rgba(10,14,26,0.96);border:1px solid var(--border);
-  border-radius:10px;padding:10px 12px;display:none;max-width:62vw;box-shadow:0 8px 28px rgba(0,0,0,0.5);}
-#stackHead{font-size:0.8em;color:#9aa3c4;margin-bottom:8px;display:flex;justify-content:space-between;gap:16px;align-items:center;}
-#stackClose{cursor:pointer;color:#ff9f43;font-size:1.2em;line-height:1;}
-#stackBody{display:flex;gap:14px;flex-wrap:wrap;}
-.stackItem{text-align:center;font-size:0.7em;color:#9aa3c4;}
-.stackItem canvas{width:90px;height:90px;image-rendering:pixelated;border-radius:5px;display:block;margin:3px auto;}
 </style>
 </head>
 <body>
@@ -101,19 +94,12 @@ input[type=range]{accent-color:var(--accent);}
     <span class="clabel">Vol</span>
     <input type="range" id="vol" min="0" max="100" value="70" style="width:80px;">
   </div>
-  <div class="cgroup">
-    <button class="btn" id="stackBtn" title="Stack the map on the 3000 clusters and hear the mean signal">&#8853; Stack clusters</button>
-  </div>
 </div>
 
 <div id="wrap">
   <canvas id="map"></canvas>
   <div class="readout" id="readout">&mdash;</div>
   <div class="hint" id="hint"></div>
-</div>
-<div id="stackPanel">
-  <div id="stackHead"><span>Mean signal, stacked on 3000 clusters (&plusmn;1.5&deg;)</span><span id="stackClose">&times;</span></div>
-  <div id="stackBody"></div>
 </div>
 
 <script>
@@ -453,45 +439,8 @@ document.getElementById('scanBtn').addEventListener('click',()=>{
 });
 document.getElementById('vol').addEventListener('input',e=>{ V.volume=e.target.value/100; if(V.gain) V.gain.gain.value=V.volume; });
 document.getElementById('haloRecBtn').addEventListener('click', recordHaloSound);
-document.getElementById('stackBtn').addEventListener('click', stackClusters);
-document.getElementById('stackClose').addEventListener('click',()=>{ document.getElementById('stackPanel').style.display='none'; });
 window.addEventListener('resize',resize);
 
-// ============= stack on clusters (mean map signal around the 3000 halos) =============
-function stackClusters(){
-  if(!V.halos) return;
-  initAudio(); if(V.audioCtx.state==='suspended') V.audioCtx.resume();
-  const body=document.getElementById('stackBody'); body.innerHTML='';
-  const N=25, halfRad=1.5*Math.PI/180;
-  const colhdr={dT_cmblens:'#4a9eff',dT_tsz:'#ff9f43',dT_cib:'#2ed573',dT_ksz:'#b86bff'};
-  let any=false;
-  for(const c of ORDER){
-    if(!V.comps.has(c)) continue;
-    const vm=V.valMaps[c]; if(!vm||vm==='loading'){ loadValMap(c); continue; }
-    const data=vm.cx.getImageData(0,0,vm.w,vm.h).data;
-    const valAt=(th,ph)=>{ let x=Math.floor((ph/(2*Math.PI))*vm.w)%vm.w; if(x<0)x+=vm.w;
-      const y=Math.min(vm.h-1,Math.max(0,Math.floor((th/Math.PI)*vm.h))); const g=data[(y*vm.w+x)*4];
-      return vm.mode==='sym'?(g-128)/127:(g/255)*2-1; };
-    const stack=new Float64Array(N*N);
-    for(let h=0;h<V.halos.n;h++){
-      const th0=V.halos.theta[h]*Math.PI/180, ph0=V.halos.phi[h]*Math.PI/180, sT=Math.max(0.2,Math.sin(th0));
-      for(let iy=0;iy<N;iy++){ const dlat=((iy/(N-1))-0.5)*2*halfRad;
-        for(let ix=0;ix<N;ix++){ const dlon=((ix/(N-1))-0.5)*2*halfRad/sT; stack[iy*N+ix]+=valAt(th0+dlat, ph0+dlon); } }
-    }
-    let mx=1e-9; for(let k=0;k<stack.length;k++){ stack[k]/=V.halos.n; mx=Math.max(mx,Math.abs(stack[k])); }
-    const cv=document.createElement('canvas'); cv.width=N; cv.height=N; const cc=cv.getContext('2d'); const id=cc.createImageData(N,N);
-    for(let k=0;k<stack.length;k++){ const v=stack[k], a=Math.min(1,Math.abs(v)/mx);
-      id.data[4*k]=v<0?Math.round(60*a):Math.round(255*a); id.data[4*k+1]=Math.round((v<0?120:90)*a); id.data[4*k+2]=v<0?Math.round(255*a):Math.round(60*a); id.data[4*k+3]=255; }
-    cc.putImageData(id,0,0);
-    const center=stack[Math.floor(N/2)*N+Math.floor(N/2)];
-    const item=document.createElement('div'); item.className='stackItem';
-    const lab=document.createElement('div'); lab.textContent=COMP_LABELS[c]; lab.style.color=colhdr[c]||'#fff'; lab.style.fontSize='1.2em';
-    const val=document.createElement('div'); val.textContent='centre '+(center>=0?'+':'')+center.toFixed(3);
-    item.appendChild(lab); item.appendChild(cv); item.appendChild(val); body.appendChild(item); any=true;
-    playVoice(c, Math.max(-1,Math.min(1,center*4)));
-  }
-  if(any) document.getElementById('stackPanel').style.display='block';
-}
 
 // init
 async function init(){
