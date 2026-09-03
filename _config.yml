@@ -4,7 +4,7 @@ minimal_mistakes_skin: "air"
 
 locale: "en-US"
 title: "Adrian E. Bayer"
-subtitle: "Astrophysicist @ Princeton University and Simons Foundation"
+subtitle: "AI and Astro @ MIT, Harvard, and Perimeter"
 name: "Adrian E. Bayer"
 description: "My website."
 url: "https://adrianbayer.github.io"
@@ -14,11 +14,11 @@ baseurl: ""
 author:
   name: "Adrian E. Bayer"
   avatar: "/assets/img/headshot.jpg"
-  bio: "Astrophysicist @ Princeton University and Simons Foundation"
+  bio: "AI and Astro @ MIT, Harvard, and Perimeter"
   links:
     - label: "Email"
       icon: "fas fa-fw fa-envelope"
-      url: "mailto:abayer@princeton.edu"
+      url: "mailto:abayer@mit.edu"
     - label: "GitHub"
       icon: "fab fa-fw fa-github"
       url: "https://github.com/adrianbayer"
@@ -30,7 +30,7 @@ author:
       url: "https://orcid.org/0000-0002-3568-3900"
     - label: "Work"
       icon: "fas fa-fw fa-building"
-      url: "https://physics.berkeley.edu/people/graduate-student/adrian-bayer"
+      url: "https://iaifi.org/current-fellows.html"
 
 # Markdown
 markdown: kramdown
