@@ -1,0 +1,163 @@
+# Pulls the CV from Overleaf, compiles it, and commits the PDF to assets/pdf/.
+# A successful update also kicks off the normal site deploy.
+#
+# One-time setup (repo Settings > Secrets and variables > Actions):
+#   Secret   OVERLEAF_GIT_TOKEN   Overleaf > Account Settings > Git Integration > Generate Token
+#   Variable OVERLEAF_PROJECT_ID  the id at the end of the project's git URL
+#                                 (Overleaf > Menu > Git shows https://git.overleaf.com/<id>)
+#   Variable CV_MAIN_TEX          optional: main .tex file, only if auto-detection fails
+#   Variable CV_LATEX_ENGINE      optional: pdflatex | xelatex | lualatex, only if auto-detection is wrong
+#
+# Run it from the Actions tab ("Run workflow") after editing the CV, or wait for the weekly cron.
+# It only rebuilds when the Overleaf project has new commits, unless "force" is ticked.
+
+name: Update CV from Overleaf
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Rebuild even if the Overleaf project has not changed"
+        type: boolean
+        default: false
+  schedule:
+    - cron: "17 6 * * 1" # Mondays 06:17 UTC
+
+permissions:
+  contents: write # commit the PDF
+  actions: write # start the deploy workflow afterwards
+
+concurrency:
+  group: update-cv
+  cancel-in-progress: false
+
+env:
+  CV_PDF: assets/pdf/CV_AdrianBayer.pdf
+  CV_REV: assets/pdf/.cv-source-rev
+
+jobs:
+  update-cv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clone Overleaf project
+        env:
+          OVERLEAF_GIT_TOKEN: ${{ secrets.OVERLEAF_GIT_TOKEN }}
+          OVERLEAF_PROJECT_ID: ${{ vars.OVERLEAF_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${OVERLEAF_GIT_TOKEN}" ] || [ -z "${OVERLEAF_PROJECT_ID}" ]; then
+            echo "::error::Set the OVERLEAF_GIT_TOKEN secret and the OVERLEAF_PROJECT_ID variable (see the comments at the top of this workflow)."
+            exit 1
+          fi
+          id="${OVERLEAF_PROJECT_ID##*/}" # tolerate the full URL being pasted
+          # Credentials go through a helper rather than the URL so they never appear in logs.
+          git -c credential.helper='!f() { echo "username=git"; echo "password=${OVERLEAF_GIT_TOKEN}"; }; f' \
+            clone --quiet "https://git.overleaf.com/${id}" overleaf-cv
+          echo "Overleaf HEAD: $(git -C overleaf-cv log -1 --format='%h %ci %s')"
+
+      - name: Check whether the CV changed
+        id: changed
+        env:
+          FORCE: ${{ inputs.force }}
+        run: |
+          set -euo pipefail
+          new_rev="$(git -C overleaf-cv rev-parse HEAD)"
+          old_rev="$(cat "${CV_REV}" 2>/dev/null || true)"
+          echo "new_rev=${new_rev}" >> "$GITHUB_OUTPUT"
+          if [ "${new_rev}" = "${old_rev}" ] && [ "${FORCE}" != "true" ]; then
+            echo "Overleaf project unchanged since the last build (${new_rev:0:7}); nothing to do."
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Find main .tex file and LaTeX engine
+        if: steps.changed.outputs.build == 'true'
+        id: tex
+        env:
+          CV_MAIN_TEX: ${{ vars.CV_MAIN_TEX }}
+          CV_LATEX_ENGINE: ${{ vars.CV_LATEX_ENGINE }}
+        run: |
+          set -euo pipefail
+          cd overleaf-cv
+          if [ -n "${CV_MAIN_TEX}" ]; then
+            main="${CV_MAIN_TEX}"
+          else
+            mapfile -t candidates < <(grep -l -E '^[^%]*\\documentclass' -- *.tex 2>/dev/null || true)
+            if [ "${#candidates[@]}" -ne 1 ]; then
+              echo "::error::Found ${#candidates[@]} top-level .tex files with \\documentclass (${candidates[*]:-none}). Set the CV_MAIN_TEX variable to the main file."
+              exit 1
+            fi
+            main="${candidates[0]}"
+          fi
+          [ -f "${main}" ] || { echo "::error::${main} not found in the Overleaf project."; exit 1; }
+
+          engine="${CV_LATEX_ENGINE:-}"
+          if [ -z "${engine}" ]; then
+            engine=pdflatex
+            # fontspec / unicode-math / xeCJK need a Unicode engine.
+            if grep -rqE 'fontspec|unicode-math|xeCJK' --include='*.tex' --include='*.cls' --include='*.sty' .; then
+              engine=xelatex
+            fi
+          fi
+          case "${engine}" in
+            pdflatex|xelatex|lualatex) ;;
+            *) echo "::error::CV_LATEX_ENGINE must be pdflatex, xelatex or lualatex (got '${engine}')."; exit 1 ;;
+          esac
+          echo "Main file: ${main}; engine: ${engine}"
+          echo "main=${main}" >> "$GITHUB_OUTPUT"
+          echo "pdf_name=$(basename "${main%.tex}").pdf" >> "$GITHUB_OUTPUT"
+          echo "xelatex=$([ "${engine}" = xelatex ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "lualatex=$([ "${engine}" = lualatex ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Compile CV
+        if: steps.changed.outputs.build == 'true'
+        uses: xu-cheng/latex-action@v3
+        with:
+          working_directory: overleaf-cv
+          root_file: ${{ steps.tex.outputs.main }}
+          latexmk_use_xelatex: ${{ steps.tex.outputs.xelatex }}
+          latexmk_use_lualatex: ${{ steps.tex.outputs.lualatex }}
+
+      - name: Copy PDF into the site
+        if: steps.changed.outputs.build == 'true'
+        env:
+          PDF_NAME: ${{ steps.tex.outputs.pdf_name }}
+          NEW_REV: ${{ steps.changed.outputs.new_rev }}
+        run: |
+          set -euo pipefail
+          pdf="$(find overleaf-cv -name "${PDF_NAME}" -type f | head -n1)"
+          [ -n "${pdf}" ] || { echo "::error::Compiled PDF ${PDF_NAME} not found."; exit 1; }
+          mkdir -p "$(dirname "${CV_PDF}")"
+          cp "${pdf}" "${CV_PDF}"
+          echo "${NEW_REV}" > "${CV_REV}"
+
+      - name: Commit and push
+        if: steps.changed.outputs.build == 'true'
+        id: commit
+        env:
+          NEW_REV: ${{ steps.changed.outputs.new_rev }}
+        run: |
+          set -euo pipefail
+          git add "${CV_PDF}" "${CV_REV}"
+          pdf_changed=true
+          git diff --cached --quiet -- "${CV_PDF}" && pdf_changed=false
+          echo "pdf_changed=${pdf_changed}" >> "$GITHUB_OUTPUT"
+          if git diff --cached --quiet; then
+            echo "Nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update CV from Overleaf (${NEW_REV:0:7})"
+          git push
+
+      # Commits made with the default GITHUB_TOKEN do not trigger push workflows,
+      # so start the deploy explicitly.
+      - name: Trigger site deploy
+        if: steps.commit.outputs.pdf_changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy.yml --ref "${GITHUB_REF_NAME}"
