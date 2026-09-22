@@ -10,7 +10,7 @@ author_profile: true
   <figcaption>The 2026 Blavatnik Regional Awards for Young Scientists honorees.</figcaption>
 </figure>
 
-Deeply honored to be named one of the top three young researchers in Physical Sciences & Engineering across New York, New Jersey, and Connecticut by [The New York Academy of Sciences](https://www.nyas.org/){:target="_blank"} and the [Blavatnik Family Foundation](https://blavatnikfoundation.org/){:target="_blank"}!
+Deeply honored to be named one of the top three young scientists in Physical Sciences & Engineering across New York, New Jersey, and Connecticut by [The New York Academy of Sciences](https://www.nyas.org/){:target="_blank"} and the [Blavatnik Family Foundation](https://blavatnikfoundation.org/){:target="_blank"}!
 
 The Blavatnik Regional Awards for Young Scientists recognize outstanding postdoctoral researchers in the Tri-State area in three categories: Chemical Sciences, Life Sciences, and Physical Sciences & Engineering. This year, nine honorees were selected from 176 nominations spanning 35 institutions. In each category one Laureate receives $30,000 and two Finalists each receive $10,000 in unrestricted funds.
 
