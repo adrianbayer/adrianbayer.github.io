@@ -305,21 +305,35 @@ details.help summary { cursor: pointer; color: #9aa3c4; }
         <span>anti-correlated (r = &minus;1)</span><span>independent</span><span>correlated (r = +1)</span>
       </div>
       <div id="duetReadout" class="readout">press &#9654; to sweep &#8467;</div>
+      <label style="margin-top:6px;">Duet timbre</label>
+      <div class="btn-row">
+        <button class="sm-btn duet-timbre-btn active" data-dtimbre="tone" title="Both voices play one harmonic complex tone with no body filters, RMS-calibrated: the timbre the interval ladder was checked for">Harmonic tone</button>
+        <button class="sm-btn duet-timbre-btn" data-dtimbre="instruments" title="Musical preset: the two components' instruments from the Instruments panel, with articulation, vibrato and reverb. Decorative: the ladder's dissonance order was not checked for these timbres">Instrument voices <span class="tag">Musical, not calibrated for dissonance</span></button>
+      </div>
+      <label style="margin-top:6px;">Duet levels</label>
+      <div class="btn-row">
+        <button class="sm-btn duet-level-btn active" data-dlevel="common" title="Both voices, and the noise cue that replaces voice B, at one constant level: the duet carries r by the interval and the stereo spread only, and both voices stay audible">Common level</button>
+        <button class="sm-btn duet-level-btn" data-dlevel="data" title="Each voice at its data level (Absolute or Equalized, under Level &amp; display). One component can be 20-60 dB weaker than the other, so voice B or its noise cue may be inaudible">Data levels <span class="tag">B may be inaudible where one component is much weaker</span></button>
+      </div>
       <div class="note">
         Two voices, one per probe; voice B sits an interval above voice A. The interval follows the
         cross-correlation r<sub>&#8467;</sub> (interpolated in ln&nbsp;&#8467;), ordered by sensory dissonance:
         <span id="duetLadderText"></span>. The stereo spread grows as (1&minus;r)/2.
         Where |r| &lt; 2&sigma;<sub>r</sub>, with &sigma;<sub>r</sub> = (1&minus;r&sup2;)/&radic;N<sub>modes</sub>,
-        the correlation is <b>not significant</b>: voice B falls back to unison at a lower level with a soft noise cue
-        (fully back at 3&sigma;). Switch bands to hear tSZ flip sign at 217&nbsp;GHz.
+        the correlation is <b>not significant</b>: voice B is replaced by a band-pass noise cue at voice A&rsquo;s pitch,
+        with B&rsquo;s level and no stereo spread, so you hear one tone and noise. Between 2&sigma; and 3&sigma; the
+        interval fades in as the noise fades out (equal power at 2.5&sigma;). Switch bands to hear tSZ flip sign at 217&nbsp;GHz.
+        <b>Common level</b> (default): both voices and the cue play at one constant level, so loudness carries no data and
+        both voices stay audible; <b>Data levels</b> make each voice follow its own band power instead.
       </div>
+      <div class="note" id="duetNote"></div>
     </div>
 
     <div class="control-group">
       <label>Level &amp; display</label>
       <div class="btn-row">
         <button class="sm-btn level-btn active" data-level="absolute" title="One reference for every component, band and selection">Absolute</button>
-        <button class="sm-btn level-btn" data-level="equalized" title="Each selection (Play) or voice (Instruments, Duet) scaled to its own maximum over the bands">Equalized</button>
+        <button class="sm-btn level-btn" data-level="equalized" title="Each selection (Play) or voice (Instruments, Duet with Data levels) scaled to its own maximum over the bands">Equalized</button>
         <span class="note" style="margin:0 4px;">|</span>
         <button class="sm-btn option-btn" id="logVolBtn" title="dB-linear volume with a -60 dB floor">log volume</button>
         <button class="sm-btn option-btn" id="loudCompBtn" title="Inverse ISO 226:2003 equal-loudness contour at 60 phon">loudness comp.</button>
@@ -458,7 +472,7 @@ details.help summary { cursor: pointer; color: #9aa3c4; }
 // (window.SonifyCore; also exposed as window.SONIFY_API) and is unit-tested in tests/.
 // ============================================================================
 const Core = window.SonifyCore;
-const PAGE_VERSION = '2.1.0';
+const PAGE_VERSION = '2.2.0';
 const XF = 0.08;                     // crossfade on every rebuild / stop (s)
 const CTRL_DT = 0.02;                // step of the scheduled control automation (s)
 const LOOKAHEAD = 0.15;              // scheduling horizon on the audio clock (s)
@@ -490,6 +504,12 @@ const DEFAULTS = {
   instruments: { dT_cmblens: 'piano', dT_tsz: 'violin', dT_cib: 'guitar', dT_ksz: 'synth' },
   voicePreset: 'analysis', snap: true, duetA: 'dT_cmblens', duetB: 'dT_tsz', spatial: false,
   additiveSpacing: 'semitone', seed: 42, monitorDb: 0, bitDepth: 16,
+  // Duet timbre: 'tone' (default; the Analysis duet, one harmonic tone for both voices) or 'instruments'
+  // (the Musical duet: the components' palette instruments, decorative, not calibrated for dissonance).
+  duetTimbre: 'tone',
+  // Duet levels: 'common' (default; both voices and the cue at Core.DUET.COMMON_DB re L_REF, constant) or 'data'
+  // (each voice at its data level, S.level; one voice can then be 20-60 dB below the other and inaudible).
+  duetLevel: 'common',
 };
 function clone(o) { return JSON.parse(JSON.stringify(o)); }
 const S = clone(DEFAULTS);
@@ -906,13 +926,23 @@ function buildPeriodicWave(ctx, harmonics) {
   for (let i = 0; i < harmonics.length; i++) imag[i + 1] = harmonics[i];
   return ctx.createPeriodicWave(real, imag, { disableNormalization: false });
 }
+// The duet's own voice (not in the Instruments palette): one harmonic complex tone, Core.DUET.N_HARM
+// harmonics with amplitudes Core.DUET.ROLLOFF^(k-1), no body filters (see sonify_core.js section 2.6).
+const DUET_TONE_ID = 'duettone';
+// Bass body low-pass: cut-off max(BASS_LP_MIN, BASS_LP_RATIO x pitch), following the pitch. With the
+// fixed 1.2 kHz cut-off of v2.1 the sub-octave partial (0.5 f) outweighed the fundamental above ~2.2 kHz
+// (-2.7 dB at 3 kHz), so the bass could sound an octave low; now the fundamental stays >= 8 dB above the
+// sub-octave at every pitch 110-7040 Hz (8.1 dB at 370 Hz, where the 180 Hz body peak lifts the
+// sub-octave, as in v2.1; about 12 dB above 880 Hz). tests/page_review.test.js, and
+// paper/analysis/ladder_roughness.json 'K_bass_fundamental_re_suboctave_db'.
+const BASS_LP_MIN = 1200, BASS_LP_RATIO = 1.5;
 function createVoice(instrument, ctx, dest, opt) {
   const musical = opt.preset === 'musical';
   const data = ctx.createGain(); data.gain.value = 0;        // the data-driven level
   const drive = ctx.createGain(); drive.gain.value = 1;      // fixed level into the body chain (analysis)
   const head = musical ? data : drive;
   const artic = ctx.createGain(); artic.gain.value = 1;
-  const subs = [], others = [data, drive, artic], perOscGains = [];
+  const subs = [], others = [data, drive, artic], perOscGains = [], tracks = [];
   let chainTail = head, articCfg = null, vibrato = null, reverbSend = 0.2;
   // Analysis preset: the detuned copies of one partial (same waveform and harmonic) become ONE
   // oscillator carrying their total power sqrt(sum a_j^2), i.e. the detuned version's average spectrum
@@ -940,7 +970,8 @@ function createVoice(instrument, ctx, dest, opt) {
     if (byH) byH.set(harmonic, { osc: o, lvl: lvl, pow: level * level });
     return o;
   }
-  function chain(nodes) { let p = head; for (const n of nodes) { p.connect(n); p = n; others.push(n); } chainTail = p; }
+  const bodyNodes = [];
+  function chain(nodes) { let p = head; for (const n of nodes) { p.connect(n); p = n; others.push(n); bodyNodes.push(n); } chainTail = p; }
   function biquad(type, f, Q, gain) {
     const b = ctx.createBiquadFilter(); b.type = type; b.frequency.value = f;
     if (Q != null) b.Q.value = Q;
@@ -956,7 +987,12 @@ function createVoice(instrument, ctx, dest, opt) {
     return { osc: l, gain: g };
   }
 
-  if (instrument === 'piano') {
+  if (instrument === DUET_TONE_ID) {
+    // One oscillator, sustained in either preset (no articulation, vibrato or detuning). Band-limited by
+    // construction in the duet register: the highest partial is N_HARM x 1760 Hz = 14.1 kHz.
+    addOsc(null, 1, 1.0, 1.000, buildPeriodicWave(ctx, Core.duetToneAmps()));
+    reverbSend = 0;
+  } else if (instrument === 'piano') {
     // Three 'strings' at the fundamental (detuned by +-0.3% in the Musical preset) plus harmonics 2-6;
     // in the Musical preset each partial decays at its own rate after every strike.
     const fund = buildPeriodicWave(ctx, [1.0]);
@@ -1014,7 +1050,9 @@ function createVoice(instrument, ctx, dest, opt) {
     addOsc(null, 1, 0.8, 1.000, wave);
     addOsc(null, 1, 0.4, 1.004, wave);                     // string beat (Musical preset only)
     addOsc(null, 0.5, 0.3, 1.000, wave);                   // sub-octave
-    chain([biquad('peaking', 180, 1.5, 4), biquad('lowpass', 1200, 1.5)]);
+    const lp = biquad('lowpass', BASS_LP_MIN, 1.5);
+    chain([biquad('peaking', 180, 1.5, 4), lp]);
+    tracks.push({ param: lp.frequency, at: function (f) { return Math.min(Math.max(BASS_LP_MIN, BASS_LP_RATIO * f), 0.45 * ctx.sampleRate); } });
     articCfg = { rate: 1.2, attack: 0.008, peak: 1.0, decay: 0.35, sustain: 0.55, gap: 0.05 };
     reverbSend = 0.15;
   } else {
@@ -1071,12 +1109,14 @@ function createVoice(instrument, ctx, dest, opt) {
   return {
     init: function (f, g, t) {
       for (const s of subs) if (s.osc) s.osc.frequency.setValueAtTime(f * s.harmonic * s.freqMul, t);
+      for (const k of tracks) k.param.setValueAtTime(k.at(f), t);
       data.gain.setValueAtTime(g, t);
       if (vibrato) vibrato.gain.gain.setValueAtTime(f * vibrato.rel, t);
       if (musical && articCfg) nextStrike = t;
     },
     at: function (f, g, t) {
       for (const s of subs) if (s.osc) s.osc.frequency.linearRampToValueAtTime(f * s.harmonic * s.freqMul, t);
+      for (const k of tracks) k.param.linearRampToValueAtTime(k.at(f), t);
       data.gain.linearRampToValueAtTime(isFinite(g) ? g : 0, t);
       if (vibrato) vibrato.gain.gain.linearRampToValueAtTime(f * vibrato.rel, t);
     },
@@ -1093,6 +1133,8 @@ function createVoice(instrument, ctx, dest, opt) {
     sources: function () { return subs.map(function (s) { return s.osc || s.src; }).concat(others.filter(function (n) { return n.stop; })); },
     /** The oscillators as {osc, harmonic, freqMul, level} (inspected by tests/page_review.test.js). */
     partials: function () { return subs.filter(function (s) { return s.osc; }).map(function (s) { return { osc: s.osc, harmonic: s.harmonic, freqMul: s.freqMul, level: s.lvl.gain.value }; }); },
+    /** The body chain in signal order (filters, shaper) between the oscillators' sum and the data gain (tests). */
+    body: function () { return bodyNodes.slice(); },
   };
 }
 
@@ -1132,8 +1174,18 @@ function calAt(instrument, sr, f) {
   const t = (x - Math.log(CAL_F[i])) / (Math.log(CAL_F[i + 1]) - Math.log(CAL_F[i]));
   return Math.exp(Math.log(r[i]) + t * (Math.log(r[i + 1]) - Math.log(r[i])));
 }
+/**
+ * The duet's voices. Default (the Analysis duet): both voices play the one harmonic tone, sustained.
+ * 'instruments' (the Musical duet): the two components' palette instruments with the Musical preset
+ * (articulation, vibrato, reverb), decorative and not calibrated for dissonance. S.voicePreset (the
+ * Instruments panel) does not apply to the duet: the timbre choice sets the duet's preset.
+ */
+function duetVoices() {
+  if (S.duetTimbre === 'instruments') return { timbre: 'instruments', preset: 'musical', A: S.instruments[S.duetA], B: S.instruments[S.duetB] };
+  return { timbre: 'tone', preset: 'analysis', A: DUET_TONE_ID, B: DUET_TONE_ID };
+}
 function voiceInstruments(kind) {
-  if (kind === 'duet') return [S.instruments[S.duetA], S.instruments[S.duetB]];
+  if (kind === 'duet') { const d = duetVoices(); return d.A === d.B ? [d.A] : [d.A, d.B]; }
   return Core.VOICED.map(function (c) { return S.instruments[c]; });
 }
 /** Active voiced components that share an instrument (they fuse: same pitch, same timbre). */
@@ -1202,14 +1254,16 @@ function DuetPlayer(ctx, bus, o) {
   this.ctx = ctx; this.o = o; this.kind = 'duet'; this.clock = o.clock;
   this.duration = sweepPeriod();
   this.A = S.duetA; this.B = S.duetB;
+  this.voices = duetVoices();
   this.voiceComp = S.spatial ? 1 : MONO_PAN_COMP;
   this.out = ctx.createGain();
-  this.send = S.voicePreset === 'musical' ? playerSend(ctx, bus) : null;
+  this.send = this.voices.preset === 'musical' ? playerSend(ctx, bus) : null;
   this.panA = ctx.createStereoPanner(); this.panB = ctx.createStereoPanner();
   this.panA.connect(this.out); this.panB.connect(this.out);
-  this.vA = createVoice(S.instruments[this.A], ctx, this.panA, { preset: S.voicePreset, spatial: S.spatial, seed: Core.hashSeed(S.seed, 'duetA'), send: this.send });
-  this.vB = createVoice(S.instruments[this.B], ctx, this.panB, { preset: S.voicePreset, spatial: S.spatial, seed: Core.hashSeed(S.seed, 'duetB'), send: this.send });
-  // soft noise cue for 'not significant' (seeded), at B's pitch and through B's panner
+  this.vA = createVoice(this.voices.A, ctx, this.panA, { preset: this.voices.preset, spatial: S.spatial, seed: Core.hashSeed(S.seed, 'duetA'), send: this.send });
+  this.vB = createVoice(this.voices.B, ctx, this.panB, { preset: this.voices.preset, spatial: S.spatial, seed: Core.hashSeed(S.seed, 'duetB'), send: this.send });
+  // band-pass noise cue that replaces voice B while r is not significant (seeded), at A's pitch and
+  // through B's panner (centred then: the spread is 0 in the gated state)
   const nb = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
   nb.getChannelData(0).set(Core.whiteNoise(nb.length, Core.hashSeed(S.seed, 'duetcue')));
   this.cue = ctx.createBufferSource(); this.cue.buffer = nb; this.cue.loop = true;
@@ -1217,27 +1271,34 @@ function DuetPlayer(ctx, bus, o) {
   this.cueG = ctx.createGain(); this.cueG.gain.value = 0;
   this.cue.connect(this.cueF); this.cueF.connect(this.cueG); this.cueG.connect(this.panB);
 }
-const DUET_CUE_Q = 4, DUET_CUE_REL = 0.3;     // cue RMS = 0.3 x (1 - s) x voice B's ungated level (-10.5 dB)
+// Cue: Q = 4 band-pass noise centred on voice A's pitch (fixed relative to A, so it carries no
+// interval). Its RMS = voice B's level x Core.duetGateMix(s).cue, so B's tone plus the cue keep
+// B's level at every s (v2.1: cue at -10.5 dB re B, with B dropped to a unison at -6 dB).
+// Levels (Core LevelModel.duetLevels): S.duetLevel 'common' (default) puts A, B and the cue at one constant
+// level; 'data' at the data levels (S.level). With loudness compensation every voice is weighted at its
+// own pitch: A and the cue at the root, B's tone at f_B (equal to B's level at the root without it).
+const DUET_CUE_Q = 4;
 DuetPlayer.prototype.ellAt = function (t) { return posToEll(clockPos(this.clock, t)); };
 DuetPlayer.prototype.values = function (ell) {
-  const A = this.A, B = this.B, M = model(), sr = this.ctx.sampleRate;
+  const A = this.A, B = this.B, M = model(), sr = this.ctx.sampleRate, V = this.voices;
   const same = Core.SHORT[A] === Core.SHORT[B];
   const r = same ? 1 : (RT.cross ? Core.crossR(RT.cross, A, B, S.band, ell) : 0);
   const n = RT.cross ? Core.crossNModes(RT.cross, ell) : null;
   const sig = n ? Core.duetSigmaR(r, n) : Infinity;
   const s = same ? 1 : (n ? Core.duetGate(r, sig) : 0);
-  const iv = Core.duetInterval(r);
-  const fA = Core.musicalFreq(ell, S.band, RT.bands, S.snap);
-  const fB = fA * Math.pow(2, (s >= 0.5 ? iv.semis : 0) / 12);
-  const lA = M.voiceLevel(A, S.band, ell, S.level), lB = M.voiceLevel(B, S.band, ell, S.level);
+  const iv = Core.duetInterval(r), mix = Core.duetGateMix(s);
+  const fA = Core.duetFreq(ell, S.snap);                 // the duet map: 110-880 Hz for every band
+  const fB = fA * Math.pow(2, iv.semis / 12);            // always the interval (<= 1760 Hz), never a unison
+  const L = M.duetLevels(A, B, S.band, ell, iv.semis, S.level, S.duetLevel);
+  const lA = L.A, lB = L.B, lCue = L.cue;               // B's tone at f_B; the cue (B's stand-in) at the root
   const spread = 0.95 * Core.duetSpread(r, s);
   // cue: white noise (RMS 1/sqrt 3) through the RBJ band-pass, whose white-noise power gain is
   // alpha/(1 + alpha) (Core.rbjBandpassNoiseGain; = pi/2 f0/Q / (sr/2) for f0 << sr), not f0/Q
-  const fCue = Math.min(fB, 0.45 * sr), cueRms = DUET_CUE_REL * lB.rms * (1 - s);
+  const fCue = Math.min(fA, 0.45 * sr), cueRms = lCue.rms * mix.cue;
   const cueGain = MONO_PAN_COMP * cueRms / (Math.sqrt(1 / 3) * Math.sqrt(Core.rbjBandpassNoiseGain(fCue, DUET_CUE_Q, sr)));
-  return { ell: ell, r: r, n: n, sig: sig, s: s, iv: iv, fA: fA, fB: fB, fCue: fCue, lA: lA, lB: lB,
-    gA: this.voiceComp * lA.rms / calAt(S.instruments[A], sr, fA),
-    gB: this.voiceComp * lB.rms * (0.5 + 0.5 * s) / calAt(S.instruments[B], sr, fB),
+  return { ell: ell, r: r, n: n, sig: sig, s: s, iv: iv, fA: fA, fB: fB, fCue: fCue, lA: lA, lB: lB, lCue: lCue, mix: mix,
+    gA: this.voiceComp * lA.rms / calAt(V.A, sr, fA),
+    gB: this.voiceComp * lB.rms * mix.tone / calAt(V.B, sr, fB),
     spread: spread, cueGain: cueGain };
 };
 DuetPlayer.prototype.start = function (t0, fade, r) {
@@ -1509,10 +1570,11 @@ async function renderWav() {
         clipped_samples: wav.clipped, peak: wav.peak },
       level_convention: 'digital RMS = L_REF * A / REF with L_REF = 0.1 (-20 dBFS); A = sqrt(integral D dln l) (muK) ' +
         'of what is heard; monitor gain and safety limiter are not part of the render',
-      references_muK: { REF_play: M.REF_PLAY, REF_window: M.REF_WIN, REF_voice: M.REF_VOICE, labels: M.refLabels },
+      references_muK: { REF_play: M.REF_PLAY, REF_window: M.REF_WIN, REF_voice: M.REF_VOICE, REF_voice_duet: M.REF_VOICE_DUET, labels: M.refLabels },
       conventions: {
         sweep_window: { width_l_octaves: S.windowOct, butterworth_order: 2 * Core.windowOrder(S.windowOct), carrier: Core.sweepCarrierMethod(bufferMethod()) },
         duet_ladder: Core.DUET_LADDER.map(function (r) { return r.name; }),
+        duet: duetConventions(),
         stereo: S.stereo === 'mono' ? null : 'right-channel phases = left + s_k arccos(rho(l)), rho from cross_data.json' +
           (S.stereo === 'freq' ? '; CIB x CIB across bands: r = ' + Core.CIB_INTERBAND_R + ' (assumed)' : ''),
         build_up_reference: kind === 'buildup' ? BUILDUP_REF : null,
@@ -1537,6 +1599,38 @@ async function renderWav() {
   }
   btn.disabled = false;
 }
+/** The duet's design parameters as played (WAV sidecar). */
+function duetConventions() {
+  const D = Core.DUET, V = duetVoices();
+  return {
+    pitch_map: 'f_A = ' + D.BASE_HZ + ' Hz (l/2)^' + Core.DUET_GAMMA.toFixed(6) + ' (' + D.OCTAVES + ' octaves over l 2-6000, no band offset)' +
+      (S.snap ? ', snapped to A-minor pentatonic' : ''),
+    root_range_hz: [Core.duetFreq(Core.ELL_MIN, false), Core.duetFreq(Core.ELL_MAX, false)],
+    voice_b: 'f_B = f_A 2^(semis/12) with semis from the ladder (never a unison)',
+    ladder_semitones: Core.DUET_LADDER.map(function (r) { return r.semis; }),
+    timbre: V.timbre, preset: V.preset, voices: { A: V.A, B: V.B },
+    tone: V.timbre === 'tone' ? { harmonics: D.N_HARM, rolloff_per_harmonic: D.ROLLOFF, body_filters: 'none', calibrated: 'RMS = the voice\'s level (see levels)' } : null,
+    calibrated_for_dissonance: V.timbre === 'tone',
+    levels: duetLevelConventions(),
+    gate: { sigma_r: '(1 - r^2)/sqrt(N_modes)', closed_below_sigma: 2, equal_power_at_sigma: 2.5, open_at_sigma: 3,
+      voice_b_tone_amplitude: 'sqrt(s) x voice B level at f_B', cue_amplitude: 'sqrt(1 - s) x voice B level at f_A',
+      cue: 'band-pass noise, Q ' + DUET_CUE_Q + ', centred on f_A', spread: '0.95 (1 - r)/2 s' },
+  };
+}
+/** The duet's level convention as played (sidecar conventions.duet.levels). */
+function duetLevelConventions() {
+  const D = Core.DUET, common = S.duetLevel !== 'data';
+  return {
+    mode: common ? 'common' : 'data',
+    common_db_re_L_REF: D.COMMON_DB, common_rms: Core.L_REF * Math.pow(10, D.COMMON_DB / 20),
+    data_level_mode: common ? null : S.level,
+    rule: common ? 'voice A, voice B and the noise cue all at ' + D.COMMON_DB + ' dB re L_REF (constant; loudness carries no data)'
+      : 'each voice at its data level A_v/REF_voice_duet (' + S.level + (S.logVolume ? ', log volume' : '') + ')',
+    loudness_compensation: !S.loudComp ? null : common
+      ? 'ISO 226:2003 60-phon gain at each voice\'s own unsnapped pitch (A and the cue at f_A, B\'s tone at f_B) re its maximum over 110-1760 Hz (' + Core.duetCompMaxDb(60, 30).toFixed(2) + ' dB at 110 Hz), so no voice exceeds the common level'
+      : 'ISO 226:2003 60-phon gain at each voice\'s own unsnapped pitch (A and the cue at f_A, B\'s tone at f_B); REF_voice_duet is the maximum over every pitch a voice can take',
+  };
+}
 function downloadBlob(blob, name) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = name;
@@ -1550,7 +1644,8 @@ function downloadBlob(blob, name) {
 const ENUMS = {
   method: ['noise', 'additive', 'layers', 'instruments', 'duet'], stereo: ['mono', 'comp', 'freq'],
   level: ['absolute', 'equalized'], beam: ['observed', 'deconvolved'], windowOct: [0.25, 0.5, 1],
-  voicePreset: ['analysis', 'musical'], duetA: Core.VOICED, duetB: Core.VOICED,
+  voicePreset: ['analysis', 'musical'], duetA: Core.VOICED, duetB: Core.VOICED, duetTimbre: ['tone', 'instruments'],
+  duetLevel: Core.DUET_LEVELS,
   additiveSpacing: ['semitone', 'grid'], bitDepth: [16, 24],
 };
 const INSTRUMENT_IDS = INSTRUMENTS.map(function (x) { return x[0]; });
@@ -1647,14 +1742,14 @@ function drawSpectrum() {
   for (let p = -4; p <= Math.log10(dMax); p += 2) ctx.fillText('1e' + p, pad.left - 5, yOf(Math.pow(10, p)) + 4);
   ctx.save(); ctx.translate(12, pad.top + pH / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = 'center';
   ctx.fillText('Dℓ [μK²]' + (S.beam === 'deconvolved' ? ' (beam-deconvolved)' : ' (2′ beam)'), 0, 0); ctx.restore();
-  // audio frequency of each l (analysis map, or the musical map in Instruments/Duet)
-  const musical = S.method === 'instruments' || S.method === 'duet';
+  // audio frequency of each l (analysis map, the musical map in Instruments, the duet map in Duet)
+  const musical = S.method === 'instruments', duet = S.method === 'duet';
   ctx.fillStyle = '#3a4a70'; ctx.font = '9px system-ui'; ctx.textAlign = 'center';
   for (const e of [2, 10, 100, 220, 1000, 3000, 6000]) {
-    const f = musical ? Core.musicalFreq(e, activeBand(), RT.bands, false) : Core.ellToFreq(e);
+    const f = duet ? Core.duetFreq(e, false) : musical ? Core.musicalFreq(e, activeBand(), RT.bands, false) : Core.ellToFreq(e);
     ctx.fillText(Math.round(f) + ' Hz', xOf(e), pad.top - 6);
   }
-  ctx.fillText(musical ? 'pitch (musical map, unsnapped)' : 'audio frequency (analysis map)', pad.left + pW / 2, pad.top - 18);
+  ctx.fillText(duet ? 'pitch of voice A (duet map, unsnapped)' : musical ? 'pitch (musical map, unsnapped)' : 'audio frequency (analysis map)', pad.left + pW / 2, pad.top - 18);
   // l range
   ctx.fillStyle = 'rgba(74,158,255,0.05)';
   ctx.fillRect(xOf(S.ellMin), pad.top, xOf(S.ellMax) - xOf(S.ellMin), pH);
@@ -1767,6 +1862,8 @@ function syncUI() {
   document.querySelectorAll('.level-btn').forEach(function (b) { setPressed(b, b.dataset.level === S.level); });
   document.querySelectorAll('.beam-btn').forEach(function (b) { setPressed(b, b.dataset.beam === S.beam); });
   document.querySelectorAll('.voice-preset-btn').forEach(function (b) { setPressed(b, b.dataset.vpreset === S.voicePreset); });
+  document.querySelectorAll('.duet-timbre-btn').forEach(function (b) { setPressed(b, b.dataset.dtimbre === S.duetTimbre); });
+  document.querySelectorAll('.duet-level-btn').forEach(function (b) { setPressed(b, b.dataset.dlevel === S.duetLevel); });
   document.querySelectorAll('.preset-btn').forEach(function (b) {
     const pal = PALETTES[b.dataset.preset];
     setPressed(b, !!pal && Core.VOICED.every(function (c) { return pal[c] === S.instruments[c]; }));
@@ -1794,6 +1891,7 @@ function syncUI() {
   $('duetLadderText').textContent = Core.DUET_LADDER.map(function (r) { return r.name; }).join(' → ') + ' (r = +1 → −1)';
   $('methodNote').innerHTML = methodNote();
   $('musicalNote').innerHTML = musicalNote();
+  $('duetNote').innerHTML = duetMapText();
   $('levelNote').innerHTML = levelNote();
   $('sweepNote').innerHTML = sweepNote();
   $('renderNote').textContent = $('renderNote').dataset.locked ? $('renderNote').textContent :
@@ -1814,16 +1912,39 @@ function methodNote() {
       lband(1) + ' tones at the CMB acoustic peaks found in the data; ' + lband(2) + ' band-limited noise. Each layer&rsquo;s power = its band power &Sigma;D&Delta;ln&#8467; within the &#8467; range, and each layer sounds only inside the range (the timbres are decorative). ' +
       'The &#8467;-sweep uses the Shaped-Noise carrier in this mode (a window over the layer tones would not measure the windowed band power).';
     case 'instruments': return 'Play sweeps &#8467; over the range; each active component is a voice whose level follows its band power in the sweep window. Total has no voice (pick its components). Build-Up and &nu;-Sweep use Shaped Noise in this mode.';
-    case 'duet': return 'Play sweeps &#8467; over the range. Build-Up and &nu;-Sweep use Shaped Noise in this mode. ' +
-      'The interval ladder is monotone in sensory dissonance at every pitch the duet plays (110&ndash;7040 Hz), which allows four rungs.';
+    case 'duet': return 'Play sweeps &#8467; over the range. Build-Up and &nu;-Sweep use Shaped Noise in this mode.' +
+      (duetVoices().timbre === 'tone'
+        ? ' With this tone the interval ladder is monotone in sensory dissonance (Plomp&ndash;Levelt roughness, Sethares&rsquo; model) at every pitch the duet plays, which allows four rungs.'
+        : ' <b>Instrument voices (Musical preset): decorative, not calibrated for dissonance.</b> The ladder&rsquo;s order was checked for the harmonic tone; with these timbres the rungs lie closer together (the octave and the fifth most of all, then the fifth and the tritone), for some pairs the tritone is as rough as the minor second at the lowest pitches, and articulation and reverb change the levels.');
     default: return '';
   }
+}
+/** The duet's pitch map and timbre, as played (the note under the duet controls). */
+function duetMapText() {
+  const D = Core.DUET, hi = Core.duetFreq(Core.ELL_MAX, false), V = duetVoices();
+  const top = hi * Math.pow(2, Math.max.apply(null, Core.DUET_LADDER.map(function (r) { return r.semis; })) / 12);
+  return 'Duet pitch map: voice A at f = ' + D.BASE_HZ + ' Hz &middot; (&#8467;/2)<sup>' + Core.DUET_GAMMA.toFixed(3) + '</sup> (' +
+    D.OCTAVES + ' octaves, ' + D.BASE_HZ + '&ndash;' + Math.round(hi) + ' Hz over &#8467; 2&ndash;6000, the same in every band' +
+    (S.snap ? '; snapped to the A-minor pentatonic scale' : '') + '); voice B at most an octave above (&le; ' + Math.round(top) + ' Hz). ' +
+    (V.timbre === 'tone'
+      ? 'Timbre: both voices play one harmonic tone (' + D.N_HARM + ' harmonics, amplitude &times;' + D.ROLLOFF + ' per harmonic, no body filters), sustained; each voice&rsquo;s RMS is calibrated. '
+      : '<b style="color:var(--warn)">Timbre: instrument voices (' + COMP_LABELS[S.duetA] + ' ' + V.A + ', ' + COMP_LABELS[S.duetB] + ' ' + V.B +
+        '; set in the Instruments panel), Musical preset: decorative, not calibrated for dissonance.</b> ') + duetLevelText();
+}
+/** The duet's level mode, as played. */
+function duetLevelText() {
+  if (S.duetLevel !== 'data') {
+    return 'Levels: <b>common level</b>, both voices and the noise cue at ' + fmtDb(Core.DUET.COMMON_DB) + ' dB re REF<sub>voice</sub> (constant; loudness carries no data)' +
+      (S.loudComp ? ', each weighted by the loudness compensation at its own pitch (at most 0 dB)' : '') + '.';
+  }
+  return 'Levels: <b style="color:var(--warn)">data levels</b> (' + (S.level === 'equalized' ? 'Equalized' : 'Absolute') +
+    '): each voice follows its own band power, so voice B or its noise cue may be inaudible where one component is much weaker.';
 }
 function musicalNote() {
   if (!RT.bands.length) return '';
   const notes = RT.bands.map(function (b) { return b + '&rarr;' + Core.bandNote(b, RT.bands).name; }).join(', ');
   const dup = S.method === 'instruments' ? duplicateVoices() : [];
-  return 'Musical map (Instruments, Duet): f = f<sub>&nu;</sub> (&#8467;/2)<sup>' + Core.BETA.toFixed(3) + '</sup> (5 octaves over &#8467; 2&ndash;6000), ' +
+  return 'Musical map (Instruments; the Duet has its own 3-octave map): f = f<sub>&nu;</sub> (&#8467;/2)<sup>' + Core.BETA.toFixed(3) + '</sup> (5 octaves over &#8467; 2&ndash;6000), ' +
     'f<sub>&nu;</sub> = the band&rsquo;s A-minor-pentatonic note at &#8467; = 2: ' + notes + '. All voices share this pitch; the instrument tells them apart. ' +
     (S.voicePreset === 'musical' ? '<b>Musical preset: articulation, vibrato, auto-wah, the detuned chorus (beating) and reverb are decorative; levels are approximate.</b>'
       : 'Analysis preset: sustained voices with every partial at a multiple of the pitch (no detuning, so no beating); each voice&rsquo;s RMS = the data level (calibrated per instrument and pitch).') +
@@ -1854,6 +1975,8 @@ function levelNote() {
   if (S.logVolume) s += ' Log volume: dB-linear, floor &minus;60 dB re REF.';
   if (S.loudComp) s += ' Loudness compensation on (ISO 226:2003, 60 phon, boost &le; +30 dB); REF is recomputed on the compensated spectra.';
   s += S.beam === 'deconvolved' ? ' Beam-deconvolved spectra (D/B&sup2;).' : ' Observed spectra (2&prime; beam).';
+  if (S.method === 'duet' && S.duetLevel !== 'data') s += ' <b>Duet: common level</b> (' + fmtDb(Core.DUET.COMMON_DB) +
+    ' dB re REF<sub>voice</sub> for both voices); Absolute/Equalized and log volume apply to the Duet only with <b>Data levels</b>.';
   if (!RT.cross) s += ' <b>cross_data.json missing: mixes have no cross terms, the Duet has no r.</b>';
   return s;
 }
@@ -1923,10 +2046,12 @@ function updateReadouts() {
   } else if (p.kind === 'duet') {
     const ell = p.ellAt(now), v = p.values(ell);
     duetReadout(v);
+    const common = v.lA.mode === 'common';
     txt = '&#8467; = <b>' + Math.round(ell) + '</b>: ' + COMP_LABELS[p.A] + ' ' + fmtDb(v.lA.db) + ' dB, ' + COMP_LABELS[p.B] + ' ' +
-      fmtDb(v.lB.db) + ' dB re REF<sub>voice</sub>' + (S.level === 'equalized' ? ' (equalized per voice)' : '') + '.' +
-      (S.level === 'absolute' && Math.abs(v.lA.db - v.lB.db) > 20 ? ' The voices differ by ' + Math.abs(v.lA.db - v.lB.db).toFixed(0) +
-        ' dB, so the fainter one is masked: choose <b>Equalized</b> to hear the harmony.' : '');
+      fmtDb(v.lB.db) + ' dB re REF<sub>voice</sub>' + (common ? ' (common level: loudness carries no data)'
+        : S.level === 'equalized' ? ' (data levels, equalized per voice)' : ' (data levels)') + '.' +
+      (!common && Math.abs(v.lA.db - v.lB.db) > 20 ? ' The voices differ by ' + Math.abs(v.lA.db - v.lB.db).toFixed(0) +
+        ' dB, so the fainter one is probably masked: choose <b>Common level</b> to hear the interval.' : '');
   } else if (p.kind === 'bigbang') {
     txt = '<b>Big Bang (artistic)</b>: ' + (p.plan.length ? 'CMB acoustic peaks at &#8467; = ' + p.plan.map(function (q) { return q.ell; }).join(', ') +
       ' (local maxima of the CMB D<sub>&#8467;</sub> in 150&ndash;2000) played as a chord with f = 60 Hz &middot; &#8467;/' + p.plan[0].ell +
@@ -1939,9 +2064,12 @@ function duetReadout(v) {
   if (mk) mk.style.left = (((v.r + 1) / 2) * 100).toFixed(1) + '%';
   const sig = isFinite(v.sig) ? v.sig : null, signif = v.s >= 0.5;
   const col = !signif ? '#9aa3c4' : v.r > 0 ? '#2ed573' : '#ff5b5b';
+  const state = v.s <= 0 ? '<b>not significant</b> (' + (sig ? '|r| &lt; 2&sigma;' : 'no data') + '): one tone + noise cue (voice B replaced)'
+    : v.s < 1 ? 'interval: <b>' + v.iv.name + '</b>, fading in over the noise cue (' + (2 + v.s).toFixed(1) + '&sigma;; full at 3&sigma;)'
+      : 'interval: <b>' + v.iv.name + '</b>';
   const html = '&#8467; &asymp; <b>' + Math.round(v.ell) + '</b> &nbsp; r = <b style="color:' + col + '">' +
     (v.r >= 0 ? '+' : '') + v.r.toFixed(2) + '</b>' + (sig ? ' &plusmn; ' + sig.toFixed(3) + ' (N<sub>modes</sub> &asymp; ' + Math.round(v.n) + ')' : '') +
-    ' &nbsp; ' + (signif ? 'interval: <b>' + v.iv.name + '</b>' : '<b>not significant</b> (|r| &lt; ' + (sig ? '2&ndash;3&sigma;' : 'no data') + '): unison + noise cue');
+    ' &nbsp; ' + state;
   if ($('duetReadout').innerHTML !== html) $('duetReadout').innerHTML = html;
 }
 // Output meter, after the limiter, per channel (a single AnalyserNode would read the down-mix 0.5 (L + R),
@@ -2032,6 +2160,13 @@ function setup() {
     });
   });
   $('snapScale').addEventListener('change', function (e) { S.snap = e.target.checked; settingsChanged('snap'); });
+  document.querySelectorAll('.duet-timbre-btn').forEach(function (b) {
+    b.addEventListener('click', function () { S.duetTimbre = b.dataset.dtimbre; settingsChanged('voices'); });
+  });
+  document.querySelectorAll('.duet-level-btn').forEach(function (b) {
+    // read live by DuetPlayer.values at every control step: no restart
+    b.addEventListener('click', function () { S.duetLevel = b.dataset.dlevel; settingsChanged('duetLevel'); });
+  });
   $('duetA').addEventListener('change', function (e) { S.duetA = e.target.value; settingsChanged('voices'); });
   $('duetB').addEventListener('change', function (e) { S.duetB = e.target.value; settingsChanged('voices'); });
   document.querySelectorAll('.level-btn').forEach(function (b) { b.addEventListener('click', function () { S.level = b.dataset.level; settingsChanged('spectrum'); }); });

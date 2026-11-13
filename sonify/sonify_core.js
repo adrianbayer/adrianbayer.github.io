@@ -10,7 +10,9 @@
  *                       (l 2..6000 -> 40..8000 Hz). Used by noise, additive, layers, sweeps, the plot.
  *   Musical pitch map   f = f_band (l/L_MIN)^BETA,  BETA = 5 ln2 / ln(L_MAX/L_MIN)  (5 octaves),
  *                       f_band = 110 Hz * 2^(s/12), s = the band's A-minor-pentatonic degree
- *                       (bands ascend A2 C3 D3 E3 G3 A3 ...). Used by Instruments and Duet.
+ *                       (bands ascend A2 C3 D3 E3 G3 A3 ...). Used by Instruments.
+ *   Duet pitch map      f_A = 110 Hz (l/L_MIN)^GAMMA, GAMMA = 3 ln2 / ln(L_MAX/L_MIN)  (3 octaves,
+ *                       110-880 Hz for every band; voice B at most an octave above, <= 1760 Hz).
  *   Spectral density    audio power per ln f  ∝  D_l  (D_l is the variance per ln l and
  *                       d ln f = ALPHA d ln l), i.e. PSD per Hz ∝ D_l(l(f)) / f.
  *   Level               digital variance = (L_REF / REF)^2 * integral D dln l over what is heard:
@@ -31,7 +33,7 @@
 }(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  const VERSION = '2.1.0';
+  const VERSION = '2.2.0';
 
   // ==========================================================================
   // Constants
@@ -62,7 +64,8 @@
   /** Inverse of ellToFreq, f clamped to [40, 8000] Hz. */
   function freqToEll(f) { return ELL_MIN * Math.pow(clamp(f, F_MIN, F_MAX) / F_MIN, 1 / ALPHA); }
 
-  // Musical map (Instruments, Duet): a compressed 5-octave law, with the band as the scale degree.
+  // Musical map (Instruments): a compressed 5-octave law, with the band as the scale degree. The Duet
+  // has its own 3-octave map (duetFreq, section 2.6).
   const MUSICAL = {
     BASE_HZ: 110,                       // A2: the lowest band's note at l = L_MIN
     OCTAVES: 5,                         // l 2..6000 spans 5 octaves
@@ -686,6 +689,12 @@
    *             bands and l_c. The sweep's fixed make-up gain is REF_play/REF_win.
    *   'voice' : Instruments, Duet. A_v(l) = A_w(l) of the voice's own spectrum (beam only), times
    *             sqrt(G_ISO(f_voice)) when loudness compensation is on; log volume maps A_v/REF_voice.
+   *             f_voice is the voice's own pitch: on the musical map (Instruments), or on the duet map
+   *             (duetFreq) times 2^(semis/12): the root for voice A and the noise cue, the rung above it
+   *             for voice B's tone. REF_VOICE_DUET is the maximum over all those pitches, so no duet
+   *             voice exceeds it. Without loudness compensation A_v depends on neither, and
+   *             REF_VOICE_DUET = REF_VOICE.
+   *             The duet's default level mode ('common', duetLevels) does not use A_v at all.
    * 'All spectra' = the five components (CMB, kSZ, tSZ, CIB, T_tot) in every band.
    */
   function LevelModel(clData, crossData, opts) {
@@ -753,13 +762,20 @@
     const r = this._refsOver(this._spectraList());
     this.REF_LIN = r.refLin; this.D_REF = r.D_REF; this.REF_PLAY = r.refPlay; this.REF_WIN = r.refWin;
     this.refLabels = r.labels;
-    // voice family (beam only; ISO weighting at the voice's musical pitch)
-    let best = 0, lab = '';
-    for (const s of this._spectraList()) {
-      const a = this.voiceAmpArray(s.comps[0], s.band);
-      for (let i = 0; i < a.length; i++) if (a[i] > best) { best = a[i]; lab = s.label; }
+    // voice family (beam only; ISO weighting at the voice's pitch: musical map, or the duet map at every
+    // pitch a duet voice can take there: the root (voice A, the cue) and each rung above it (voice B))
+    for (const map of ['musical', 'duet']) {
+      let best = 0, lab = '';
+      const ups = map === 'duet' && this.o.loudComp ? DUET_PITCH_OFFSETS : [0];
+      for (const s of this._spectraList()) {
+        for (const up of ups) {
+          const a = this.voiceAmpArray(s.comps[0], s.band, map, up);
+          for (let i = 0; i < a.length; i++) if (a[i] > best) { best = a[i]; lab = s.label + (up ? ' +' + up + ' st' : ''); }
+        }
+      }
+      if (map === 'duet') { this.REF_VOICE_DUET = best; this.refLabels.voice_duet = lab; }
+      else { this.REF_VOICE = best; this.refLabels.voice = lab; }
     }
-    this.REF_VOICE = best; this.refLabels.voice = lab;
   };
   /** Per-selection references: the same maxima over the bands of this selection only. */
   LevelModel.prototype.selectionRefs = function (comps) {
@@ -772,16 +788,23 @@
     }
     return this._cache.get(k);
   };
-  /** Voice amplitude A_v on the fine grid (muK; with sqrt(ISO gain) at the musical pitch if loudComp). */
-  LevelModel.prototype.voiceAmpArray = function (comp, band) {
-    const k = 'voice:' + comp + '@' + band;
+  /**
+   * Voice amplitude A_v on the fine grid (muK; with sqrt(ISO gain) at the voice's pitch if loudComp).
+   * map: 'musical' (default; Instruments, musicalFreq unsnapped) or 'duet' (duetFreq unsnapped, times
+   * 2^(semis/12): semis = 0 (default) for voice A and the cue at the root, the rung's semitones for
+   * voice B's tone, so that every duet voice is compensated at its own pitch).
+   */
+  LevelModel.prototype.voiceAmpArray = function (comp, band, map, semis) {
+    const duet = map === 'duet' && this.o.loudComp;          // the map matters only through the ISO gain
+    const up = duet ? (semis || 0) : 0;
+    const k = 'voice:' + comp + '@' + band + (duet ? ':duet' + (up ? '+' + up : '') : '');
     if (!this._cache.has(k)) {
       const w = this.windowedAmp2(this.baseDensity([comp], band)), out = new Float64Array(w.length);
-      const f0 = bandNote(band, this.bands).freq;
+      const f0 = duet ? DUET.BASE_HZ * Math.pow(2, up / 12) : bandNote(band, this.bands).freq, ex = duet ? DUET_GAMMA : BETA;
       for (let i = 0; i < w.length; i++) {
         let a = Math.sqrt(Math.max(w[i], 0));
         if (this.o.loudComp) {
-          const f = f0 * Math.exp(BETA * (this.fine.lnEll[i] - this.fine.lnEll[0]));   // musicalFreq, unsnapped
+          const f = f0 * Math.exp(ex * (this.fine.lnEll[i] - this.fine.lnEll[0]));   // musicalFreq / duetFreq, unsnapped
           a *= Math.pow(10, loudnessCompDb(f, this.o.phon, this.o.capDb) / 20);
         }
         out[i] = a;
@@ -791,13 +814,22 @@
     return this._cache.get(k);
   };
   LevelModel.prototype.fineAt = function (arr, ell) { return interpLn(this.fine.lnEll, arr, Math.log(clamp(ell, ELL_MIN, ELL_MAX))); };
-  /** Per-voice reference for the 'equalized' mode: the voice's own max over bands and l. */
-  LevelModel.prototype.voiceRefEqualized = function (comp) {
-    const k = 'veq:' + comp;
+  /**
+   * Per-voice reference for the 'equalized' mode: the voice's own max over bands and l (on its pitch map;
+   * on the duet map with loudness compensation also over every pitch a duet voice can take, as REF_VOICE_DUET).
+   */
+  LevelModel.prototype.voiceRefEqualized = function (comp, map) {
+    const duet = map === 'duet' && this.o.loudComp;
+    const k = 'veq:' + comp + (duet ? ':duet' : '');
     if (!this._cache.has(k)) {
       let m = 0;
       const bands = isFreqIndep(this.cl, comp) ? [this.bands[0]] : this.bands;
-      for (const b of bands) { const a = this.voiceAmpArray(comp, b); for (let i = 0; i < a.length; i++) if (a[i] > m) m = a[i]; }
+      for (const b of bands) {
+        for (const up of (duet ? DUET_PITCH_OFFSETS : [0])) {
+          const a = this.voiceAmpArray(comp, b, map, up);
+          for (let i = 0; i < a.length; i++) if (a[i] > m) m = a[i];
+        }
+      }
       this._cache.set(k, m);
     }
     return this._cache.get(k);
@@ -830,13 +862,45 @@
     return { D: D, amp: amp, refPlay: refPlay, refWin: refWin, makeup: refWin > 0 ? refPlay / refWin : 0,
       scale2: refPlay > 0 ? (L_REF * L_REF) / (refPlay * refPlay) : 0 };
   };
-  /** Voice target digital RMS and its level in dB re REF at multipole ell. */
-  LevelModel.prototype.voiceLevel = function (comp, band, ell, levelMode) {
-    const a = this.fineAt(this.voiceAmpArray(comp, band), ell);
-    const ref = levelMode === 'equalized' ? this.voiceRefEqualized(comp) : this.REF_VOICE;
+  /**
+   * Voice target digital RMS and its level in dB re REF at multipole ell (map: 'musical' or 'duet';
+   * semis: on the duet map, the voice's pitch above the root, see voiceAmpArray).
+   */
+  LevelModel.prototype.voiceLevel = function (comp, band, ell, levelMode, map, semis) {
+    const a = this.fineAt(this.voiceAmpArray(comp, band, map, semis), ell);
+    const ref = levelMode === 'equalized' ? this.voiceRefEqualized(comp, map) : (map === 'duet' ? this.REF_VOICE_DUET : this.REF_VOICE);
     const ratio = ref > 0 ? a / ref : 0;
     const g = this.o.logVolume ? logMapAmp(ratio) : ratio;
     return { rms: L_REF * g, ratio: ratio, db: 20 * Math.log10(Math.max(ratio, 1e-15)), amp: a, ref: ref };
+  };
+  /**
+   * Duet levels at multipole ell (v2.2): voice A at the root f_A (duetFreq, unsnapped like every voice's
+   * pitch in the level model), voice B's tone at its own pitch f_B = f_A 2^(semis/12), and the noise cue
+   * that stands in for B in the gated state, centred on the root, at f_A. Returns {A, B, cue}, each with
+   * voiceLevel's fields plus f (the pitch whose ISO gain applies), compDb (that gain, dB) and mode.
+   *  duetLevel 'common' (the page's default): one constant level for every voice, DUET.COMMON_DB re L_REF,
+   *    whatever the data, so the duet carries r by the interval and the spread only. With loudness
+   *    compensation each voice gets the ISO gain at its own pitch re the gain's maximum over the duet
+   *    register (duetCompMaxDb): the compensated levels never exceed the common level.
+   *  duetLevel 'data': each voice's data level (voiceLevel on the duet map; levelMode 'absolute' or
+   *    'equalized'), with the ISO gain at each voice's own pitch (B's tone at f_B, the cue at f_A). One
+   *    component can then be 20-60 dB below the other (paper/impl_notes/sonifier.md section 10).
+   */
+  LevelModel.prototype.duetLevels = function (A, B, band, ell, semis, levelMode, duetLevel) {
+    const o = this.o, fA = duetFreq(ell, false), fB = fA * Math.pow(2, (semis || 0) / 12);
+    const comp = function (f) { return o.loudComp ? loudnessCompDb(f, o.phon, o.capDb) : 0; };
+    if (duetLevel === 'data') {
+      const tag = function (lv, f) { lv.f = f; lv.compDb = comp(f); lv.mode = 'data'; return lv; };
+      return { A: tag(this.voiceLevel(A, band, ell, levelMode, 'duet', 0), fA),
+        B: tag(this.voiceLevel(B, band, ell, levelMode, 'duet', semis || 0), fB),
+        cue: tag(this.voiceLevel(B, band, ell, levelMode, 'duet', 0), fA) };
+    }
+    const top = o.loudComp ? duetCompMaxDb(o.phon, o.capDb) : 0;
+    const common = function (f) {
+      const c = o.loudComp ? comp(f) - top : 0, db = DUET.COMMON_DB + c, ratio = Math.pow(10, db / 20);
+      return { rms: L_REF * ratio, ratio: ratio, db: db, amp: null, ref: null, f: f, compDb: c, mode: 'common' };
+    };
+    return { A: common(fA), B: common(fB), cue: common(fA) };
   };
 
   // ==========================================================================
@@ -1067,20 +1131,77 @@
   }
 
   // ==========================================================================
-  // 2.6 Duet: correlation -> interval (ordered by sensory dissonance) and significance gate
+  // 2.6 Duet: correlation -> interval (ordered by sensory dissonance), register, tone, significance gate
   // ==========================================================================
-  // From r = +1 to r = -1, ordered by Sethares' sensory dissonance of two harmonic tones in 12-TET
-  // AT THE PITCH WHERE THE DUET PLAYS. Voice A sits anywhere in 110-7040 Hz (musical map), and the
-  // ladder must be monotone at every one of those pitches, not only on average: P8 < P5 < TT < m2 is
-  // the longest 12-TET ladder that is strictly monotone at every quarter tone in 110-7040 Hz for all
-  // 24 timbre variants tested (5-8 harmonics, roll-off 0.7/0.88/1, min or product rule), with the
-  // partials band-limited at the Nyquist frequency or not (tests/core.test.js). Every longer ladder
-  // inverts somewhere: the v2.0 ladder P8 P5 P4 m6 TT M2 m2 (monotone only on the 110-3520 Hz average)
-  // has m6 > TT above ~590 Hz; P8 P5 M6 TT m2 holds only up to ~3 kHz. It keeps the spec's order
-  // (P8 ... P5 ... TT ... m2). The octave stands for r ~ +1 so that unison is free for 'not significant'.
+  // Ladder. From r = +1 to r = -1, ordered by Sethares' sensory dissonance of two harmonic tones in
+  // 12-TET AT THE PITCH WHERE THE DUET PLAYS, which must hold at every one of those pitches, not only on
+  // average. Over the v2.1 register (root 110-7040 Hz) P8 < P5 < TT < m2 was the longest 12-TET ladder
+  // strictly monotone at every quarter tone for all 24 timbre variants tested (5-8 harmonics, roll-off
+  // 0.7/0.88/1, min or product rule; kept as a control in tests/core.test.js). In the v2.2 register
+  // (110-880 Hz, below) the duet tone would allow six rungs (P8 P5 M6 m6 TT m2); four are kept for wider
+  // margins, the instrument option and absolute-identification limits (about.html#ladder). The v2.0
+  // ladder P8 P5 P4 m6 TT M2 m2 had m6 > TT above ~590 Hz. Spec order kept (P8 ... P5 ... TT ... m2);
+  // r ~ +1 is the octave: no unison rung, and the gated state plays no unison either (see duetGateMix).
+  //
+  // Register and tone (v2.2; paper/design_rationale.md 1a.7 items 1 and 2). v2.1 played the duet on the
+  // 5-octave musical map (root 110-7040 Hz) with the instrument voices, whose body low-passes leave
+  // nearly pure tones above ~1 kHz: there the fifth and the tritone differ little in roughness, and the
+  // top of the range lies beyond the upper limit of musical pitch for pure tones. Now:
+  //  - Pitch map (duetFreq): f_A = DUET.BASE_HZ (l/2)^DUET_GAMMA, DUET_GAMMA = DUET.OCTAVES ln2 / ln 3000
+  //    = 0.2597: l 2..6000 -> 110..880 Hz (A2..A5), voice B = f_A 2^(semis/12) <= 1760 Hz (an octave
+  //    above 880 Hz). No band offsets: with the musical map's pentatonic offsets (up to an octave for 6
+  //    bands, 17 semitones for 8) a 3-octave register would leave 2 octaves or less per band, and the
+  //    bounds would depend on how many bands the data have. The band is heard through r (e.g. the tSZ
+  //    sign flip at 217 GHz), not through pitch. Snapping (pentatonic) keeps f_A in [110, 880] Hz: both
+  //    ends are A's, which are scale notes.
+  //  - Tone (duetToneAmps): both voices play ONE harmonic complex tone, DUET.N_HARM harmonics with
+  //    amplitudes DUET.ROLLOFF^(k-1), no body filters, RMS-calibrated like every voice. Band-limited by
+  //    construction: the highest partial is 8 x 1760 = 14.1 kHz, below the Nyquist frequency of any
+  //    context at >= 32 kHz. For this tone P8 < P5 < TT < m2 holds at every quarter tone of the
+  //    register (min and product rule, both Sethares parameter sets; with the min rule also with voice B
+  //    3 to 40 dB below or 20 dB above A), and the smallest P8-P5 / P5-TT gaps are 12 / 21 per cent of
+  //    the largest m2 roughness in the register (min rule; 12 / 22 with the product rule), both at the
+  //    880 Hz top (paper/analysis/ladder_roughness.json 'A0_duet_tone_v22'; tests/core.test.js test 5).
+  //
+  // Levels (v2.2; paper/impl_notes/sonifier.md section 10). By default ('common') both voices, and the
+  // noise cue that replaces voice B, play at ONE constant level, DUET.COMMON_DB re L_REF: with data-driven
+  // levels one voice was often 20-60 dB below the other (B and its cue 47-59 dB below A in the default
+  // CMB x tSZ duet at 143 GHz), and the interval carries r only if both voices are heard. The data levels
+  // ('data': Absolute or Equalized, LevelModel.voiceLevel) stay as a labelled option. COMMON_DB = -5 dB is
+  // the largest whole-dB level whose peak stays below the Equalized duet's (-6.18 dBFS, rendered) even if
+  // the crests of voice A, B's tone and the cue coincide (tone crest 8.79 dB, cue loop <= 14.0 dB at seeds 42, 1, 7;
+  // worst -6.42 dBFS; up to 15.5 dB and -5.6 dBFS at other seeds). Rendered peaks, bound: sonifier.md section 10;
+  // pinned in tests/core.test.js ('duet levels').
+  const DUET = Object.freeze({ BASE_HZ: 110, OCTAVES: 3, N_HARM: 8, ROLLOFF: 0.88, COMMON_DB: -5 });
+  const DUET_LEVELS = ['common', 'data'];
+  const DUET_GAMMA = DUET.OCTAVES * Math.LN2 / LN_ELL_RANGE;  // 0.2597
+  /** Duet root pitch (voice A): f = 110 Hz (l/2)^DUET_GAMMA, l clamped to [2, 6000]; optionally snapped. */
+  function duetFreq(ell, snap) {
+    const f = DUET.BASE_HZ * Math.pow(clamp(ell, ELL_MIN, ELL_MAX) / ELL_MIN, DUET_GAMMA);
+    return snap ? quantizeToScale(f) : f;
+  }
+  /** Amplitudes of the duet tone's harmonics 1..DUET.N_HARM: ROLLOFF^(k-1) (the PeriodicWave coefficients). */
+  function duetToneAmps() {
+    const a = [];
+    for (let k = 1; k <= DUET.N_HARM; k++) a.push(Math.pow(DUET.ROLLOFF, k - 1));
+    return a;
+  }
   const DUET_LADDER = [
     { semis: 12, name: 'octave' }, { semis: 7, name: 'perfect 5th' }, { semis: 6, name: 'tritone' },
     { semis: 1, name: 'minor 2nd' }];
+  /** Pitches a duet voice can take above the root, in semitones: 0 (voice A, the cue) and every rung (voice B). */
+  const DUET_PITCH_OFFSETS = [0].concat(DUET_LADDER.map(function (r) { return r.semis; }));
+  /**
+   * Largest ISO 226 gain (loudnessCompDb) at any pitch a duet voice can take on the unsnapped duet map:
+   * 110 Hz to an octave above 880 Hz. The contour is linear in log f between its table frequencies, so the
+   * maximum lies at an end of the range or at a table frequency inside it (+17.3 dB at 110 Hz for 60 phon).
+   */
+  function duetCompMaxDb(phon, capDb) {
+    const lo = DUET.BASE_HZ, hi = DUET.BASE_HZ * Math.pow(2, DUET.OCTAVES + 1);
+    let m = Math.max(loudnessCompDb(lo, phon, capDb), loudnessCompDb(hi, phon, capDb));
+    for (const f of ISO226.f) if (f > lo && f < hi) m = Math.max(m, loudnessCompDb(f, phon, capDb));
+    return m;
+  }
   /**
    * Ladder rung for r: r cut into equal bins, idx = min(L - 1, floor((1 - r)/2 * L)), monotone in r.
    * With 4 rungs: r > 0.5 octave, 0 < r <= 0.5 fifth, -0.5 < r <= 0 tritone, r <= -0.5 minor second;
@@ -1094,7 +1215,17 @@
   function duetSigmaR(r, nModes) { return (1 - r * r) / Math.sqrt(Math.max(nModes, 1)); }
   /** Significance weight s in [0, 1]: 0 for |r| < 2 sigma (gate closed), rising to 1 at 3 sigma. */
   function duetGate(r, sigma) { return clamp(Math.abs(r) / Math.max(sigma, 1e-12) - 2, 0, 1); }
-  /** Stereo spread in [0, 1]: (1 - r)/2, scaled by the significance weight. */
+  /**
+   * Gate state (v2.2): amplitude weights of voice B's tone and of the band-pass noise cue that replaces
+   * it, at significance weight s: tone = sqrt(s), cue = sqrt(1 - s), so the power of B's tone plus the
+   * cue's (uncorrelated) is voice B's data level at every s. |r| < 2 sigma (s = 0): no B tone at all,
+   * only A + the cue (one tone plus noise, never an interval or a doubled unison); 2-3 sigma: the
+   * interval fades in as the cue fades out (equal power at 2.5 sigma, s = 0.5); >= 3 sigma: the interval
+   * alone. Voice B always sits at its interval above A (v2.1 dropped it to a unison at -6 dB, which in
+   * the closest evaluated precedent, frid2021, means 'most coherent').
+   */
+  function duetGateMix(s) { s = clamp(s, 0, 1); return { tone: Math.sqrt(s), cue: Math.sqrt(1 - s) }; }
+  /** Stereo spread in [0, 1]: (1 - r)/2, scaled by the significance weight (0 in the gated state). */
   function duetSpread(r, s) { return clamp((1 - r) / 2, 0, 1) * (s == null ? 1 : s); }
   /**
    * Sethares' parametrization of the Plomp-Levelt curve for two sine partials; amplitude weight
@@ -1232,6 +1363,7 @@
     L_REF: L_REF, LOG_FLOOR_DB: LOG_FLOOR_DB, LN_ELL_RANGE: LN_ELL_RANGE, COMPONENTS: COMPONENTS,
     VOICED: VOICED, T_TOT_PARTS: T_TOT_PARTS, SHORT: SHORT, LAYER_BANDS: LAYER_BANDS, MUSICAL: MUSICAL,
     WINDOW_ORDER: WINDOW_ORDER, WINDOW_LEAK_DB: WINDOW_LEAK_DB, DUET_LADDER: DUET_LADDER, ISO226: ISO226,
+    DUET: DUET, DUET_GAMMA: DUET_GAMMA, DUET_LEVELS: DUET_LEVELS, DUET_PITCH_OFFSETS: DUET_PITCH_OFFSETS,
     BUFFER_LOG2: BUFFER_LOG2, TSZ_NULL_GHZ: TSZ_NULL_GHZ, CIB_INTERBAND_R: CIB_INTERBAND_R, BAND_GROUPS: BAND_GROUPS,
     clamp: clamp,
     ellToFreq: ellToFreq, freqToEll: freqToEll,
@@ -1255,13 +1387,14 @@
     additivePartials: additivePartials, synthAdditive: synthAdditive, cmbPeaks: cmbPeaks, synthLayers: synthLayers,
     sweepPos: sweepPos, sweepEll: sweepEll, sweepPosOfEll: sweepPosOfEll,
     duetInterval: duetInterval, duetSigmaR: duetSigmaR, duetGate: duetGate, duetSpread: duetSpread,
+    duetFreq: duetFreq, duetToneAmps: duetToneAmps, duetGateMix: duetGateMix, duetCompMaxDb: duetCompMaxDb,
     setharesPair: setharesPair, dyadDissonance: dyadDissonance, registerDissonance: registerDissonance,
     xfadeGains: xfadeGains, correlation: correlation, periodicWindow: periodicWindow,
     bigBangPlan: bigBangPlan, reverbIR: reverbIR, encodeWAV: encodeWAV,
   };
   // The small public surface named in the spec (window.SONIFY_API).
   Core.API = {
-    version: VERSION, ellToFreq: ellToFreq, freqToEll: freqToEll, musicalFreq: musicalFreq,
+    version: VERSION, ellToFreq: ellToFreq, freqToEll: freqToEll, musicalFreq: musicalFreq, duetFreq: duetFreq,
     buildTargetPSD: buildTargetPSD, mixDl: mixDl, duetInterval: duetInterval, duetGate: duetGate,
     duetSigmaR: duetSigmaR, loudnessCompDb: loudnessCompDb, iso226SPL: iso226SPL, stereoCoherence: stereoCoherence,
     synthShapedNoise: synthShapedNoise, synthAdditive: synthAdditive, synthLayers: synthLayers,

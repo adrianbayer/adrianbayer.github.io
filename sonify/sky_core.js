@@ -7,9 +7,11 @@
  * Conventions (one per quantity; the same in the plot, the audio and the paper):
  *  - Sky coordinates are the simulation's HEALPix (theta, phi): theta = colatitude in [0, pi]
  *    (theta = 0 is the simulation north pole), phi = longitude in [0, 2 pi). NOT Galactic (l, b).
- *  - Equirectangular images (display JPEGs and value maps): row 0 is theta = 0, phi increases to the
- *    right from 0 at the left edge (export_sky_images.py). Pixel centres: theta_i = (i + 0.5) pi / H,
- *    phi_j = (j + 0.5) 2 pi / W.
+ *  - Display JPEGs are equirectangular: row 0 is theta = 0, phi increases to the right from 0 at the
+ *    left edge (export_sky_images.py). Pixel centres: theta_i = (i + 0.5) pi / H, phi_j = (j + 0.5) 2 pi / W.
+ *  - Value maps (sky_img.json version 3) are equal-area HEALPix maps, RING ordering, in the same
+ *    (theta, phi) frame: the value at (theta, phi) is that of pixel ang2pixRing(nside, theta, phi)
+ *    (healpy.ang2pix), the mean of the field over that pixel; no interpolation.
  *  - 3D: the three.js r128 SphereGeometry convention, which places the texture's top row (theta = 0)
  *    at +y:  x = -r cos(phi) sin(theta),  y = +r cos(theta),  z = r sin(phi) sin(theta).
  *    (Verified against the r128 source: SphereGeometry vertex/uv code + Texture.flipY = true.)
@@ -26,7 +28,7 @@
   'use strict';
   if (!SonifyCore) throw new Error('sky_core.js needs sonify_core.js (load it first)');
 
-  const VERSION = '2.1.0';
+  const VERSION = '2.2.0';
   const TWO_PI = 2 * Math.PI;
   const DEG = Math.PI / 180;
 
@@ -144,7 +146,90 @@
   }
 
   // ======================================================================================
-  // Value maps: uint16 -> muK, and sampling at (theta, phi)
+  // HEALPix (RING scheme): the value maps' pixelization. Exact ports of healpix_cxx 3
+  // (T_Healpix_Base::ang2pix -> loc2pix, pix2loc), the code behind healpy.ang2pix/pix2ang, after
+  // Gorski et al. (2005, ApJ 622, 759). Integers stay below 2^53 for any nside used here.
+  // ======================================================================================
+  const INV_HALFPI = 0.6366197723675813430755350534900574;   // 2 / pi, as healpix_cxx
+  const TWOTHIRD = 2 / 3;
+  /** healpix_cxx fmodulo: v1 mod v2 in [0, v2). */
+  function fmodulo(v1, v2) {
+    if (v1 >= 0) return v1 < v2 ? v1 : v1 % v2;
+    const tmp = (v1 % v2) + v2;
+    return tmp === v2 ? 0 : tmp;
+  }
+  function isqrt(x) {                                 // floor(sqrt(x)) for integers x >= 0
+    let r = Math.floor(Math.sqrt(x));
+    while (r * r > x) r--;
+    while ((r + 1) * (r + 1) <= x) r++;
+    return r;
+  }
+  /** RING index of the pixel containing (theta, phi) [rad] at this nside (= healpy.ang2pix(nside,
+   *  theta, phi)). theta in [0, pi] (colatitude), any phi: like healpy (pointing::normalize before
+   *  ang2pix) phi is first reduced to [0, 2 pi) with fmodulo, so a point on a pixel edge given with phi
+   *  outside [0, 2 pi) lands where healpy puts it. Within 0.01 rad of a
+   *  pole the polar-cap ring index uses sin(theta) instead of 1 - |cos(theta)| (as healpix_cxx).
+   *  A point exactly on a pixel edge can land on either side when this engine's Math.cos differs
+   *  from the C library's cos by one ulp (tests/sky_core.test.js shows that this is the only kind of
+   *  difference from healpy). */
+  function ang2pixRing(nside, theta, phi) {
+    const haveSth = theta < 0.01 || theta > 3.14159 - 0.01;
+    return loc2pixRing(nside, Math.cos(theta), fmodulo(phi, TWO_PI), haveSth ? Math.sin(theta) : 0, haveSth);
+  }
+  /** healpix_cxx loc2pix (RING) from z = cos(theta), phi and, near the poles, sth = sin(theta). */
+  function loc2pixRing(nside, z, phi, sth, haveSth) {
+    const za = Math.abs(z);
+    const tt = fmodulo(phi * INV_HALFPI, 4.0);              // in [0, 4)
+    if (za <= TWOTHIRD) {                                   // equatorial region
+      const nl4 = 4 * nside;
+      const temp1 = nside * (0.5 + tt), temp2 = nside * z * 0.75;
+      const jp = Math.floor(temp1 - temp2);                 // index of the ascending edge line (>= 0)
+      const jm = Math.floor(temp1 + temp2);                 // index of the descending edge line (>= 0)
+      const ir = nside + 1 + jp - jm;                       // ring number counted from z = 2/3, in 1..2 nside + 1
+      const kshift = 1 - (ir & 1);                          // 1 if ir is even
+      const t1 = jp + jm - nside + kshift + 1 + nl4 + nl4;
+      const ip = Math.floor(t1 / 2) % nl4;                  // in 0..4 nside - 1
+      return 2 * nside * (nside - 1) + (ir - 1) * nl4 + ip;
+    }
+    const tp = tt - Math.floor(tt);                         // polar caps
+    const tmp = (za < 0.99 || !haveSth) ? nside * Math.sqrt(3 * (1 - za))
+      : nside * sth / Math.sqrt((1 + za) / 3);
+    const jp = Math.floor(tp * tmp), jm = Math.floor((1 - tp) * tmp);
+    const ir = jp + jm + 1;                                 // ring number counted from the closest pole
+    const ip = Math.floor(tt * ir);                         // in 0..4 ir - 1
+    return z > 0 ? 2 * ir * (ir - 1) + ip : 12 * nside * nside - 2 * ir * (ir + 1) + ip;
+  }
+  /** Centre {theta, phi} [rad] of RING pixel pix at this nside (= healpy.pix2ang(nside, pix)). */
+  function pix2angRing(nside, pix) {
+    const npix = 12 * nside * nside, ncap = 2 * nside * (nside - 1), fact2 = 4 / npix;
+    let z, phi, sth = 0, haveSth = false;
+    if (pix < ncap) {                                       // north polar cap
+      const iring = (1 + isqrt(1 + 2 * pix)) >> 1, iphi = pix + 1 - 2 * iring * (iring - 1);
+      const tmp = iring * iring * fact2;
+      z = 1 - tmp;
+      if (z > 0.99) { sth = Math.sqrt(tmp * (2 - tmp)); haveSth = true; }
+      phi = (iphi - 0.5) * (Math.PI / 2) / iring;
+    } else if (pix < npix - ncap) {                         // equatorial region
+      const nl4 = 4 * nside, ip = pix - ncap, tmp = Math.floor(ip / nl4);
+      const iring = tmp + nside, iphi = ip - nl4 * tmp + 1;
+      const fodd = ((iring + nside) & 1) ? 1 : 0.5, fact1 = 2 * nside * fact2;
+      z = (2 * nside - iring) * fact1;
+      phi = (iphi - fodd) * Math.PI * 0.75 * fact1;
+    } else {                                                // south polar cap
+      const ip = npix - pix, iring = (1 + isqrt(2 * ip - 1)) >> 1;
+      const iphi = 4 * iring + 1 - (ip - 2 * iring * (iring - 1));
+      const tmp = iring * iring * fact2;
+      z = tmp - 1;
+      if (z < -0.99) { sth = Math.sqrt(tmp * (2 - tmp)); haveSth = true; }
+      phi = (iphi - 0.5) * (Math.PI / 2) / iring;
+    }
+    return { theta: haveSth ? Math.atan2(sth, z) : Math.acos(z), phi };
+  }
+  /** Square root of the pixel area [rad] (the pixel 'size'; 6.87 arcmin at nside 512). */
+  function healpixResolution(nside) { return Math.sqrt(4 * Math.PI / (12 * nside * nside)); }
+
+  // ======================================================================================
+  // Value maps: uint16 -> muK, and the value at (theta, phi)
   // ======================================================================================
   /** v [muK] = vmin + (vmax - vmin) u / 65535 (sky_img.json value_maps.decode). */
   function u16ToMicroK(u, vmin, vmax) { return vmin + (vmax - vmin) * u / 65535; }
@@ -154,12 +239,26 @@
     return Math.round((c - vmin) / (vmax - vmin) * 65535);
   }
 
-  /** Bind a decoded 16-bit map to one sky_img.json entry (several entries may share a file). */
-  function makeValueMap(entry, decoded) {
+  /** Check sky_img.json value_maps describes the HEALPix layout this code reads (version 3):
+   *  RING ordering, nside a power of 2, PNG width 4 nside x height 3 nside (sample k = RING pixel k). */
+  function checkValueLayout(vm) {
+    const n = vm && vm.nside;
+    if (!vm || vm.layout !== 'healpix' || vm.ordering !== 'RING') throw new Error('value maps must be HEALPix RING (sky_img.json value_maps)');
+    if (!(Number.isInteger(n) && n >= 1 && (n & (n - 1)) === 0)) throw new Error('value_maps.nside ' + n + ' is not a power of 2');
+    if (vm.width !== 4 * n || vm.height !== 3 * n) throw new Error('value_maps ' + vm.width + 'x' + vm.height + ' is not 4 nside x 3 nside');
+    return n;
+  }
+  /** Bind a decoded 16-bit map to one sky_img.json entry (several entries may share a file).
+   *  vm: sky_img.json value_maps (the layout). */
+  function makeValueMap(entry, decoded, vm) {
     if (decoded.bitDepth !== 16) throw new Error(entry.file + ': value maps must be 16-bit');
+    const nside = checkValueLayout(vm);
+    if (decoded.width * decoded.height !== 12 * nside * nside) {
+      throw new Error(entry.file + ': ' + decoded.width + 'x' + decoded.height + ' samples, not 12 nside^2 for nside ' + nside);
+    }
     return {
       comp: entry.component, band: entry.band, file: entry.file,
-      w: decoded.width, h: decoded.height, u16: decoded.samples,
+      nside, npix: 12 * nside * nside, u16: decoded.samples,
       vmin: entry.vmin, vmax: entry.vmax, step: (entry.vmax - entry.vmin) / 65535,
       median: entry.median_uK, mean: entry.mean_uK, sigma: entry.sigma_uK,
       provisional: !!entry.provisional,
@@ -168,26 +267,13 @@
 
   function wrapPhi(phi) { phi %= TWO_PI; return phi < 0 ? phi + TWO_PI : phi; }
 
-  /** Value [muK] at (theta, phi). mode 'bilinear' (default; interpolates between pixel centres,
-   *  wraps in phi, clamps at the poles) or 'nearest'. */
-  function sampleMap(map, theta, phi, mode) {
-    const W = map.w, H = map.h, u = map.u16;
-    phi = wrapPhi(phi);
-    if (mode === 'nearest') {
-      const i = Math.min(H - 1, Math.max(0, Math.floor(theta / Math.PI * H)));
-      const j = Math.min(W - 1, Math.floor(phi / TWO_PI * W));
-      return map.vmin + map.step * u[i * W + j];
-    }
-    const y = theta / Math.PI * H - 0.5, x = phi / TWO_PI * W - 0.5;
-    let i0 = Math.floor(y), j0 = Math.floor(x);
-    const ty = y - i0, tx = x - j0;
-    let i1 = i0 + 1;
-    i0 = Math.min(H - 1, Math.max(0, i0)); i1 = Math.min(H - 1, Math.max(0, i1));
-    const ja = ((j0 % W) + W) % W, jb = (ja + 1) % W;
-    const a = u[i0 * W + ja], b = u[i0 * W + jb], c = u[i1 * W + ja], d = u[i1 * W + jb];
-    const uu = (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
-    return map.vmin + map.step * uu;
+  /** Value [muK] at (theta, phi): the value of the HEALPix pixel that contains the point, i.e. the mean
+   *  of the field over that equal-area pixel (no interpolation: the value is constant over a pixel). */
+  function sampleMap(map, theta, phi) {
+    return map.vmin + map.step * map.u16[ang2pixRing(map.nside, Math.min(Math.PI, Math.max(0, theta)), phi)];
   }
+  /** Angular size [rad] of a value-map pixel (sqrt of its area), e.g. for the minimum scan spacing. */
+  function valueMapResolution(meta) { return healpixResolution(checkValueLayout(meta.value_maps)); }
 
   /** Lazy loader for the value maps of one sky_img.json. opts: {base: URL prefix, fetch, inflate,
    *  onLoad(map), onError(err, entry), retryMs (default 30 s), now() (ms; default Date.now)}.
@@ -223,7 +309,8 @@
           return r.arrayBuffer();
         }).then((ab) => decodePNGGray(new Uint8Array(ab), opts.inflate)).then((dec) => {
           const vm = meta.value_maps || {};
-          if ((vm.width && dec.width !== vm.width) || (vm.height && dec.height !== vm.height)) {
+          checkValueLayout(vm);
+          if (dec.width !== vm.width || dec.height !== vm.height) {
             throw new Error(e.file + ': size ' + dec.width + 'x' + dec.height + ' differs from sky_img.json');
           }
           return dec;
@@ -235,7 +322,7 @@
         });
       }
       const p = fp.then((dec) => {
-        const m = makeValueMap(e, dec);
+        const m = makeValueMap(e, dec, meta.value_maps);
         ready.set(k, m); pending.delete(k);
         if (opts.onLoad) opts.onLoad(m);
         return m;
@@ -256,20 +343,13 @@
     return { request, get, error, isReady: (comp, band) => { const e = findMap(meta, comp, band); return !!(e && ready.has(keyOf(e))); } };
   }
 
-  /** Area-weighted mean and std of a decoded map (to check against sky_img.json stats). */
+  /** Mean and std over the sphere of a decoded map (equal-area pixels: plain averages over the
+   *  pixels; to check against sky_img.json mean_uK and sigma_uK). */
   function mapStats(map) {
-    let sw = 0, s1 = 0, s2 = 0;
-    for (let i = 0; i < map.h; i++) {
-      const t0 = i * Math.PI / map.h, t1 = (i + 1) * Math.PI / map.h, w = Math.cos(t0) - Math.cos(t1);
-      let r1 = 0, r2 = 0;
-      for (let j = 0; j < map.w; j++) {
-        const v = map.vmin + map.step * map.u16[i * map.w + j];
-        r1 += v; r2 += v * v;
-      }
-      sw += w * map.w; s1 += w * r1; s2 += w * r2;
-    }
-    const mean = s1 / sw;
-    return { mean, sigma: Math.sqrt(Math.max(0, s2 / sw - mean * mean)) };
+    let s1 = 0, s2 = 0;
+    for (let k = 0; k < map.npix; k++) { const v = map.vmin + map.step * map.u16[k]; s1 += v; s2 += v * v; }
+    const mean = s1 / map.npix;
+    return { mean, sigma: Math.sqrt(Math.max(0, s2 / map.npix - mean * mean)) };
   }
 
   // ======================================================================================
@@ -583,12 +663,22 @@
 
   // ---------------------------------- halo earcons ----------------------------------
   // Mass -> pitch (size metaphor: a bigger object sounds lower). Linear in log M:
-  // -3 semitones per 0.1 dex, 880 Hz at log10 M200c = 14.7 [Msun/h]; the catalogue's
-  // 14.70-15.41 maps to 880-259 Hz.
-  const HALO_PITCH = { anchorLogM: 14.7, anchorHz: 880, stPerDex: -30 };
+  // -3 semitones per 0.1 dex, 880 Hz at log10 M200c = 14.7 [Msun/h] (the anchor). The catalogue
+  // (halos.json: log10 M200c = 14.703-15.411) maps to 875-257 Hz; the formula gives 880-257 Hz over
+  // 14.70-15.41 (the Sound key quotes 880 Hz at 10^14.7 to 262 Hz = C4 at 10^15.4).
+  const HALO_PITCH = { anchorLogM: 14.7, anchorHz: 880, stPerDex: -30, topLogM: 15.4 };
   function massToFreq(logM) {
     return HALO_PITCH.anchorHz * Math.pow(2, HALO_PITCH.stPerDex * (logM - HALO_PITCH.anchorLogM) / 12);
   }
+  /** Equal-loudness gain of a halo sound at its fundamental f (sky_audio.js applies it when equal
+   *  loudness is ON): the voices' ISO 226 60-phon gain (equalLoudnessGain), referenced to the pitch of
+   *  the top of the mass range, HALO_EQ_REF_HZ = massToFreq(15.4) = 261.6 Hz (C4), so the heaviest
+   *  clusters keep their level and lighter (higher) ones are attenuated by the contour difference
+   *  (-7.18 dB at the catalogue's 875 Hz; the most, -7.23 dB, at 800 Hz, where the 60-phon contour
+   *  has a shallow minimum): at the same distance every mass sounds equally loud, and mass no
+   *  longer leaks into the distance (level) cue. Haloes above 10^15.4 (up to 15.41: 257 Hz) get +0.18 dB. */
+  const HALO_EQ_REF_HZ = massToFreq(HALO_PITCH.topLogM);
+  function haloLoudnessGain(f) { return equalLoudnessGain(f, HALO_EQ_REF_HZ); }
   // Distance (comoving chi [Mpc/h]) -> level ~ 1/chi beyond chiRef (inverse-distance law, as the
   // Web Audio 'inverse' model) and a low-pass whose cutoff falls with chi (duller = farther). The
   // reverb send is constant, so the direct-to-reverberant ratio also falls as 1/chi.
@@ -756,17 +846,21 @@
       'Click notes start ' + Math.round(s.stagger * 1000) + ' ms apart in register order.' +
       (s.ref ? ' The reference tone (a pure sine at the register centre, i.e. ' +
         (mode === 'map' ? 'the empty-sky level' : '0 µK') + ') plays just before each note.' : '') +
-      (s.eq ? ' Equal-loudness weighting (ISO 226, 60 phon, on the fundamental) is ON: approximate, listener and ' +
-        'device dependent.' : ' Equal-loudness weighting is OFF.') + '</p>';
-    const lo = massToFreq(15.4), hi = massToFreq(14.7);
+      (s.eq ? ' Equal-loudness weighting (ISO 226, 60 phon, on the fundamental) is ON, for the voices and the ' +
+        'cluster sounds: approximate, listener and device dependent.' : ' Equal-loudness weighting is OFF.') + '</p>';
+    const lo = massToFreq(HALO_PITCH.topLogM), hi = massToFreq(HALO_PITCH.anchorLogM);
     const screenPick = s.pickMode === 'screen' || s.view === 'globe' || s.view === 'lightcone';
     const pickText = screenPick
       ? 'A click picks the visible cluster marker nearest to the click on screen, within ' + s.pickPx + ' CSS pixels'
       : 'A click picks the nearest cluster within ' + s.pickPx + ' screen pixels (great-circle distance, converted with the map’s scale)';
     h += '<h3>Clusters</h3><p>' + (s.artistic ? '<b>Artistic</b> sound (decorative; pitch still follows mass). ' : '') +
       'Mass → pitch: heavier = lower, −3 semitones per 0.1 dex (' + fmtHz(hi) + ' at 10<sup>14.7</sup> to ' +
-      fmtHz(lo) + ' at 10<sup>15.4</sup> M⊙/h, M₂₀₀c). Distance → level ∝ 1/χ beyond ' +
-      DIST_CUE.chiRef + ' Mpc/h, duller (low-pass) and relatively more reverberant when farther. ';
+      fmtHz(lo) + ' at 10<sup>' + HALO_PITCH.topLogM + '</sup> M⊙/h, M₂₀₀c). Distance → level ∝ 1/χ beyond ' +
+      DIST_CUE.chiRef + ' Mpc/h, duller (low-pass) and relatively more reverberant when farther. ' +
+      (s.eq && !s.artistic ? 'With equal loudness ON, lighter (higher) clusters are attenuated by the 60-phon contour ' +
+        '(up to ' + Math.abs(20 * Math.log10(haloLoudnessGain(hi))).toFixed(1) + ' dB at ' + fmtHz(hi) + ', none at ' +
+        fmtHz(lo) + '), so every mass sounds equally loud at the same distance and pitch does not change the ' +
+        'distance (level) cue. ' : '');
     if (s.view === 'lightcone') {
       h += 'Here the 1/distance level comes from your actual distance to the cluster (HRTF panner, inverse model), ' +
         'so it changes as you fly. ' + pickText + '; hidden clusters are silent.</p>';
@@ -786,11 +880,15 @@
         'longitude-left convention). '
         : s.view === 'globe' ? 'θ = 0 (north) is up (+y); seen from outside, φ increases to the right. '
           : 'Seen from inside, the sky is the mirror image of the globe view, as the real sky is. ') +
-      'Values come from the ' + s.meta.value_maps.width + '×' + s.meta.value_maps.height + ' 16-bit maps (ℓ ≤ ' +
-      cmb.ell_max + '), decoded in the browser and interpolated bilinearly.';
+      'Values come from 16-bit equal-area HEALPix maps (NSIDE ' + s.meta.value_maps.nside + ', ' +
+      (healpixResolution(s.meta.value_maps.nside) / DEG * 60).toFixed(1) + '′ pixels, ℓ ≤ ' + cmb.ell_max +
+      ', no smoothing), decoded in the browser: a point takes the value of the pixel that contains it, the mean ΔT ' +
+      'over that pixel (no interpolation), so equal skies sound alike at every latitude' +
+      (s.meta.provisional ? ' once the full render replaces the provisional maps.' : '.');
     if (s.meta.provisional) {
-      h += ' <span class="warn">PROVISIONAL maps (upcast from the 8-bit v1 maps; readouts are rounded to their level ' +
-        'spacing):</span></p><ul>' + comps.map((c) => {
+      h += ' <span class="warn">PROVISIONAL maps (the 8-bit 21′ v1 maps averaged onto these pixels, so no detail ' +
+        'finer than 21′; the v1 cells narrow towards the poles, so the polar sky still keeps more small-scale ' +
+        'variance, the CIB most; readouts are rounded to their level spacing):</span></p><ul>' + comps.map((c) => {
         const e = findMap(s.meta, c, s.band); if (!e) return '';
         return '<li>' + COMP_LABELS[c] + (e.band != null ? ' ' + e.band + ' GHz' : '') + ': ' + esc(e.provisional_method || 'provisional') +
           ' (level spacing ≈ ' + unsignedMicroK(valueStep(e)) + ')</li>';
@@ -801,9 +899,10 @@
 
   return {
     VERSION, DEG, TWO_PI,
-    // PNG / value maps
+    // PNG / value maps (HEALPix RING)
     parsePNG, unfilter, paeth, decodePNGGray, inflateStream, u16ToMicroK, microKToU16, makeValueMap,
-    sampleMap, mapStats, createMapStore,
+    sampleMap, mapStats, createMapStore, checkValueLayout, valueMapResolution,
+    ang2pixRing, loc2pixRing, pix2angRing, healpixResolution,
     // geometry
     wrapPhi, imgFracToSky, skyToImgFrac, skyToVec, vecToSky, uvToSky, skyToUV, angDist, slerpSky, stepOnSphere,
     // halos
@@ -816,7 +915,7 @@
     SCALE_MODES, DEFAULT_SCALE_MODE, SCALE_LABELS, componentScales, voiceScales, scaleTable, voiceSample, valueStep,
     isFreqIndep, findMap, bandList, bandGroup, tszPolarity, TOTAL_PARTS, toggleComponent,
     ISO226, iso226SPL, equalLoudnessGain, EQ_PHON, EQ_REF_HZ, EQ_CAP_DB,
-    HALO_PITCH, massToFreq, DIST_CUE, distanceCue, EARCON,
+    HALO_PITCH, massToFreq, HALO_EQ_REF_HZ, haloLoudnessGain, DIST_CUE, distanceCue, EARCON,
     // cosmology
     C_OVER_H0, HALFDOME, omegaRadiation, comovingDistance,
     // misc

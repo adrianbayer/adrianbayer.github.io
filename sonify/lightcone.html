@@ -425,7 +425,7 @@ async function init() {
     const [a, b] = await Promise.all([fetch('sky_img/sky_img.json'), fetch('halos.json')]);
     if (!a.ok) throw new Error('sky_img.json HTTP ' + a.status);
     V.meta = await a.json();
-    if (V.meta.version !== 2) throw new Error('sky_img.json version ' + V.meta.version + ' (need 2)');
+    if (V.meta.version !== 3) throw new Error('sky_img.json version ' + V.meta.version + ' (need 3: HEALPix value maps)');
     V.halos = b.ok ? await b.json() : null;
   } catch (err) {
     setHint('Load failed: ' + err.message + (location.protocol === 'file:' ? ' (serve over http)' : ''));

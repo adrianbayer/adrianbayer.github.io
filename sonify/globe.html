@@ -454,7 +454,7 @@ function listenAt(sky, radiusPx, halo) {
   if (samples.some((s) => s.uK === null)) loadValueMaps();
 }
 function scanBegin(sky) {
-  const spacing = Math.max(0.5 * Math.PI / V.meta.value_maps.height, C.pickRadiusAngle(SCAN_PX, pxPerRadAt(sky)));
+  const spacing = Math.max(0.5 * C.valueMapResolution(V.meta), C.pickRadiusAngle(SCAN_PX, pxPerRadAt(sky)));   // >= half a value pixel
   if (!V.path) V.path = new C.ScanPath(spacing, SCAN_QUEUE);
   clearTimeout(V.keyTimer);                     // a pending throttled key note must not fire during the scan
   V.path.setSpacing(spacing); V.path.start(sky.theta, sky.phi); V.target = null;
@@ -618,7 +618,7 @@ async function init() {
     const [a, b] = await Promise.all([fetch('sky_img/sky_img.json'), fetch('halos.json')]);
     if (!a.ok) throw new Error('sky_img.json HTTP ' + a.status);
     V.meta = await a.json();
-    if (V.meta.version !== 2) throw new Error('sky_img.json version ' + V.meta.version + ' (need 2)');
+    if (V.meta.version !== 3) throw new Error('sky_img.json version ' + V.meta.version + ' (need 3: HEALPix value maps)');
     V.halos = b.ok ? await b.json() : null;
     if (V.halos) V.hidx = C.haloIndex(V.halos);
   } catch (err) {

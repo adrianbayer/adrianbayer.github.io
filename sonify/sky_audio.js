@@ -293,13 +293,18 @@
     // ------------------------------------------------------------------ halo earcons
     /** h: {logM, chi [Mpc/h]}. opts.position: [x,y,z] (HRTF). opts.pannerDistance: true when the
      *  panner's inverse-distance model supplies the 1/chi level (lightcone; refDistance in scene
-     *  units = DIST_CUE.chiRef); then opts.cueChi (Mpc/h, listener distance) sets the low-pass. */
+     *  units = DIST_CUE.chiRef); then opts.cueChi (Mpc/h, listener distance) sets the low-pass.
+     *  With equal loudness ON, the data earcon gets the voices' ISO 226 gain at its fundamental
+     *  (SkyCore.haloLoudnessGain: 1 at the top of the mass range, lower for lighter, higher-pitched
+     *  clusters), so mass (pitch) does not leak into the distance (level) cue. The decorative artistic
+     *  sounds are level-normalized instead and get no such gain. */
     function playHalo(h, opts) {
       const ctx = ensure(); if (!ctx) return null;
       opts = opts || {};
       const t = ctx.currentTime + 0.01;
       const f = C.massToFreq(h.logM);
       const cue = C.distanceCue(opts.cueChi === undefined ? h.chi : opts.cueChi);
+      const eqGain = E.eq && !E.artistic ? C.haloLoudnessGain(f) : 1;
       const out = opts.position
         ? makePanner(opts.position, { rolloff: opts.pannerDistance ? 1 : 0, refDistance: opts.refDistance || 1 })
         : E.master;
@@ -307,7 +312,7 @@
       setParam(lp.frequency, cue.cutoffHz, t);
       const direct = ctx.createGain(); direct.gain.value = opts.pannerDistance ? 1 : cue.gain;
       const send = ctx.createGain(); send.gain.value = cue.reverbSend;
-      const env = ctx.createGain(); env.gain.value = EARCON_BASE;
+      const env = ctx.createGain(); env.gain.value = EARCON_BASE * eqGain;
       env.connect(lp); lp.connect(direct); direct.connect(out); lp.connect(send); send.connect(E.reverbIn);
       let end;
       if (E.artistic) end = artisticSound(f, env, t);
@@ -326,7 +331,7 @@
         try { env.disconnect(); lp.disconnect(); direct.disconnect(); send.disconnect(); if (out !== E.master) out.disconnect(); }
         catch (e) { /* gone */ }
       }, (end - ctx.currentTime + 2.2) * 1000);
-      return { f, cue, t, artistic: E.artistic };
+      return { f, cue, t, artistic: E.artistic, eqGain };
     }
 
     // 'artistic' halo sound: a synthesized "hey!" or the user's clip, pitch-shifted by the same
