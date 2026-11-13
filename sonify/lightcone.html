@@ -64,7 +64,7 @@ input[type=range]{accent-color:var(--accent);}
   <button class="btn active" id="eqBtn" aria-pressed="true" title="ISO 226 (60 phon) equal-loudness weighting">Equal loudness</button>
   <label class="clabel" for="haloSel">Halo sound</label>
   <select id="haloSel">
-    <option value="data" selected>data earcon</option>
+    <option value="data" selected>data (bell)</option>
     <option value="artistic">artistic ('hey!' / your clip)</option>
   </select>
   <button class="btn" id="haloRecBtn" title="Record a short clip (up to 3 s) for the artistic halo sound">&#127908; record</button>
@@ -443,7 +443,7 @@ async function init() {
     onError: (err) => setHint('sky values unavailable: ' + err.message) });
   V.store.get('dT_cmblens', null);
   $('note').innerHTML = '<b>Audio:</b> the CMB voice’s pitch = signed ΔT relative to the empty sky (hot = high), loudness = |ΔT − empty sky| / σ; ' +
-    'cluster earcons: heavier = lower, farther = quieter, duller and more reverberant, from their 3D direction (HRTF; headphones help). ' +
+    'halo sounds: heavier clusters lower, farther ones quieter, duller and more reverberant, from their 3D direction (HRTF; headphones help). ' +
     'To scale: 1 unit = 1 Gpc/h, shell at χ<sub>*</sub> = ' + Math.round(V.chiStar) + ' Mpc/h' +
     (V.meta.provisional ? ' &middot; <span class="warn">sky values are PROVISIONAL</span>' : '');
   initThree(); buildHalos(); wireControls();

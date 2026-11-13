@@ -315,6 +315,13 @@ details.help summary { cursor: pointer; color: #9aa3c4; }
         <button class="sm-btn duet-level-btn active" data-dlevel="common" title="Both voices, and the noise cue that replaces voice B, at one constant level: the duet carries r by the interval and the stereo spread only, and both voices stay audible">Common level</button>
         <button class="sm-btn duet-level-btn" data-dlevel="data" title="Each voice at its data level (Absolute or Equalized, under Level &amp; display). One component can be 20-60 dB weaker than the other, so voice B or its noise cue may be inaudible">Data levels <span class="tag">B may be inaudible where one component is much weaker</span></button>
       </div>
+      <!-- the same setting (S.snap) as the Instruments panel's checkbox, which Duet mode hides; Share links unchanged -->
+      <div class="slider-row" style="margin-top:8px;">
+        <label id="duetSnapLabel" style="font-size:0.8em;display:flex;align-items:center;gap:6px;cursor:pointer;"
+               title="Snapping keeps the interval ladder exact: voice A steps along the A-minor pentatonic scale and voice B sits exactly the rung's interval above it, so both voices hold equal-tempered notes. Off plays the continuous duet map: voice A glides with the multipole and voice B keeps the same interval above it. On by default; the same setting as 'Snap notes' in the Instruments panel.">
+          <input type="checkbox" id="duetSnap" checked> Snap voice A to the A-minor pentatonic scale
+        </label>
+      </div>
       <div class="note">
         Two voices, one per probe; voice B sits an interval above voice A. The interval follows the
         cross-correlation r<sub>&#8467;</sub> (interpolated in ln&nbsp;&#8467;), ordered by sensory dissonance:
@@ -1879,7 +1886,7 @@ function syncUI() {
   $('additiveControls').style.display = S.method === 'additive' ? 'flex' : 'none';
   $('additiveSpacing').value = S.additiveSpacing;
   for (const id of ['instCmb', 'instTsz', 'instCib', 'instKsz']) { const el = $(id); el.value = S.instruments[el.dataset.comp]; }
-  $('snapScale').checked = S.snap;
+  $('snapScale').checked = S.snap; $('duetSnap').checked = S.snap;    // one setting, shown in both panels
   $('duetA').value = S.duetA; $('duetB').value = S.duetB;
   $('ellMinSlider').value = S.ellMin; $('ellMinVal').textContent = S.ellMin;
   $('ellMaxSlider').value = S.ellMax; $('ellMaxVal').textContent = S.ellMax;
@@ -2159,7 +2166,10 @@ function setup() {
       settingsChanged('voices');
     });
   });
-  $('snapScale').addEventListener('change', function (e) { S.snap = e.target.checked; settingsChanged('snap'); });
+  // snapping: the Instruments checkbox and the Duet one set the same S.snap (read live by both players: no restart)
+  for (const id of ['snapScale', 'duetSnap']) {
+    $(id).addEventListener('change', function (e) { S.snap = e.target.checked; settingsChanged('snap'); });
+  }
   document.querySelectorAll('.duet-timbre-btn').forEach(function (b) {
     b.addEventListener('click', function () { S.duetTimbre = b.dataset.dtimbre; settingsChanged('voices'); });
   });

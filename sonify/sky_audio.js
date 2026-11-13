@@ -12,10 +12,10 @@
  *  - scan: one continuous oscillator per voice; the path is resampled at a fixed angular spacing
  *    (SkyCore.ScanPath) and one sample is applied per control tick (CONTROL_RATE Hz) with
  *    setTargetAtTime, timed on the audio clock;
- *  - halo earcons: mass -> pitch (heavier = lower), comoving distance -> level ~ 1/chi, low-pass
+ *  - halo sounds (a bell): mass -> pitch (heavier = lower), comoving distance -> level ~ 1/chi, low-pass
  *    and a constant reverb send (falling direct-to-reverberant ratio); optional HRTF position;
  *  - 'artistic' halo sound ('hey!' or a recorded clip), off by default, level-normalized.
- * Gain staging: at the default volume, voices + earcon peak below -3 dBFS at 99.9 per cent of sky
+ * Gain staging: at the default volume, voices + a halo sound peak below -3 dBFS at 99.9 per cent of sky
  * positions (measured), 3 dB under the safety limiter (threshold 0 dBFS, knee 0, ratio 20, so its
  * Web Audio make-up gain is exactly 1); the limiter only catches the rest.
  */
@@ -29,14 +29,14 @@
 
   // Gain staging (measured on the real maps, tests/sky_audio.test.js): with VOICE_BASE 0.3 and the
   // default volume 0.7, the summed peak of all voices at the 99.9th percentile of sky positions plus a
-  // coincident earcon stays below -3 dBFS (0.708), with equal loudness on or off, in every scale mode.
+  // coincident halo sound stays below -3 dBFS (0.708), with equal loudness on or off, in every scale mode.
   // The limiter threshold is 0 dBFS with knee 0: a DynamicsCompressorNode applies a make-up gain
   // (1 / curve(1.0))^0.6 to everything (Web Audio spec), which is exactly 1 only when curve(1.0) = 1.
   // (Threshold -3 dB gave curve(1.0) = -2.85 dB, i.e. +1.71 dB above the computed levels.)
   const VOICE_BASE = 0.3;         // full-scale amplitude of one voice (after RMS normalization)
   const EQ_OFF_TRIM = 0.4;        // equal loudness off: same median level as on (measured ratio 0.36-0.42)
   const REF_REL = 0.2;            // reference tone level relative to a full-scale voice
-  const EARCON_BASE = 0.25;
+  const EARCON_BASE = 0.25;      // data halo sound (bell) level; the identifier predates the name 'halo sound'
   const LIMIT_DB = 0;             // limiter threshold, dBFS (knee 0, ratio 20 -> unity make-up): a safety net only
   const DEFAULT_VOLUME = 0.7;
   const STAGGER = 0.04;           // s between voice onsets (register order)
@@ -45,8 +45,8 @@
   const CONTROL_RATE = 40;        // Hz, scan control ticks
   const GLIDE_TAU = 0.4 / CONTROL_RATE;
   const LOOKAHEAD = 0.1;          // s of audio-clock scheduling ahead of currentTime (survives main-thread stalls < 100 ms)
-  const HEY_GAIN = 3.55;          // artistic 'hey!' level = earcon level (peak 50-ms RMS)
-  const CLIP_RMS = 0.35, CLIP_PEAK = 1.5;   // user clip: gated RMS target and peak cap (earcon units)
+  const HEY_GAIN = 3.55;          // artistic 'hey!' level = the bell's level (peak 50-ms RMS)
+  const CLIP_RMS = 0.35, CLIP_PEAK = 1.5;   // user clip: gated RMS target and peak cap (bell units)
   const REVERB = { seconds: 2.0, t60: 1.6, seed: 7, ret: 0.8 };   // DRR ~ +14 dB at chiRef, -2 dB at 3.2 Gpc/h
 
   function setParam(p, v, t) { if (p.setValueAtTime) p.setValueAtTime(v, t); else p.value = v; }
@@ -82,7 +82,7 @@
       const L = E.limiter = ctx.createDynamicsCompressor();
       L.threshold.value = LIMIT_DB; L.knee.value = 0; L.ratio.value = 20; L.attack.value = 0.002; L.release.value = 0.15;
       E.master.connect(L); L.connect(ctx.destination);
-      // seeded convolution reverb (distance cue for halo earcons)
+      // seeded convolution reverb (distance cue for the halo sounds)
       const ir = C.reverbImpulse(ctx.sampleRate, REVERB.seconds, REVERB.t60, REVERB.seed);
       const buf = ctx.createBuffer(2, ir[0].length, ctx.sampleRate);
       buf.getChannelData(0).set(ir[0]); buf.getChannelData(1).set(ir[1]);
@@ -290,11 +290,11 @@
       if (fns && fns.onStop) fns.onStop();
     }
 
-    // ------------------------------------------------------------------ halo earcons
+    // ------------------------------------------------------------------ halo sounds
     /** h: {logM, chi [Mpc/h]}. opts.position: [x,y,z] (HRTF). opts.pannerDistance: true when the
      *  panner's inverse-distance model supplies the 1/chi level (lightcone; refDistance in scene
      *  units = DIST_CUE.chiRef); then opts.cueChi (Mpc/h, listener distance) sets the low-pass.
-     *  With equal loudness ON, the data earcon gets the voices' ISO 226 gain at its fundamental
+     *  With equal loudness ON, the data halo sound (the bell) gets the voices' ISO 226 gain at its fundamental
      *  (SkyCore.haloLoudnessGain: 1 at the top of the mass range, lower for lighter, higher-pitched
      *  clusters), so mass (pitch) does not leak into the distance (level) cue. The decorative artistic
      *  sounds are level-normalized instead and get no such gain. */
@@ -335,7 +335,7 @@
     }
 
     // 'artistic' halo sound: a synthesized "hey!" or the user's clip, pitch-shifted by the same
-    // mass ratio as the earcon, level-normalized. Decorative; off by default.
+    // mass ratio as the bell, level-normalized. Decorative; off by default.
     const ART_REF_HZ = C.massToFreq(14.85);
     function artisticSound(f, dest, t) {
       const ctx = E.ctx, r = f / ART_REF_HZ;
@@ -353,8 +353,8 @@
       const f2 = ctx.createBiquadFilter(); f2.type = 'bandpass'; f2.Q.value = 7;
       setParam(f2.frequency, 1650, t); f2.frequency.linearRampToValueAtTime(2200, t + 0.22);
       const g = ctx.createGain();
-      // HEY_GAIN matches the earcon's peak 50-ms RMS (simulated with RBJ biquads, as Web Audio's
-      // BiquadFilter: earcon 0.694, hey 0.195 at unit gain -> 3.55)
+      // HEY_GAIN matches the bell's peak 50-ms RMS (simulated with RBJ biquads, as Web Audio's
+      // BiquadFilter: bell 0.694, hey 0.195 at unit gain -> 3.55)
       setParam(g.gain, 0, t); g.gain.linearRampToValueAtTime(HEY_GAIN, t + 0.03);
       g.gain.setValueAtTime(HEY_GAIN, t + 0.18); g.gain.exponentialRampToValueAtTime(0.001, t + 0.36);
       o.connect(f1); o.connect(f2); f1.connect(g); f2.connect(g); g.connect(dest);

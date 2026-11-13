@@ -92,7 +92,7 @@ input[type=range]{accent-color:var(--accent);}
     <button class="btn active" id="haloBtn" aria-pressed="true">Clusters: on</button>
     <label class="clabel" for="haloSel">Halo sound</label>
     <select id="haloSel">
-      <option value="data" selected>data earcon</option>
+      <option value="data" selected>data (bell)</option>
       <option value="artistic">artistic ('hey!' / your clip)</option>
     </select>
     <button class="btn" id="haloRecBtn" title="Record a short clip (up to 3 s) for the artistic halo sound">&#127908; record</button>
@@ -464,7 +464,7 @@ function scanBegin(sky) {
 function onScanSample(s, samples) {
   V.ear = s; placeEar(s);
   const halo = haloAt(s, V.touch ? PICK_PX_TOUCH : PICK_PX);
-  if (halo) {        // earcon when the ear passes a cluster: once per cluster per 2 s, at most one per 150 ms
+  if (halo) {        // halo sound when the ear passes a cluster: once per cluster per 2 s, at most one per 150 ms
     const t = performance.now(), last = V.haloLast.get(halo.index) || -1e9;
     if (t - last > 2000 && t - (V.lastEarcon || -1e9) > 150) {
       V.haloLast.set(halo.index, t); V.lastEarcon = t; playHaloIdx(halo.index);

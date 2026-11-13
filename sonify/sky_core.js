@@ -661,7 +661,7 @@
     return Math.pow(10, db / 20);
   }
 
-  // ---------------------------------- halo earcons ----------------------------------
+  // ---------------------------------- halo sounds ----------------------------------
   // Mass -> pitch (size metaphor: a bigger object sounds lower). Linear in log M:
   // -3 semitones per 0.1 dex, 880 Hz at log10 M200c = 14.7 [Msun/h] (the anchor). The catalogue
   // (halos.json: log10 M200c = 14.703-15.411) maps to 875-257 Hz; the formula gives 880-257 Hz over
@@ -691,7 +691,7 @@
       reverbSend: DIST_CUE.reverbSend,
     };
   }
-  /** Bell-like earcon partials (free-free bar ratios), amplitudes and decay times [s]. */
+  /** Bell partials of the data halo sound, a parameterized auditory icon (free-free bar ratios), amplitudes and decay times [s]; the name EARCON predates the term. */
   const EARCON = { ratios: [1, 2.756, 5.404], amps: [1, 0.45, 0.2], decay: [0.22, 0.11, 0.06], attack: 0.004 };
 
   // ---------------------------------- cosmology ----------------------------------
