@@ -5,233 +5,826 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>How it works &mdash; Experiencing the Multi-Probe Sky</title>
 <script>
-window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},svg:{fontCache:'global'}};
+window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},chtml:{scale:1}};
 </script>
-<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js" async></script>
 <style>
-:root{--bg:#0a0e1a;--panel:#131829;--border:#1e2744;--text:#c8cde0;--accent:#4a9eff;
+:root{--bg:#0a0e1a;--panel:#131829;--border:#1e2744;--text:#c8cde0;--accent:#4a9eff;--focus:#ffd58a;
   --cmb:#4a9eff;--tsz:#ff9f43;--cib:#2ed573;--ksz:#b86bff;--tot:#a8a8a8;}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;line-height:1.65;}
 nav{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:20;}
-nav a{color:var(--accent);text-decoration:none;font-size:0.85em;border:1px solid var(--border);padding:5px 11px;border-radius:6px;}
-nav a:hover{background:#1e2744;}
+nav a,nav button{color:var(--accent);text-decoration:none;font-size:0.85em;border:1px solid var(--border);padding:5px 11px;border-radius:6px;background:none;font-family:inherit;cursor:pointer;}
+nav a:hover,nav button:hover{background:#1e2744;}
 nav a.home{font-weight:600;}
+nav .spacer{flex:1;}
+nav button[aria-pressed="true"]{background:#1e2744;color:#e8ecf4;border-color:var(--accent);}
 .tabs{display:flex;flex-wrap:wrap;gap:5px;padding:10px 16px 0;position:sticky;top:49px;background:var(--bg);z-index:19;border-bottom:1px solid var(--border);}
 .tab{padding:6px 13px;border:1px solid var(--border);border-bottom:none;border-radius:7px 7px 0 0;
-  background:#0f1424;color:#9aa3c4;cursor:pointer;font-size:0.82em;}
+  background:#0f1424;color:#9aa3c4;cursor:pointer;font-size:0.82em;font-family:inherit;line-height:1.4;}
 .tab:hover{color:var(--text);}
 .tab.active{background:var(--panel);color:#e8ecf4;border-color:var(--accent);}
 .tab.cmb.active{border-color:var(--cmb);color:var(--cmb);}
 .tab.tsz.active{border-color:var(--tsz);color:var(--tsz);}
 .tab.cib.active{border-color:var(--cib);color:var(--cib);}
 .tab.ksz.active{border-color:var(--ksz);color:var(--ksz);}
-.wrap{max-width:820px;margin:0 auto;padding:22px 18px 70px;}
+a:focus-visible,button:focus-visible,section:focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
+.wrap{max-width:860px;margin:0 auto;padding:22px 18px 70px;}
 section{display:none;} section.active{display:block;}
+body.all section{display:block;border-top:1px solid var(--border);padding-top:18px;margin-top:26px;}
+body.all section:first-of-type{border-top:none;margin-top:0;padding-top:0;}
+section h2,section h3,section [id]{scroll-margin-top:150px;}
 h1{font-size:1.7em;color:#e8ecf4;margin-bottom:4px;}
 h2{font-size:1.25em;color:#e8ecf4;margin:6px 0 10px;}
+h2.sub{margin-top:26px;}
 h3{font-size:1.0em;color:#cdd4ea;margin:18px 0 5px;}
 p{margin-bottom:11px;color:#c2c9e0;}
-ul{margin:6px 0 12px 22px;} li{margin-bottom:6px;color:#c2c9e0;}
+ul,ol{margin:6px 0 12px 22px;} li{margin-bottom:6px;color:#c2c9e0;}
 strong{color:#e8ecf4;} em{color:#a9b4d6;}
 code{background:#1a2040;padding:1px 5px;border-radius:4px;font-size:0.9em;}
+pre{background:#0f1424;border:1px solid var(--border);border-radius:6px;padding:10px 12px;overflow-x:auto;font-size:0.82em;margin:8px 0 14px;color:#c2c9e0;}
 .lead{color:#8a93b4;margin-bottom:18px;}
 .tag{display:inline-block;font-size:0.8em;padding:1px 8px;border-radius:10px;border:1px solid;margin-right:4px;}
 .tag.cmb{color:var(--cmb);border-color:var(--cmb);} .tag.tsz{color:var(--tsz);border-color:var(--tsz);}
 .tag.cib{color:var(--cib);border-color:var(--cib);} .tag.ksz{color:var(--ksz);border-color:var(--ksz);} .tag.tot{color:var(--tot);border-color:var(--tot);}
 .note{background:#0f1424;border-left:3px solid var(--accent);padding:8px 12px;border-radius:4px;margin:12px 0;font-size:0.92em;color:#aeb6d4;}
+.note.warn{border-left-color:var(--tsz);}
+.note p:last-child,.note ul:last-child{margin-bottom:0;}
 .muted{color:#6b7394;font-size:0.85em;}
 a.inline{color:var(--accent);}
+.tw{overflow-x:auto;margin:10px 0 14px;}
+table{border-collapse:collapse;width:100%;font-size:0.86em;}
+th,td{border:1px solid var(--border);padding:5px 8px;text-align:left;vertical-align:top;}
+th{background:var(--panel);color:#e8ecf4;font-weight:600;}
+td{color:#c2c9e0;}
+td.num,th.num{text-align:right;white-space:nowrap;}
+tr.group td{background:#0f1424;color:#e8ecf4;font-weight:600;}
+.b{display:inline-block;font-size:0.8em;padding:0 7px;border-radius:9px;border:1px solid;white-space:nowrap;}
+.b.data{color:#9fe8b8;border-color:#3f8f5c;}
+.b.id{color:#a9c8ff;border-color:#3d5f99;}
+.b.deco{color:#ffc58a;border-color:#8f6233;}
+.b.ref{color:#c9cde0;border-color:#4b5170;}
+.b.disp{color:#d9b8ff;border-color:#6a4a99;}
 mjx-container{overflow-x:auto;overflow-y:hidden;max-width:100%;}
+@media (max-width:640px){
+  nav,.tabs{position:static;}
+  .wrap{padding:18px 16px 60px;}
+}
+@media print{
+  nav,.tabs{display:none;}
+  section{display:block !important;}
+  body{background:#fff;color:#000;}
+  p,li,td,h1,h2,h3,strong,em{color:#000 !important;}
+  th{background:#eee;color:#000;}
+  .note{background:#f4f4f4;color:#000;}
+}
 </style>
 </head>
 <body>
-<nav>
+<nav aria-label="Site">
   <a class="home" href="index.html">&#127759; All toys</a>
   <a href="sonifier.html">Sonifier</a>
   <a href="sky.html">Sky Explorer</a>
+  <a href="globe.html">3D Globe</a>
+  <a href="lightcone.html">Lightcone</a>
+  <span class="spacer"></span>
+  <button type="button" id="allBtn" aria-pressed="false" title="Show every section on one page (for reading through, searching or printing)">Single page</button>
 </nav>
-<div class="tabs" id="tabs">
-  <div class="tab active" data-tab="overview">Overview</div>
-  <div class="tab" data-tab="mapping">Mapping &amp; \(C_\ell\)</div>
-  <div class="tab cmb" data-tab="cmb">CMB</div>
-  <div class="tab tsz" data-tab="tsz">tSZ</div>
-  <div class="tab cib" data-tab="cib">CIB</div>
-  <div class="tab ksz" data-tab="ksz">kSZ</div>
-  <div class="tab" data-tab="total">Total</div>
-  <div class="tab" data-tab="synth">Synthesis</div>
-  <div class="tab" data-tab="controls">Controls</div>
-  <div class="tab" data-tab="explorer">Sky Explorer</div>
-  <div class="tab" data-tab="repro">Reproducibility</div>
+<div class="tabs" id="tabs" role="tablist" aria-label="Sections">
+  <button type="button" class="tab active" role="tab" id="tab-overview" aria-controls="overview" aria-selected="true">Overview</button>
+  <button type="button" class="tab" role="tab" id="tab-spectra" aria-controls="spectra" aria-selected="false" tabindex="-1">Spectra &amp; beam</button>
+  <button type="button" class="tab" role="tab" id="tab-pitch" aria-controls="pitch" aria-selected="false" tabindex="-1">Pitch &amp; level</button>
+  <button type="button" class="tab" role="tab" id="tab-mixing" aria-controls="mixing" aria-selected="false" tabindex="-1">Mixing &amp; stereo</button>
+  <button type="button" class="tab cmb" role="tab" id="tab-cmb" aria-controls="cmb" aria-selected="false" tabindex="-1">CMB</button>
+  <button type="button" class="tab tsz" role="tab" id="tab-tsz" aria-controls="tsz" aria-selected="false" tabindex="-1">tSZ</button>
+  <button type="button" class="tab cib" role="tab" id="tab-cib" aria-controls="cib" aria-selected="false" tabindex="-1">CIB</button>
+  <button type="button" class="tab ksz" role="tab" id="tab-ksz" aria-controls="ksz" aria-selected="false" tabindex="-1">kSZ</button>
+  <button type="button" class="tab" role="tab" id="tab-total" aria-controls="total" aria-selected="false" tabindex="-1">Total</button>
+  <button type="button" class="tab" role="tab" id="tab-synth" aria-controls="synth" aria-selected="false" tabindex="-1">Synthesis</button>
+  <button type="button" class="tab" role="tab" id="tab-voices" aria-controls="voices" aria-selected="false" tabindex="-1">Instruments &amp; Duet</button>
+  <button type="button" class="tab" role="tab" id="tab-explorer" aria-controls="explorer" aria-selected="false" tabindex="-1">Sky views</button>
+  <button type="button" class="tab" role="tab" id="tab-features" aria-controls="features" aria-selected="false" tabindex="-1">What carries data</button>
+  <button type="button" class="tab" role="tab" id="tab-controls" aria-controls="controls" aria-selected="false" tabindex="-1">Controls</button>
+  <button type="button" class="tab" role="tab" id="tab-repro" aria-controls="repro" aria-selected="false" tabindex="-1">Reproducibility</button>
+  <button type="button" class="tab" role="tab" id="tab-data" aria-controls="data" aria-selected="false" tabindex="-1">Data &amp; citing</button>
 </div>
 <div class="wrap">
 
-<section class="active" id="overview">
+<!-- ===================================================================== OVERVIEW -->
+<section class="active" id="overview" role="tabpanel" aria-labelledby="tab-overview" tabindex="-1">
   <h1>How it works</h1>
-  <p class="lead">Turning the multi-probe microwave sky from the <a class="inline" href="https://halfdomesims.github.io" target="_blank" rel="noopener">HalfDome simulations</a> into sound and an explorable map &mdash; component by component, with the math.</p>
-  <p>In cosmology the <strong>angular power spectrum</strong> \(C_\ell\) is the central summary statistic: it measures how much structure the sky has at each angular scale, indexed by the multipole \(\ell\) (roughly an inverse angle, \(\theta\approx 180^\circ/\ell\)). The analogy to audio is exact &mdash; the power spectrum of a <em>sound</em> is what gives it its timbre &mdash; so mapping \(C_\ell\) to an audible spectrum makes the same mathematical object perceptible to the ear. Large angular scales (small \(\ell\)) become low pitches; fine scales (large \(\ell\)) become treble.</p>
-  <p>The sky is a sum of physically distinct <strong>components</strong>, each with its own spectrum, frequency behaviour, and spatial texture:</p>
+  <p class="lead">Turning the multi-probe microwave sky from the <a class="inline" href="https://halfdomesims.github.io" target="_blank" rel="noopener">HalfDome simulations</a> into sound and explorable maps &mdash; component by component, with every mapping written down as an equation.</p>
+  <p>In cosmology the <strong>angular power spectrum</strong> \(C_\ell\) is the central summary statistic: it measures how much structure the sky has at each angular scale, indexed by the multipole \(\ell\) (roughly an inverse angle, \(\theta\approx 180^\circ/\ell\)). The power spectrum of a <em>sound</em> is what sets its timbre, so the Sonifier maps the sky's spectrum onto an audio spectrum: large angular scales (small \(\ell\)) become low pitches, fine scales become treble, and the audio power per octave follows the sky's power per \(\ell\)-octave. The sky views then let you listen to the maps themselves, point by point.</p>
+  <p>The sky is a sum of physically distinct <strong>components</strong>, each with its own spectrum, frequency behaviour and spatial texture:</p>
   <ul>
-    <li><span class="tag cmb">CMB</span> lensed primordial light &mdash; the acoustic-peak structure, dominates large scales.</li>
-    <li><span class="tag tsz">tSZ</span> hot cluster gas distorting the CMB &mdash; midrange, with a striking frequency null.</li>
-    <li><span class="tag cib">CIB</span> dusty star-forming galaxies &mdash; rises steeply to high frequency &amp; high \(\ell\).</li>
-    <li><span class="tag ksz">kSZ</span> bulk motion of electrons &mdash; a faint, frequency-independent Doppler signal.</li>
-    <li><span class="tag tot">Total</span> their sum, \(T_{\rm tot}=\)CMB\(+\)tSZ\(+\)CIB.</li>
+    <li><span class="tag cmb">CMB</span> lensed primordial light &mdash; the acoustic peaks; dominates large scales.</li>
+    <li><span class="tag tsz">tSZ</span> hot cluster gas scattering the CMB &mdash; a decrement below 217&nbsp;GHz, an increment above.</li>
+    <li><span class="tag cib">CIB</span> dusty star-forming galaxies &mdash; rises steeply to high frequency and high \(\ell\).</li>
+    <li><span class="tag ksz">kSZ</span> bulk motion of ionized gas &mdash; a faint, frequency-independent Doppler signal.</li>
+    <li><span class="tag tot">Total</span> \(T_{\rm tot}=\) CMB \(+\) tSZ \(+\) CIB in each band. <strong>kSZ is not part of the Total.</strong></li>
   </ul>
-  <p>Use the tabs above for the mapping and each component in detail. Then try the <a class="inline" href="sonifier.html">Sonifier</a> (hear the spectra) and the <a class="inline" href="sky.html">Sky Explorer</a> (scan the sky).</p>
+  <h3>The four pages</h3>
+  <ul>
+    <li><a class="inline" href="sonifier.html">Power Spectrum Sonifier</a>: hear \(D_\ell\) of any component or mix, in any band; sweep across scales and bands; play the spectra with instruments; hear two probes' cross-correlation as harmony (Duet); render reproducible WAV files.</li>
+    <li><a class="inline" href="sky.html">Sky Explorer</a> (flat full-sky map), <a class="inline" href="globe.html">3D Globe</a> and <a class="inline" href="lightcone.html">Inside the Lightcone</a>: click or scan the sky to hear the temperature under the cursor, one voice per component; massive clusters ring with earcons that encode their mass and distance.</li>
+  </ul>
+  <h3>Design principles</h3>
+  <div class="note">
+    <ul>
+      <li><strong>Every audible feature either carries data or is labelled decorative.</strong> The full list is in <a class="inline" href="#features">What carries data</a>. The Instruments <em>Analysis</em> preset has no decorative features; decorative modes (the Big Bang chord, the <em>Musical</em> preset, the artistic halo sound) stay available and are labelled &ldquo;artistic&rdquo; or &ldquo;decorative&rdquo; in the pages.</li>
+      <li><strong>One convention per quantity.</strong> The plot and the audio use the same \(D_\ell\) array, the same \(\ell\to f\) map and the same level reference, and the paper states the same equations.</li>
+      <li><strong>Physical by default, labelled when equalized.</strong> Levels are absolute and spectra beam-convolved (as observed) unless you choose otherwise; any per-selection rescaling is visible in the interface.</li>
+      <li><strong>Deterministic.</strong> All randomness is seeded; <em>Render WAV</em> writes a lossless file and a JSON sidecar holding every setting, the seed and the code version.</li>
+    </ul>
+  </div>
+  <p>This page documents the code as of November 2026 (internal code version 2.1.0, which is also written into every WAV sidecar). Equations and constants are quoted from <code>web/sonify_core.js</code> and <code>web/sky_core.js</code>; numbers marked &ldquo;current data&rdquo; will change slightly when the data are regenerated (see <a class="inline" href="#data">Data &amp; citing</a>).</p>
 </section>
 
-<section id="mapping">
+<!-- ===================================================================== SPECTRA -->
+<section id="spectra" role="tabpanel" aria-labelledby="tab-spectra" tabindex="-1">
   <h2>From the sky to a spectrum</h2>
-  <p>A scalar field on the sphere (a temperature map) is expanded in spherical harmonics \(Y_{\ell m}\):</p>
+  <p>A temperature map on the sphere is expanded in spherical harmonics \(Y_{\ell m}\):</p>
   \[ \Delta T(\hat n)=\sum_{\ell=0}^{\infty}\sum_{m=-\ell}^{\ell} a_{\ell m}\,Y_{\ell m}(\hat n),\qquad a_{\ell m}=\int \Delta T(\hat n)\,Y_{\ell m}^{*}(\hat n)\,d\Omega. \]
   <p>Statistical isotropy means all the two-point information lives in the angular power spectrum</p>
-  \[ C_\ell=\frac{1}{2\ell+1}\sum_{m=-\ell}^{\ell}\bigl|a_{\ell m}\bigr|^2,\qquad D_\ell\equiv\frac{\ell(\ell+1)}{2\pi}\,C_\ell, \]
-  <p>where \(D_\ell\) is the conventionally plotted quantity (roughly the variance per logarithmic interval in \(\ell\)). Maps here are computed to \(\ell_{\max}=9000\) with a \(2'\) beam.</p>
+  \[ C_\ell=\frac{1}{2\ell+1}\sum_{m=-\ell}^{\ell}\bigl|a_{\ell m}\bigr|^2,\qquad D_\ell\equiv\frac{\ell(\ell+1)}{2\pi}\,C_\ell . \]
+  <p>\(D_\ell\) is the conventionally plotted quantity because it is the <strong>variance per logarithmic interval of \(\ell\)</strong>:</p>
+  \[ \sigma^2_{\rm sky}=\sum_{\ell}\frac{2\ell+1}{4\pi}\,C_\ell\;\simeq\;\int D_\ell\;d\ln\ell . \]
+  <p>This is the property the audio is built on: the sky's variance in a band of scales is the area under \(D_\ell\) against \(\ln\ell\), and the audio variance in the matching band of pitches is made proportional to it (<a class="inline" href="#psd">spectral-density convention</a>).</p>
 
-  <h3>Multipole &rarr; pitch</h3>
-  <p>We map \(\ell\) to audio frequency \(f\) on a log&ndash;log line, which respects the (logarithmic) human perception of pitch:</p>
-  \[ \log_{10} f=\log_{10} f_{\min}+\frac{\log_{10}(\ell/\ell_{\min})}{\log_{10}(\ell_{\max}/\ell_{\min})}\,\log_{10}\!\frac{f_{\max}}{f_{\min}}, \]
-  <p>with \(\ell_{\min}=2,\ \ell_{\max}=6000,\ f_{\min}=40\,\mathrm{Hz},\ f_{\max}=8\,\mathrm{kHz}\). Under this map the CMB first acoustic peak \((\ell\!\approx\!220)\) lands near middle C, the tSZ peak \((\ell\!\approx\!2000)\) near \(2.7\,\)kHz, and the CIB peak \((\ell\!\approx\!5000)\) near \(6.8\,\)kHz. Loudness tracks \(\sqrt{D_\ell}\) (amplitude \(=\sqrt{\text{power}}\)), with a single <em>global</em> normalization so real amplitude variations survive (per-buffer normalization would flatten them).</p>
+  <h3 id="grid">One spectrum array for the plot and the audio</h3>
+  <p>All spectra come from one file, <code>cl_data.json</code> (version 2), on <strong>one grid of 400 multipoles</strong> from \(\ell=2\) to \(6000\): every integer up to \(\ell=85\), then logarithmically spaced (steps of 0.013 in \(\ln\ell\)). Bin edges sit at the geometric midpoints of neighbouring grid points, so every integer \(\ell\) in 2&ndash;6000 belongs to exactly one bin, and each grid value is the \((2\ell+1)\)-weighted mean of \(D_\ell\) over its bin. Between grid points \(D_\ell\) is taken as linear in \(\ln\ell\); with these edges the integral of that interpolant over the whole grid equals \(\sum_i D_i\,\Delta\ln\ell_i\) exactly, so every level the pages print is the same number the audio carries. The plot, the audio and the level readouts all read this one array.</p>
+  <p>Units are \(\mu\mathrm{K}^2\) in thermodynamic temperature. The HalfDome maps were transformed to \(a_{\ell m}\) up to \(\ell_{\max}=9000\); the audio uses \(\ell=2\)&ndash;\(6000\). The sky views use maps band-limited to \(\ell\le3000\) (<a class="inline" href="#explorer">Sky views</a>).</p>
+
+  <h3 id="beam">The 2&prime; beam: observed or deconvolved</h3>
+  <p>Every map is convolved with a Gaussian beam of \(\theta_{\rm FWHM}=2'\), as a telescope would see it. Its window is</p>
+  \[ B_\ell^2=\exp\!\bigl[-\ell(\ell+1)\,\sigma_b^2\bigr],\qquad \sigma_b=\frac{\theta_{\rm FWHM}}{\sqrt{8\ln2}}, \]
+  <p>binned on the same grid with the same \((2\ell+1)\) weights (<code>beam_B2</code>), so \(B_\ell^2=0.58\) at \(\ell=3000\) and \(0.11\) at \(\ell=6000\). The <strong>beam</strong> toggle in the Sonifier chooses between</p>
+  <ul>
+    <li><strong>observed</strong> (default): \(D_\ell\) as stored, beam-convolved; and</li>
+    <li><strong>deconvolved</strong>: \(D_\ell/B_\ell^2\), the sky without the beam.</li>
+  </ul>
+  <p>The plot and the sound follow the same setting. The choice matters at high \(\ell\): in the observed spectra the tSZ \(D_\ell\) peaks at \(\ell\approx1900\) and the CIB at \(\ell\approx3700\), but much of the CIB turnover is the beam. Deconvolved, the tSZ peaks near \(\ell\approx3500\) and the CIB keeps rising to \(\ell=6000\).</p>
 </section>
 
-<section id="cmb">
+<!-- ===================================================================== PITCH & LEVEL -->
+<section id="pitch" role="tabpanel" aria-labelledby="tab-pitch" tabindex="-1">
+  <h2>Pitch: two documented maps</h2>
+  <p>The Sonifier uses two \(\ell\to\) pitch maps, each written as one function in <code>sonify_core.js</code> and printed in the interface. They serve different purposes and are never mixed within one sound.</p>
+
+  <h3 id="analysis-map">Analysis map (Shaped Noise, Additive, Scale Layers, &#8467;-Sweep, the plot)</h3>
+  \[ f(\ell)=f_{\min}\Bigl(\frac{\ell}{\ell_{\min}}\Bigr)^{\alpha},\qquad \alpha=\frac{\ln(f_{\max}/f_{\min})}{\ln(\ell_{\max}/\ell_{\min})}=\frac{\ln200}{\ln3000}=0.6618, \]
+  <p>with \(\ell_{\min}=2,\ \ell_{\max}=6000,\ f_{\min}=40\,\mathrm{Hz},\ f_{\max}=8\,\mathrm{kHz}\), and the inverse \(\ell(f)=\ell_{\min}(f/f_{\min})^{1/\alpha}\). It is a straight line on log&ndash;log axes, so equal ratios of scale become equal musical intervals: one \(\ell\)-octave is \(\alpha=0.66\) of an audio octave (7.9 semitones), and the 11.6 \(\ell\)-octaves from 2 to 6000 span 7.6 audio octaves. Landmarks:</p>
+  <div class="tw"><table>
+    <tr><th>\(\ell\)</th><th class="num">2</th><th class="num">10</th><th class="num">100</th><th class="num">220</th><th class="num">527</th><th class="num">1000</th><th class="num">1861</th><th class="num">3696</th><th class="num">6000</th></tr>
+    <tr><th>\(f\)</th><td class="num">40 Hz</td><td class="num">116 Hz</td><td class="num">533 Hz</td><td class="num">897 Hz</td><td class="num">1.60 kHz</td><td class="num">2.44 kHz</td><td class="num">3.69 kHz</td><td class="num">5.81 kHz</td><td class="num">8 kHz</td></tr>
+    <tr><th>meaning</th><td></td><td></td><td></td><td>CMB 1st peak</td><td>CMB 2nd peak</td><td></td><td>tSZ max (obs.)</td><td>CIB max (obs.)</td><td></td></tr>
+  </table></div>
+
+  <h3 id="musical-map">Musical map (Instruments, Duet)</h3>
+  <p>The instrument voices use a compressed law that spans five octaves over the same \(\ell\) range, starting on a note that identifies the observing band:</p>
+  \[ f_{\rm mus}(\ell,\nu)=f_\nu\Bigl(\frac{\ell}{2}\Bigr)^{\beta},\qquad \beta=\frac{5\ln2}{\ln3000}=0.4329,\qquad f_\nu=110\,\mathrm{Hz}\times2^{s_\nu/12}. \]
+  <p>Here \(s_\nu\) is the band's degree on the A-minor pentatonic scale (0, 3, 5, 7, 10, 12, 15, 17, &hellip; semitones above A2), assigned to the bands in ascending order. The band &rarr; note assignment is therefore <strong>ordinal</strong> (a label for the band, not proportional to \(\nu\)). With the current six bands:</p>
+  <div class="tw"><table>
+    <tr><th>band (GHz)</th><th class="num">93</th><th class="num">143</th><th class="num">145</th><th class="num">225</th><th class="num">280</th><th class="num">353</th></tr>
+    <tr><th>note at \(\ell=2\)</th><td class="num">A2 110.00 Hz</td><td class="num">C3 130.81 Hz</td><td class="num">D3 146.83 Hz</td><td class="num">E3 164.81 Hz</td><td class="num">G3 196.00 Hz</td><td class="num">A3 220.00 Hz</td></tr>
+    <tr><th>pitch at \(\ell=6000\)</th><td class="num">3.52 kHz</td><td class="num">4.19 kHz</td><td class="num">4.70 kHz</td><td class="num">5.27 kHz</td><td class="num">6.27 kHz</td><td class="num">7.04 kHz</td></tr>
+  </table></div>
+  <p>353&nbsp;GHz sits exactly one octave above 93&nbsp;GHz. If the band list grows (e.g. 217 and 545&nbsp;GHz) the degrees continue in order: A2 C3 D3 E3 G3 A3 C4 D4. <strong>Snap notes to the scale</strong> (on by default) rounds the pitch to the nearest A-minor-pentatonic note in any octave, which trades continuous glide for consonant steps; with snapping off the pitch is the formula above.</p>
+  <p>Why two maps? The analysis map is the one to compare against the plot: it is the same function that labels the plot's top axis. The musical map keeps voices in a comfortable register, makes the band audible as a note, and leaves room above voice A for the Duet's intervals. The plot's top axis switches to the musical map (unsnapped) in Instruments and Duet mode. The artistic Big Bang chord uses a third, linear scaling (<a class="inline" href="#bigbang">Synthesis</a>), and the sky views use per-component registers instead of \(\ell\) (<a class="inline" href="#explorer">Sky views</a>).</p>
+
+  <h2 class="sub" id="psd">Spectral-density convention</h2>
+  <p>Because \(D_\ell\) is the variance per \(\ln\ell\) and the analysis map gives \(d\ln f=\alpha\,d\ln\ell\), the synthesized audio has <strong>power per logarithmic frequency interval proportional to \(D_\ell\)</strong>. Equivalently, its power spectral density per hertz is \(\propto D_\ell/f\):</p>
+  \[ S(f)=g^2\,\frac{D_{\ell(f)}}{\alpha\,f}\quad\text{for } f(\ell_{\rm lo})\le f\le f(\ell_{\rm hi}),\ \text{else }0,\qquad\Longrightarrow\qquad \sigma^2_{\rm audio}=\int S\,df=g^2\!\int_{\ell_{\rm lo}}^{\ell_{\rm hi}}\!D_\ell\,d\ln\ell , \]
+  <p>where \(g=L_{\rm ref}/\mathrm{REF}\) is the fixed level scale defined below. So the audio variance in any range of pitches is \(g^2\) times the sky variance in the matching range of scales. A flat \(D_\ell\) sounds like pink noise (equal power per octave).</p>
+  <div class="note">Why not make the power per hertz \(\propto D_\ell\)? Under a logarithmic pitch map that convention adds a tilt of \(+3\) dB per audio octave (\(+23\) dB from 40&nbsp;Hz to 8&nbsp;kHz) and makes the small-scale components (tSZ, CIB) sound far too strong relative to the CMB. The unit tests check the convention directly: the power per \(\ell\)-octave of the synthesized buffers matches \(\int D_\ell\,d\ln\ell\) within 0.5% for several test spectra and the CMB, with no tilt.</div>
+
+  <h2 class="sub" id="level">Level: one reference, stated</h2>
+  <p>Every analysis sound is scaled by one constant per family of displays, never by its own peak. The digital RMS of what you hear is</p>
+  \[ \mathrm{RMS}=L_{\rm ref}\,\frac{A}{\mathrm{REF}},\qquad A=\sqrt{\int_{\ell_{\rm lo}}^{\ell_{\rm hi}}D_\ell\,d\ln\ell}\ \ (\mu\mathrm{K}),\qquad L_{\rm ref}=0.1\ (-20\ \mathrm{dBFS}), \]
+  <p>so the audio RMS relative to \(L_{\rm ref}\) equals the sky-field RMS in the heard range (in \(\mu\)K) relative to REF, and the readouts give levels in <strong>dB re REF</strong> (0 dB re REF \(=-20\) dBFS RMS). REF is the largest such amplitude over everything the display could play, so no selection is louder than \(-20\) dBFS RMS:</p>
+  <div class="tw"><table>
+    <tr><th>family</th><th>used by</th><th>amplitude</th><th>reference (current data, observed beam)</th></tr>
+    <tr><td>full spectrum</td><td>Play, Build-Up, &nu;-Sweep</td><td>\(A=\sqrt{\int D_\ell\,d\ln\ell}\) over the \(\ell\) range</td><td>REF = max over CMB, kSZ, tSZ, CIB and Total in every band, \(\ell\) 2&ndash;6000: <strong>184.8 &mu;K</strong> (Total at 353 GHz)</td></tr>
+    <tr><td>windowed</td><td>&#8467;-Sweep</td><td>\(A_w(\ell_c)=\sqrt{\int D_\ell\,|W|^2\,d\ln\ell}\) (the sweep window)</td><td>REF<sub>win</sub> = max over spectra, bands and window centres: <strong>76.7 &mu;K</strong> (Total at 353 GHz, \(\ell\approx3900\)). The sweep adds a fixed make-up gain REF/REF<sub>win</sub> = +7.64 dB at every \(\ell\).</td></tr>
+    <tr><td>voices</td><td>Instruments, Duet</td><td>\(A_v(\ell)=A_w\) of the voice's own spectrum</td><td>REF<sub>voice</sub> = max of \(A_v\) over components, bands and \(\ell\) (76.7 &mu;K, equal to REF<sub>win</sub> with the default options)</td></tr>
+  </table></div>
+  <p>Two families are needed because a full-range render carries more variance than a half-octave window (184.8 vs 76.7 &mu;K): with one constant either Play would clip or every sweep window would sit 8 dB lower. Within a family every component, band, selection and \(\ell\) is directly comparable, and the relation between the families is one stated gain.</p>
+  <p>For orientation, full-range levels in Absolute mode with the current data (dB re REF):</p>
+  <div class="tw"><table>
+    <tr><th>band (GHz)</th><th class="num">93</th><th class="num">143</th><th class="num">145</th><th class="num">225</th><th class="num">280</th><th class="num">353</th></tr>
+    <tr><td><span class="tag cmb">CMB</span> (any band)</td><td class="num" colspan="6" style="text-align:center">&minus;4.6</td></tr>
+    <tr><td><span class="tag tsz">tSZ</span></td><td class="num">&minus;29.7</td><td class="num">&minus;33.3</td><td class="num">&minus;33.5</td><td class="num">&minus;52.4</td><td class="num">&minus;33.6</td><td class="num">&minus;26.6</td></tr>
+    <tr><td><span class="tag cib">CIB</span></td><td class="num">&minus;37.6</td><td class="num">&minus;29.8</td><td class="num">&minus;29.5</td><td class="num">&minus;18.7</td><td class="num">&minus;11.5</td><td class="num">&minus;1.9</td></tr>
+    <tr><td><span class="tag ksz">kSZ</span> (any band)</td><td class="num" colspan="6" style="text-align:center">&minus;44.4</td></tr>
+    <tr><td><span class="tag tot">Total</span></td><td class="num">&minus;4.6</td><td class="num">&minus;4.6</td><td class="num">&minus;4.6</td><td class="num">&minus;4.5</td><td class="num">&minus;3.8</td><td class="num">0.0</td></tr>
+  </table></div>
+  <p>Narrowing the \(\ell\)-range sliders makes Play <em>quieter</em>, because less of the sky's variance is heard; nothing is renormalized. (Version 1 scaled by \(1/\sqrt{N}\) of the active tones and peak-normalized the layers; both are gone.)</p>
+
+  <h3 id="levelmodes">Absolute and Equalized</h3>
+  <ul>
+    <li><strong>Absolute</strong> (default): the references above, the same for every selection. A faint component sounds faint (kSZ is about 40 dB below the CMB).</li>
+    <li><strong>Equalized</strong> (labelled in the interface): the same maxima taken only over the bands of the current selection (Play, sweeps) or of each voice (Instruments, Duet). Levels are then <em>not</em> comparable between selections. Where a comparison is the point of the display, one reference is shared: Build-Up uses the Total's for all four stages, and the stereo modes use the whole selection's for both channels.</li>
+  </ul>
+
+  <h3 id="gain">Gain staging and the meter</h3>
+  <p>The signal path is: players &rarr; data bus &rarr; monitor gain (&minus;40 to +12 dB, default 0 dB) &rarr; safety limiter (threshold 0 dBFS, knee 0, ratio 20, so its make-up gain is exactly 1) &rarr; output. At 0 dB monitor gain the analysis modes peak near &minus;6 dBFS and never reach the limiter. The meter taps the output <em>after</em> the limiter and shows dBFS RMS, peak, and dB re the active reference (= dBFS &minus; monitor gain + 20). Renders contain neither the monitor gain nor the limiter.</p>
+
+  <h3 id="logvol">Log volume (option, labelled)</h3>
+  <p>A dB-linear compression for hearing faint structure, with its floor shown:</p>
+  \[ m(a)=\max\Bigl(0,\;1+\frac{20\log_{10}a}{60}\Bigr),\qquad D_{\log}=D_{\rm REF}\;m\!\left(\sqrt{D_\ell/D_{\rm REF}}\right)^{2},\qquad D_{\rm REF}=\frac{\mathrm{REF}^2}{\ln3000}, \]
+  <p>i.e. amplitudes from &minus;60 dB to 0 dB re REF map linearly onto 0 to 1. For spectra it acts on the local density (\(D_{\rm REF}\) is the flat density whose full-range integral is REF\(^2\)), and REF is recomputed on the mapped spectra for headroom; for voices it acts on \(A_v/\mathrm{REF_{voice}}\). It is monotone in the data but not proportional to it.</p>
+
+  <h3 id="loudcomp">Loudness compensation (option, labelled; approximate)</h3>
+  <p>The ear is much less sensitive at low and very high frequencies, so equal sky power does not sound equally loud at 40&nbsp;Hz and at 3&nbsp;kHz. The <strong>loudness comp.</strong> toggle (off by default in the Sonifier) applies the inverse of the ISO 226:2003 equal-loudness contour at 60 phon, relative to 1&nbsp;kHz:</p>
+  \[ G(f)=\min\bigl[L_{60}(f)-L_{60}(1\,\mathrm{kHz}),\;30\ \mathrm{dB}\bigr],\qquad D_\ell\;\to\;D_\ell\,10^{\,G(f(\ell))/10}, \]
+  <p>with \(L_{60}\) from ISO 226:2003 eq. (1) and Table 1, interpolated linearly in \(\log f\). It is a power weight on the synthesized density at \(f(\ell)\) (analysis modes) and an amplitude weight \(10^{G/20}\) on a voice at its pitch (Instruments, Duet). Values: +30 dB at 40&nbsp;Hz (capped; +34.2 uncapped), +18.6 at 100&nbsp;Hz, 0 at 1&nbsp;kHz, &minus;3.6 at 3.15&nbsp;kHz, +11.7 at 8&nbsp;kHz. REF is recomputed on the compensated spectra (it becomes 897 &mu;K, set by the boosted CMB at low \(\ell\)). The help box in the Sonifier plots the curve.</p>
+  <div class="note warn">Loudness compensation equalizes perceived loudness only <strong>approximately</strong>: the contours are averages over otologically normal young adults, measured with pure tones, and are used here at one loudness level (60 phon); what you hear depends on your playback level, headphones or speakers, and hearing. It is a perceptual aid, not part of the data. The sky views apply the same contour to each voice's fundamental and have it <em>on</em> by default (<a class="inline" href="#sky-eq">why</a>).</div>
+</section>
+
+<!-- ===================================================================== MIXING -->
+<section id="mixing" role="tabpanel" aria-labelledby="tab-mixing" tabindex="-1">
+  <h2>Mixing components, with their cross-spectra</h2>
+  <p>Selecting several components plays the spectrum of their <strong>summed sky</strong>, not the sum of their spectra. Components are correlated (the tSZ and CIB trace the same halos), so the mix includes the cross terms:</p>
+  \[ D^{\rm mix}_\ell=\sum_{X}D^{X}_\ell+2\sum_{X&lt;Y}r^{XY}_\ell\sqrt{D^{X}_\ell D^{Y}_\ell},\qquad r^{XY}_\ell=\frac{C^{XY}_\ell}{\sqrt{C^{XX}_\ell C^{YY}_\ell}} . \]
+  <p>The correlation coefficients come from <code>cross_data.json</code> (71 bins in \(\ell\), per band for the frequency-dependent pairs), interpolated linearly in \(\ln\ell\) between bin centres at the current band and held constant beyond the ends. When <code>cl_data.json</code> carries the exact per-pair cross-spectra (<code>Dl_cross</code>, written by a full re-run of the pipeline), those are used instead. The plot draws the mix that is heard as a dashed white line labelled &ldquo;mix (heard)&rdquo;.</p>
+  <ul>
+    <li><strong>Total and its parts are mutually exclusive.</strong> The Total already is CMB + tSZ + CIB, so selecting Total deselects them, and selecting any of them deselects Total (the sky views follow the same rule).</li>
+    <li><strong>kSZ</strong> is not in the Total. It mixes with anything through its own cross terms; Total + kSZ mixes through the Total's parts, \(D^{\rm Tot,kSZ}=\sum_{P\in\{\rm CMB,tSZ,CIB\}}D^{P,\rm kSZ}\).</li>
+    <li><strong>Accuracy.</strong> With the current data, CMB + tSZ + CIB reproduces the Total's band power to better than \(10^{-4}\). Point by point on the grid the deviation is at most 0.6% at 143&nbsp;GHz and up to 10% at 353&nbsp;GHz (at \(\ell\approx80\)); it is zero-mean scatter, within 2.8 times the chance correlation of a single grid bin, because the binned \(r\) cannot follow this one realization's chance correlations within each bin. Without cross terms the error would be up to 13% at 143&nbsp;GHz and 22% at 93&nbsp;GHz.</li>
+  </ul>
+
+  <h2 class="sub" id="stereo">Stereo modes</h2>
+  <p>For Play with Shaped Noise, Additive or Scale Layers, the <strong>Stereo Mode</strong> puts different fields in the two ears:</p>
+  <ul>
+    <li><strong>Mono</strong>: the mix, centred.</li>
+    <li><strong>Components L/R</strong>: the first half of the active components (in the order CMB, tSZ, CIB, kSZ, Total) left, the rest right.</li>
+    <li><strong>lowest | highest band</strong>: the selection observed in the lowest band on the left and in the highest band on the right (the button shows the two bands).</li>
+  </ul>
+  <p>The two channels carry the data's correlation between them, not an invented one. Each channel keeps its exact magnitude spectrum, and the right channel's phases are the left channel's plus a data-driven offset:</p>
+  \[ \varphi^{R}_k=\varphi^{L}_k+s_k\arccos\rho(\ell_k),\qquad \rho(\ell)=\frac{\sum_{X\in L,\,Y\in R}r^{XY}_\ell\sqrt{D^X_\ell D^Y_\ell}}{\sqrt{D^{L}_\ell D^{R}_\ell}},\qquad s_k=\pm1\ \text{(seeded)}. \]
+  <p>Every frequency bin then has interaural correlation \(\rho\); the mono fold-down \(L+R\) has the power of the combined field; and the random signs avoid a systematic delay between the ears. Across bands, CMB and kSZ are the same field in both channels, the tSZ (one Compton-\(y\) map times \(g(\nu)\)) carries the sign of \(g(\nu_1)g(\nu_2)\), and the <strong>CIB&times;CIB correlation between two bands is assumed to be 1</strong> (an upper bound: it is not among the data products). The readout and the WAV sidecar state this assumption. Both channels use one level reference; the readout gives each channel's level.</p>
+</section>
+
+<!-- ===================================================================== CMB -->
+<section id="cmb" role="tabpanel" aria-labelledby="tab-cmb" tabindex="-1">
   <h2><span class="tag cmb">CMB</span> Lensed cosmic microwave background</h2>
-  <p>Before recombination \((z\!\approx\!1100)\) the universe was an ionized photon&ndash;baryon plasma. Gravity pulled fluid into dark-matter potential wells; radiation pressure pushed back. The result is <strong>acoustic oscillations</strong>: standing sound waves whose snapshot at last scattering imprints a series of harmonic peaks in \(C_\ell\).</p>
+  <p>Before recombination \((z\!\approx\!1100)\) the universe was an ionized photon&ndash;baryon plasma. Gravity pulled the fluid into dark-matter potential wells; radiation pressure pushed back. The result is <strong>acoustic oscillations</strong>: standing sound waves whose snapshot at last scattering imprints a series of harmonic peaks in \(C_\ell\).</p>
   <p>The peak positions are set by the sound horizon \(r_s\) projected through the angular-diameter distance \(D_A\) to last scattering,</p>
   \[ \theta_s=\frac{r_s(z_*)}{D_A(z_*)},\qquad \ell_{\rm peak}\approx n\,\frac{\pi}{\theta_s}\ \ (n=1,2,\dots), \]
-  <p>giving the first peak near \(\ell\approx220\) and overtones near \(\ell\approx540,810,\dots\) On small scales photon diffusion (Silk damping) suppresses power, so \(D_\ell\) falls beyond \(\ell\sim1500\).</p>
+  <p>giving the first peak near \(\ell\approx220\). On small scales photon diffusion (Silk damping) suppresses power, so \(D_\ell\) falls beyond \(\ell\sim1500\). In this map the code finds the peaks at \(\ell=220,\,527,\,813,\,1125,\,1411\) (local maxima of the smoothed \(D_\ell\); <a class="inline" href="#layers">Scale Layers</a>), which the analysis map places at 0.90, 1.60, 2.13, 2.64 and 3.07&nbsp;kHz.</p>
   <h3>Gravitational lensing</h3>
   <p>Intervening large-scale structure deflects CMB photons by \(\nabla\phi\) (the lensing potential), remapping the observed temperature:</p>
   \[ \widetilde{T}(\hat n)=T\!\bigl(\hat n+\nabla\phi(\hat n)\bigr)\approx T(\hat n)+\nabla\phi\cdot\nabla T+\tfrac12\nabla_i\phi\,\nabla_j\phi\,\nabla_i\nabla_j T+\cdots \]
-  <p>Lensing slightly smooths the acoustic peaks, transfers power to small scales, and makes the field mildly non-Gaussian. These are the <code>dT_cmblens</code> maps.</p>
-  <div class="note">Spectrum: blackbody. In thermodynamic temperature units \(\Delta T\) is <strong>independent of observing frequency</strong> &mdash; so the CMB sounds and looks identical in every band, and is stored once.</div>
+  <p>Lensing slightly smooths the acoustic peaks, transfers power to small scales and makes the field mildly non-Gaussian. These are the <code>dT_cmblens</code> maps.</p>
+  <div class="note">Spectrum: blackbody. In thermodynamic temperature units \(\Delta T\) is <strong>independent of observing frequency</strong>, so the CMB sounds and looks identical in every band and is stored once. Its RMS over \(\ell\) 2&ndash;6000 is 108 &mu;K (&minus;4.6 dB re REF). In the sky views it has the lowest register (146.8&ndash;261.6 Hz).</div>
 </section>
 
-<section id="tsz">
+<!-- ===================================================================== tSZ -->
+<section id="tsz" role="tabpanel" aria-labelledby="tab-tsz" tabindex="-1">
   <h2><span class="tag tsz">tSZ</span> Thermal Sunyaev&ndash;Zel'dovich effect</h2>
-  <p>CMB photons passing through the hot \((T_e\sim10^{7\text{–}8}\,\mathrm{K})\) electron gas in galaxy clusters get <strong>inverse-Compton</strong> up-scattered. The strength along a line of sight is the dimensionless Compton-\(y\) parameter:</p>
-  \[ y=\int \frac{k_B T_e}{m_e c^2}\,n_e\,\sigma_T\,d\ell, \]
+  <p>CMB photons passing through the hot \((T_e\sim10^{7\text{–}8}\,\mathrm{K})\) electron gas in galaxy clusters are <strong>inverse-Compton</strong> up-scattered. The strength along a line of sight is the dimensionless Compton-\(y\) parameter:</p>
+  \[ y=\int \frac{k_B T_e}{m_e c^2}\,n_e\,\sigma_T\,dl, \]
   <p>with \(n_e\) the electron density and \(\sigma_T\) the Thomson cross-section. The resulting temperature change has a distinctive <strong>frequency dependence</strong>:</p>
-  \[ \frac{\Delta T(\nu)}{T_{\rm CMB}}=g(x)\,y,\qquad g(x)=x\coth\!\frac{x}{2}-4=x\,\frac{e^{x}+1}{e^{x}-1}-4, \]
-  \[ x\equiv\frac{h\nu}{k_B T_{\rm CMB}}=\frac{\nu}{56.8\,\mathrm{GHz}}. \]
-  <p>So \(g(x)<0\) (a <strong>decrement</strong>) below \(\sim\!217\,\)GHz, passes through <strong>zero at \(x\approx3.83\) (\(\nu\approx217\,\)GHz)</strong>, and becomes an increment above. This is exactly why, in the tools, tSZ nearly vanishes at the 225 GHz band and returns by 353 GHz.</p>
-  <p>The tSZ power spectrum is dominated by the most massive clusters (a Poisson "one-halo" term), peaking around \(\ell\sim2000\text{–}3000\); its amplitude is steeply sensitive to \(\sigma_8\) and cluster physics. These are the <code>dT_tsz</code> maps, built from a Compton-\(y\) map times \(g(x)\,T_{\rm CMB}\).</p>
+  \[ \frac{\Delta T(\nu)}{T_{\rm CMB}}=g(x)\,y,\qquad g(x)=x\coth\!\frac{x}{2}-4,\qquad x\equiv\frac{h\nu}{k_B T_{\rm CMB}}=\frac{\nu}{56.8\,\mathrm{GHz}}. \]
+  <p>So \(g(x)<0\) (a <strong>decrement</strong>) below \(\sim\!217\,\)GHz, \(g=0\) at \(x\approx3.83\), and an increment above. For the bands here:</p>
+  <div class="tw"><table>
+    <tr><th>band (GHz)</th><th class="num">93</th><th class="num">143</th><th class="num">145</th><th class="num">225</th><th class="num">280</th><th class="num">353</th></tr>
+    <tr><th>\(g(x)\)</th><td class="num">&minus;1.57</td><td class="num">&minus;1.04</td><td class="num">&minus;1.02</td><td class="num">+0.115</td><td class="num">+1.00</td><td class="num">+2.24</td></tr>
+    <tr><th>level (dB re REF)</th><td class="num">&minus;29.7</td><td class="num">&minus;33.3</td><td class="num">&minus;33.5</td><td class="num">&minus;52.4</td><td class="num">&minus;33.6</td><td class="num">&minus;26.6</td></tr>
+  </table></div>
+  <p>225&nbsp;GHz is close to the null, so the tSZ almost vanishes there (19 dB below 143&nbsp;GHz). The maps of all bands are one \(y\)-like map times \(g(x_\nu)\,T_{\rm CMB}\) (the alms are exactly proportional across bands), so the spectrum's <em>shape</em> is the same in every band and only its level changes.</p>
+  <p>The tSZ power is dominated by massive clusters (a Poisson-like one-halo term); its amplitude is steeply sensitive to \(\sigma_8\) and cluster physics. In these maps the observed \(D_\ell\) peaks near \(\ell\approx1900\) (3.7&nbsp;kHz on the analysis map); deconvolved from the beam it peaks near \(\ell\approx3500\).</p>
+  <div class="note"><strong>The sign is audible in the sky views.</strong> Pitch follows the signed \(\Delta T\) (hot = high), so below 217&nbsp;GHz clusters sound <em>lower</em> than the empty sky and above it <em>higher</em>. The tSZ <em>image</em> shows \(|\Delta T|\) (brighter = stronger) in every band, so eye and ear deliberately differ in sign; the note line under the controls says which applies at the current band.</div>
 </section>
 
-<section id="cib">
+<!-- ===================================================================== CIB -->
+<section id="cib" role="tabpanel" aria-labelledby="tab-cib" tabindex="-1">
   <h2><span class="tag cib">CIB</span> Cosmic infrared background</h2>
-  <p>Roughly half of all starlight ever emitted was absorbed by dust and re-radiated in the infrared. Integrated over cosmic history, that dust glow from star-forming galaxies is the CIB. A single galaxy radiates as a <strong>modified blackbody (greybody)</strong>:</p>
-  \[ S_\nu \propto \nu^{\beta}\,B_\nu(T_d),\qquad B_\nu(T_d)=\frac{2h\nu^3}{c^2}\frac{1}{e^{h\nu/k_BT_d}-1}, \]
-  <p>with emissivity index \(\beta\approx1.5\text{–}2\) and dust temperature \(T_d\approx20\text{–}40\,\)K. Summed over redshift the CIB rises steeply toward higher (sub-mm) frequencies &mdash; which is why it is faint at 93 GHz but dominates by 353 GHz.</p>
-  <p>Its anisotropy spectrum has two parts: galaxy <strong>clustering</strong> (a 2-halo term, important at low \(\ell\)) plus <strong>shot noise</strong> from discrete sources (Poisson, flat in \(C_\ell\), so \(D_\ell\propto\ell^2\) at high \(\ell\)). The net \(D_\ell\) keeps climbing to small scales.</p>
+  <p>Roughly half of all starlight ever emitted was absorbed by dust and re-radiated in the infrared. Integrated over cosmic history, that dust glow from star-forming galaxies is the CIB. A single galaxy radiates roughly as a <strong>modified blackbody (greybody)</strong>:</p>
+  \[ S_\nu \propto \nu^{\beta_d}\,B_\nu(T_d),\qquad B_\nu(T_d)=\frac{2h\nu^3}{c^2}\frac{1}{e^{h\nu/k_BT_d}-1}, \]
+  <p>with emissivity index \(\beta_d\approx1.5\text{–}2\) and dust temperature \(T_d\approx20\text{–}40\,\)K. Summed over redshift the CIB rises steeply toward sub-mm frequencies, which is why it is faint at 93&nbsp;GHz and dominates by 353&nbsp;GHz: its level rises by 36 dB across the bands here (&minus;37.6 to &minus;1.9 dB re REF).</p>
+  <p>Its anisotropy spectrum has two parts: galaxy <strong>clustering</strong> (a two-halo term, important at low \(\ell\)) and <strong>shot noise</strong> from discrete sources (flat in \(C_\ell\), so \(D_\ell\propto\ell^2\) at high \(\ell\)). The net \(D_\ell\) keeps climbing to small scales; the maximum of the observed spectrum near \(\ell\approx3700\) is mostly the 2&prime; beam turnover (<a class="inline" href="#beam">beam</a>).</p>
   <h3>Intensity &rarr; temperature</h3>
   <p>To put the CIB on the same thermodynamic-temperature footing as the CMB, an intensity fluctuation \(\Delta I_\nu\) is divided by the CMB's brightness&ndash;temperature derivative:</p>
   \[ \frac{dB_\nu}{dT}\bigg|_{T_{\rm CMB}}=\frac{2k_B\nu^2}{c^2}\,\frac{x^2e^{x}}{(e^{x}-1)^2},\qquad \Delta T=\frac{\Delta I_\nu}{dB_\nu/dT}. \]
-  <p>These are the <code>dT_cib</code> maps (one per band, since the conversion and SED depend on \(\nu\)).</p>
+  <p>These are the <code>dT_cib</code> maps (one per band, since both the SED and the conversion depend on \(\nu\)). The CIB map has a large positive monopole (e.g. a median of 6.1 &mu;K against fluctuations of 0.95 &mu;K at 143&nbsp;GHz in the sky-view maps), which is why the sky views measure loudness from the empty-sky level, not from zero.</p>
 </section>
 
-<section id="ksz">
+<!-- ===================================================================== kSZ -->
+<section id="ksz" role="tabpanel" aria-labelledby="tab-ksz" tabindex="-1">
   <h2><span class="tag ksz">kSZ</span> Kinetic Sunyaev&ndash;Zel'dovich effect</h2>
-  <p>If the scattering electrons have a bulk <strong>peculiar velocity</strong> \(\mathbf v\) along the line of sight, the scattered CMB is Doppler-shifted. Unlike tSZ this is a simple shift of the blackbody, so it is <strong>frequency-independent</strong>:</p>
-  \[ \frac{\Delta T}{T_{\rm CMB}}=-\int \frac{\mathbf v\cdot\hat n}{c}\,n_e\,\sigma_T\,d\ell=-\int \frac{\mathbf v\cdot\hat n}{c}\,d\tau, \]
-  <p>with optical depth element \(d\tau=n_e\sigma_T\,d\ell\). Because it is sourced by the product of density and velocity (the momentum field), and gets contributions from both reionization and late times, the kSZ is small (\(\sim\mu\)K), peaks at high \(\ell\), and is hard to isolate. It is stored once (frequency-independent) as <code>dT_ksz</code>.</p>
-  <div class="note">In the tools kSZ is a faint voice/colour by design &mdash; that is physically honest, not a bug.</div>
+  <p>If the scattering electrons have a bulk <strong>peculiar velocity</strong> \(\mathbf v\) along the line of sight, the scattered CMB is Doppler-shifted. Unlike the tSZ this is a simple shift of the blackbody, so it is <strong>frequency-independent</strong>. In the usual convention (receding gas is cold)</p>
+  \[ \frac{\Delta T}{T_{\rm CMB}}=-\int \frac{\mathbf v\cdot\hat n}{c}\,n_e\,\sigma_T\,dl=-\int \frac{v_r}{c}\,d\tau, \]
+  <p>with optical depth element \(d\tau=n_e\sigma_T\,dl\). Because it is sourced by the product of density and velocity (the momentum field), the kSZ is small (\(\sim\mu\)K), peaks at high \(\ell\), and is hard to isolate. It is stored once as <code>dT_ksz</code>.</p>
+  <div class="note">In the tools the kSZ is faint by design: &minus;44.4 dB re REF, about 40 dB below the CMB. That is physically honest, not a bug; use <em>Equalized</em> to hear its shape.</div>
+  <div class="note warn"><strong>Current data:</strong> the kSZ map in this release uses the opposite sign (\(\Delta T/T=+\tau v_r/c\), receding gas hot) and includes only halos with \(M_{200c}>10^{13}\,M_\odot\). The regenerated data will use the convention above, which flips the sign of every kSZ cross-correlation (the Duet's kSZ pairs). The kSZ&times;tSZ and kSZ&times;CIB correlations in this sky are real but specific to this realization: the halos around the observer have a net outward velocity at low redshift, a cosmic-variance feature that another realization could have with either sign. See <a class="inline" href="#provisional">Data</a>.</div>
 </section>
 
-<section id="total">
+<!-- ===================================================================== TOTAL -->
+<section id="total" role="tabpanel" aria-labelledby="tab-total" tabindex="-1">
   <h2><span class="tag tot">Total</span> The combined sky</h2>
-  <p>At a given band the observed temperature is the sum</p>
-  \[ T_{\rm tot}(\nu)=\Delta T_{\rm CMB}+\Delta T_{\rm tSZ}(\nu)+\Delta T_{\rm CIB}(\nu). \]
-  <p>Because the spherical-harmonic transform is linear, the total coefficients are just the sum of the components',</p>
+  <p>At a given band the Total is the sum</p>
+  \[ T_{\rm tot}(\nu)=\Delta T_{\rm CMB}+\Delta T_{\rm tSZ}(\nu)+\Delta T_{\rm CIB}(\nu)\qquad(\text{kSZ not included}). \]
+  <p>Because the spherical-harmonic transform is linear, the Total's coefficients are the sum of the components',</p>
   \[ a_{\ell m}^{\rm tot}=a_{\ell m}^{\rm CMB}+a_{\ell m}^{\rm tSZ}+a_{\ell m}^{\rm CIB}, \]
-  <p>so the total spectrum carries cross-terms:</p>
-  \[ C_\ell^{\rm tot}=C_\ell^{\rm CMB}+C_\ell^{\rm tSZ}+C_\ell^{\rm CIB}+2\,\mathrm{Re}\,\bigl(C_\ell^{\rm CMB\times tSZ}+\cdots\bigr). \]
-  <p>For (nearly) independent components the cross-spectra are small, but they are captured <em>exactly</em> by summing the \(a_{\ell m}\) and then forming \(C_\ell^{\rm tot}\) &mdash; which is how the tools reconstruct Total per band (rather than summing the component \(C_\ell\)). Listening across bands you hear the CMB-dominated low frequencies give way to CIB-dominated high frequencies.</p>
+  <p>so its spectrum carries the cross terms:</p>
+  \[ C_\ell^{\rm tot}=C_\ell^{\rm CMB}+C_\ell^{\rm tSZ}+C_\ell^{\rm CIB}+2\bigl(C_\ell^{\rm CMB\times tSZ}+C_\ell^{\rm CMB\times CIB}+C_\ell^{\rm tSZ\times CIB}\bigr). \]
+  <p>The pipeline forms the Total by summing the \(a_{\ell m}\) per band and then computing \(C_\ell\), so the cross terms are exact. They are not small: tSZ and CIB trace the same halos and are strongly correlated (\(r\approx-0.29\) at \(\ell=500\) at 143&nbsp;GHz, \(+0.29\) at 353&nbsp;GHz, the sign following the tSZ), and the CMB&times;CIB term of this one realization is not zero either. Mixing CMB + tSZ + CIB in the Sonifier uses these correlations (<a class="inline" href="#mixing">Mixing</a>) and sounds like the Total.</p>
+  <p>Listening across bands you hear the CMB-dominated sky give way to a CIB-dominated one at high frequency and small scales: the Total is &minus;4.6 dB re REF at 93&ndash;145&nbsp;GHz and 0.0 dB at 353&nbsp;GHz, where it defines REF.</p>
 </section>
 
-<section id="synth">
+<!-- ===================================================================== SYNTHESIS -->
+<section id="synth" role="tabpanel" aria-labelledby="tab-synth" tabindex="-1">
   <h2>Synthesis: turning \(D_\ell\) into sound</h2>
-  <p>Given the \(\ell\!\to\!f\) map, four methods render the same \(D_\ell\) differently.</p>
-  <h3>Shaped noise</h3>
-  <p>White noise \(w(t)\) is filtered so its audio power spectrum matches \(D_\ell\): for each audio bin at frequency \(f\) we find the corresponding \(\ell\) and set the amplitude response \(|H(f)|\propto\sqrt{D_{\ell(f)}}\). The output's spectral density <em>is</em> the angular power spectrum &mdash; the most faithful rendering.</p>
-  <h3>Additive</h3>
-  <p>A bank of sine tones, one per log-\(\ell\) bin:</p>
-  \[ s(t)=\sum_i \sqrt{D_{\ell_i}}\;\sin\!\bigl(2\pi f(\ell_i)\,t+\varphi_i\bigr), \]
-  <p>with random phases \(\varphi_i\). More tonal; discrete peaks become audible pitches.</p>
-  <h3>Scale layers</h3>
-  <p>Three \(\ell\)-bands as three timbres: a bass drone \((\ell<100)\), harmonic tones at the CMB peaks \((\ell=220,540,810)\), and high-\(\ell\) bandpass noise &mdash; each weighted by \(\sqrt{\langle D_\ell\rangle}\) in its band.</p>
-  <h3>Instruments</h3>
-  <p>Continuous gliding voices: the <strong>octave</strong> is set by \(\ell\) (log), the <strong>note</strong> by the band, and the <strong>loudness</strong> by \(\sqrt{\langle D_\ell\rangle}\) integrated over an octave-wide window around the current \(\ell\). Optionally the glide is <strong>snapped to a pentatonic scale</strong>, so each scale becomes a discrete, consonant note instead of a continuous slide.</p>
-  <h3>Duet &mdash; cross-correlation as harmony</h3>
-  <p>Two probes \(X,Y\) play at once, one voice each, with loudness set by their band power as above. Their <em>harmony</em> tracks the scale-dependent <strong>correlation coefficient</strong></p>
+  <p>Shaped Noise, Additive and Scale Layers render the same \(D_\ell\) on the analysis map with the same level convention; they differ in texture. All three are computed in JavaScript as one loop of \(N=2^{19}\) samples (11.89 s at 44.1&nbsp;kHz) by one inverse FFT, so each loop repeats seamlessly with no fades and no dips. All random phases come from the seeded generator.</p>
+
+  <h3 id="noise">Shaped Noise (the most faithful rendering)</h3>
+  <p>True noise with the target spectrum: every FFT bin \(k\) of the loop (frequency \(f_k=k\,f_s/N\)) inside \([f(\ell_{\rm lo}),f(\ell_{\rm hi})]\) gets an amplitude set by the target density and a seeded random phase, and one inverse FFT sums them:</p>
+  \[ x(t)=\sum_k A_k\cos(2\pi f_k t+\varphi_k),\qquad A_k=\sqrt{2\,S(f_k)\,\Delta f},\qquad \Delta f=\frac{f_s}{N},\qquad \varphi_k\sim U(0,2\pi)\ \text{(seeded)}, \]
+  <p>with \(S(f)\) the <a class="inline" href="#psd">target density</a>, and nothing outside the range. Because the inverse FFT is circular, the buffer loops seamlessly. A phase is drawn for every bin whether or not it is used, so changing the range or the spectrum keeps the other bins' phases (which keeps crossfades between rebuilds coherent).</p>
+
+  <h3 id="additive">Additive</h3>
+  <p>A bank of sine partials, one per 1/12 octave at nominal frequencies \(f_j^{\rm nom}=40\,\mathrm{Hz}\times2^{j/12}\), \(j=0\ldots91\) (92 partials; default), or one per \(\ell\)-grid point at \(f(\ell_i)\) (400 partials, as the offline script <code>sonify_cosmo.py</code>). Each carries the band power of its bin (the \(\ell\) range that maps into its 1/12 octave, or its grid bin):</p>
+  \[ s(t)=\sum_j A_j\cos(2\pi f_j t+\varphi_j),\qquad A_j^2=2g^2\!\int_{\text{bin }j}\!D_\ell\,d\ln\ell,\qquad f_j=\frac{f_s}{N}\,\mathrm{round}\!\Bigl(\frac{N\,f_j^{\rm nom}}{f_s}\Bigr), \]
+  <p>so each partial has a whole number of cycles per loop (seamless) and the total variance is the same as for the noise. Discrete peaks become audible pitches; with the 400-partial grid the top octaves are only 15 cents apart and sound noise-like.</p>
+
+  <h3 id="layers">Scale Layers</h3>
+  <p>Three ranges of \(\ell\), matched to the analysis map, each with its own timbre:</p>
+  <div class="tw"><table>
+    <tr><th>layer</th><th>\(\ell\) range</th><th>audio range</th><th>sound</th></tr>
+    <tr><td>large scales</td><td>2&ndash;100</td><td>40&ndash;533 Hz</td><td>one sine at \(f(\sqrt{ab})\) of the band \([a,b]\) (146 Hz for the full range)</td></tr>
+    <tr><td>acoustic scales</td><td>100&ndash;1000</td><td>533&ndash;2444 Hz</td><td>sines at the first three CMB acoustic peaks found in the data (\(\ell=220,527,813\) &rarr; 897, 1600, 2131 Hz), weighted by the selection's \(\sqrt{D_\ell}\) there</td></tr>
+    <tr><td>small scales</td><td>1000&ndash;6000</td><td>2444&ndash;8000 Hz</td><td>band-limited white noise</td></tr>
+  </table></div>
+  <p>Each layer's variance is exactly \(g^2\int D_\ell\,d\ln\ell\) over its band within the \(\ell\)-range sliders, and each layer sounds only inside its part of that range (a range that excludes a band silences that layer). The <strong>levels carry data; the timbres are decorative</strong>: the tones of the middle layer always sit at the CMB peak positions, whatever is selected. The peaks are found by smoothing \(D_\ell\) with a Gaussian in \(\ln\ell\) (\(\sigma=0.02\)) and keeping local maxima that stand at least 5% above the higher of the lowest points within \(\pm0.35\) in \(\ln\ell\), which rejects cosmic-variance wiggles. There is no vibrato and no peak normalization.</p>
+
+  <h3 id="sweep">&#8467;-Sweep</h3>
+  <p>A window moves across \([\ell_{\min},\ell_{\max}]\) (the sliders) in one pass of <em>sweep speed</em> seconds, logarithmically in \(\ell\) (or linearly, option), as a saw or ping-pong. The sound is a full-range \(D_\ell\)-shaped carrier (the Shaped-Noise buffer, or the Additive buffer when Additive is the method; Scale Layers uses the Shaped-Noise carrier, because its buffer is not \(D_\ell\)-shaped) passed through a Butterworth band-pass centred at \(f(\ell_c)\), then one fixed make-up gain REF/REF<sub>win</sub>. The output variance is therefore</p>
+  \[ g^2A_w^2(\ell_c)=g^2\!\int D_\ell\,|W(\ell;\ell_c)|^2\,d\ln\ell,\qquad |W|^2=\frac{1}{1+\Omega^{2n}},\quad \Omega=\frac{r-r^{-1}}{b},\quad r=\Bigl(\frac{\ell}{\ell_c}\Bigr)^{\alpha},\quad b=2^{\alpha w/2}-2^{-\alpha w/2}, \]
+  <p>one gain path, with \(w\) the \(-3\) dB width in \(\ell\)-octaves. The order \(n\) is the smallest \(n\ge6\) whose response one \(\ell\)-octave from the centre is below \(-66\) dB (6 dB of margin over the \(-60\) dB target):</p>
+  <div class="tw"><table>
+    <tr><th>window \(w\)</th><th>prototype order \(n\)</th><th>band-pass order (biquads)</th><th>measured leakage one \(\ell\)-octave away</th></tr>
+    <tr><td>0.25 \(\ell\)-octave</td><td class="num">6</td><td class="num">12 (6)</td><td class="num">&le; &minus;107 dB</td></tr>
+    <tr><td>0.5 \(\ell\)-octave (default)</td><td class="num">6</td><td class="num">12 (6)</td><td class="num">&le; &minus;71 dB</td></tr>
+    <tr><td>1 \(\ell\)-octave</td><td class="num">11</td><td class="num">22 (11)</td><td class="num">&le; &minus;64 dB</td></tr>
+  </table></div>
+  <p>The digital filter is designed in the bilinear-warped domain with pre-warped edges, so its \(-3\) dB edges are exact at every centre and sample rate; it is realized with Web Audio biquads whose frequencies and Qs are automated on the audio clock. The shaded curve on the plot is the digital response <em>as applied</em>, and the readout gives \(\ell\), \(f\), \(A_w\) in &mu;K and dB re REF<sub>win</sub>.</p>
+  <p><strong>Fixed pitch</strong> (option, labelled): instead of the band-passed carrier, a 440 Hz sine whose RMS is \(L_{\rm ref}A_w(\ell_c)/\mathrm{REF_{win}}\), so only loudness carries the data.</p>
+
+  <h3 id="buildup">Build-Up and &nu;-Sweep</h3>
+  <ul>
+    <li><strong>Build-Up</strong>: CMB &rarr; CMB + tSZ &rarr; CMB + tSZ + CIB &rarr; Total, at the current band, each stage for max(1.5 s, sweep speed/4) with 0.5 s of silence between stages, all on one reference (the Total's in Equalized mode), then it stops. The third and fourth stages should sound alike: that is the cross-term mixing at work.</li>
+    <li><strong>&nu;-Sweep</strong>: the current selection steps through every band in <code>cl_data.json</code> (sweep speed / number of bands each), crossfaded, on one reference.</li>
+  </ul>
+  <p>Both use the current Play method (Shaped Noise when Instruments or Duet is selected).</p>
+
+  <h3 id="bigbang">Big Bang (artistic)</h3>
+  <p>An homage to Cramer's &ldquo;sound of the Big Bang&rdquo;, labelled <em>artistic</em> in the interface. The CMB acoustic peaks are found in the data (local maxima of \(D_\ell\) in 150&ndash;2000: \(\ell=220,527,813,1125,1411\)) and played as a chord with Cramer-style <strong>linear</strong> scaling, \(f=60\,\mathrm{Hz}\times\ell/\ell_1\) (60, 143.7, 221.7, 306.8, 384.8 Hz), with amplitudes \(\sqrt{D_\ell/D_{\max}}\) (1.00, 0.65, 0.64, 0.44, 0.35). The peak multipoles and their relative amplitudes are data; the linear scaling preserves their near-harmonic ratios. The one-octave downward glide over 12 s, the detuned copies (&plusmn;0.5%), the 35&rarr;20 Hz rumble and the reverb are <strong>decorative</strong>. Its level is set so that the held chord is at \(L_{\rm ref}\) RMS.</p>
+
+  <h3 id="xfade">Crossfades and timing</h3>
+  <p>Every rebuild (band, component, range or option change), mode change and stop uses an 80 ms crossfade, never an abrupt stop. Rebuilt loops start at the same loop offset as the buffer they replace, and the fade law keeps the power constant for any correlation \(r\) between the outgoing and incoming signal:</p>
+  \[ a=\frac{1-p}{n},\quad b=\frac{p}{n},\quad n=\sqrt{(1-p)^2+p^2+2rp(1-p)}\qquad(p:0\to1), \]
+  <p>linear for \(r=1\) and equal-power for \(r=0\). Every parameter that drives the audio (filter centres, gains, voice pitches, pans) is a function of the audio clock and is scheduled ahead (20 ms control steps, 0.15 s lookahead); the animation frame only draws.</p>
+</section>
+
+<!-- ===================================================================== INSTRUMENTS & DUET -->
+<section id="voices" role="tabpanel" aria-labelledby="tab-voices" tabindex="-1">
+  <h2>Instruments</h2>
+  <p>In Instruments mode, <strong>Play</strong> (or &#8467;-Sweep) sweeps \(\ell\) over the range, and every active component among CMB, tSZ, CIB and kSZ is a sustained voice. All voices share one pitch, \(f_{\rm mus}(\ell,\nu)\) on the <a class="inline" href="#musical-map">musical map</a>; the instrument tells them apart. Each voice's level follows its own windowed band power \(A_v(\ell)\) (the same window as the &#8467;-Sweep) relative to REF<sub>voice</sub> in Absolute mode, or to its own maximum over bands and \(\ell\) in Equalized mode (labelled). The Total has no voice (choose its components). Build-Up and &nu;-Sweep use Shaped Noise in this mode.</p>
+  <p><strong>Calibrated levels.</strong> When the mode starts, each instrument is rendered once offline at seven pitches (110&nbsp;Hz to 7.04&nbsp;kHz) and its RMS is measured over a whole number of periods; a voice's gain is then (target RMS)/(calibrated RMS), interpolated in \(\log f\). A voice's RMS is therefore \(L_{\rm ref}A_v/\mathrm{REF_{voice}}\) whatever its timbre, and CMB : tSZ : CIB : kSZ keep their physical ratios.</p>
+
+  <h3 id="presets">Voice presets: Analysis and Musical</h3>
+  <div class="tw"><table>
+    <tr><th>feature</th><th>Analysis (default)</th><th>Musical <span class="b deco">decorative</span></th></tr>
+    <tr><td>articulation (strikes, bowing, plucks)</td><td>none: sustained voices</td><td>re-triggered on the audio clock at each instrument's rate</td></tr>
+    <tr><td>vibrato</td><td>none</td><td>violin 1.2%, flute 0.5% of \(f\)</td></tr>
+    <tr><td>synth auto-wah</td><td>none</td><td>0.35 Hz filter sweep</td></tr>
+    <tr><td>detuned copies (chorus)</td><td>merged into one oscillator of the same total power: every partial at a multiple of the pitch, so no beating (50 ms RMS steady to &le; 0.3 dB)</td><td>kept: beating gives a 3&ndash;16 dB tremolo at constant data level</td></tr>
+    <tr><td>reverb</td><td>none</td><td>per-instrument sends to a seeded convolution reverb</td></tr>
+    <tr><td>data gain</td><td>after every nonlinearity and the body filters (oscillators &rarr; fixed drive &rarr; body &rarr; data gain)</td><td>before the guitar's distortion (as in version 1); levels approximate</td></tr>
+  </table></div>
+  <p>Opening the mode selects Analysis; a choice of Musical is kept until you change it. In both presets the instrument's waveform and body filtering (its timbre) only identify the component.</p>
+
+  <h3 id="palettes">Instruments and palettes</h3>
+  <p>Six instruments: piano, violin, electric guitar, flute, bass and synth pad. Each palette gives the four components four <em>different</em> instruments, because two voices with the same pitch and timbre fuse into one (the interface warns if you choose duplicates):</p>
+  <div class="tw"><table>
+    <tr><th>palette</th><th><span class="tag cmb">CMB</span></th><th><span class="tag tsz">tSZ</span></th><th><span class="tag cib">CIB</span></th><th><span class="tag ksz">kSZ</span></th></tr>
+    <tr><td>default</td><td>piano</td><td>violin</td><td>guitar</td><td>synth</td></tr>
+    <tr><td>Classical</td><td>piano</td><td>violin</td><td>flute</td><td>bass</td></tr>
+    <tr><td>Ambient</td><td>synth</td><td>violin</td><td>flute</td><td>piano</td></tr>
+    <tr><td>Cosmic</td><td>synth</td><td>flute</td><td>bass</td><td>violin</td></tr>
+    <tr><td>Rock</td><td>guitar</td><td>bass</td><td>synth</td><td>piano</td></tr>
+    <tr><td>Jazz</td><td>piano</td><td>bass</td><td>guitar</td><td>flute</td></tr>
+  </table></div>
+  <p><strong>3D Spatial</strong> (headphones) places the voices with an HRTF panner at fixed directions: CMB ahead, tSZ 50&deg; left, CIB 50&deg; right, kSZ ahead and 40&deg; up. The positions identify the components; they are not data.</p>
+
+  <h2 class="sub" id="duet">Duet: cross-correlation as harmony</h2>
+  <p>Two probes \(X\) (voice A) and \(Y\) (voice B) play at once while \(\ell\) sweeps. Voice A sits at \(f_{\rm mus}(\ell,\nu)\); voice B sits an interval above it. The interval and the stereo spread follow the scale-dependent <strong>correlation coefficient</strong></p>
   \[ r_\ell=\frac{C_\ell^{XY}}{\sqrt{C_\ell^{XX}\,C_\ell^{YY}}}\in[-1,1], \]
-  <p>where \(C_\ell^{XY}\) is the cross-spectrum of the two maps (computed from the \(a_{\ell m}\), binned in \(\log\ell\)). As \(\ell\) sweeps, \(r_\ell\) drives both the musical interval between the voices and their stereo placement: <strong>correlated</strong> \((r\!\to\!+1)\) &rarr; a consonant unison locked in the centre; <strong>independent</strong> \((r\!\approx\!0)\) &rarr; a mild interval, modestly spread; <strong>anti-correlated</strong> \((r\!\to\!-1)\) &rarr; a dissonant interval, hard-panned apart. Because tSZ and CIB are frequency-dependent, switching the observing band changes the cross-correlation audibly &mdash; e.g.\ tSZ&times;CIB is <em>anti</em>-correlated at \(143\,\)GHz but <em>correlated</em> at \(353\,\)GHz, a direct echo of the \(217\,\)GHz tSZ null.</p>
+  <p>from <code>cross_data.json</code> at the current band, interpolated linearly in \(\ln\ell\).</p>
+
+  <h3 id="ladder">The interval ladder</h3>
+  <p>Intervals are ordered by <strong>sensory dissonance</strong> (roughness: Plomp &amp; Levelt 1965, in Sethares' parametrization for harmonic tones), from consonant for \(r=+1\) to rough for \(r=-1\), in four equal bins of \(r\):</p>
+  \[ i=\min\bigl(3,\ \lfloor 2(1-r)\rfloor\bigr)\quad\text{on}\quad[\text{octave},\ \text{perfect 5th},\ \text{tritone},\ \text{minor 2nd}]. \]
+  <div class="tw"><table>
+    <tr><th>\(r\)</th><th>\(r>0.5\)</th><th>\(0&lt;r\le0.5\)</th><th>\(-0.5&lt;r\le0\)</th><th>\(r\le-0.5\)</th></tr>
+    <tr><th>interval (semitones)</th><td>octave (12)</td><td>perfect 5th (7)</td><td>tritone (6)</td><td>minor 2nd (1)</td></tr>
+  </table></div>
+  <p>Positive correlations are consonant and negative ones dissonant, so the sign of a significant correlation is always audible. <strong>Why only four rungs?</strong> Roughness ranks intervals differently at different pitches, and voice A can be anywhere from 110&nbsp;Hz to 7&nbsp;kHz. Octave &lt; fifth &lt; tritone &lt; minor second is the longest equal-tempered ladder whose roughness rises strictly at every quarter tone in 110&ndash;7040&nbsp;Hz, for all 24 timbre variants tested (5&ndash;8 harmonics, three roll-offs, two amplitude rules, partials band-limited or not). Every longer ladder inverts somewhere: averaged over the register, the thirds come out rougher than the tritone, and above about 600&nbsp;Hz the minor sixth is rougher than the tritone. The octave (not unison) stands for \(r\approx+1\) so that the two voices stay separable and unison is free to mean &ldquo;not significant&rdquo;.</p>
+
+  <h3 id="gate">Significance gate</h3>
+  <p>At low \(\ell\) a bin holds few modes, and a correlation of that size can arise by chance. The Duet uses the Gaussian estimate</p>
+  \[ \sigma_r\simeq\frac{1-r^2}{\sqrt{N_{\rm modes}}},\qquad s=\mathrm{clamp}\Bigl(\frac{|r|}{\sigma_r}-2,\;0,\;1\Bigr), \]
+  <p>with \(N_{\rm modes}=\sum(2\ell+1)\) over the bin (12, 16, 20, 24 in the four lowest bins; \(\sigma_r\approx0.004\) at \(\ell\approx500\)), interpolated log-log in \(\ell\). The weight \(s\) is 0 below \(2\sigma_r\) (gate closed) and 1 above \(3\sigma_r\):</p>
+  <ul>
+    <li>for \(s&lt;0.5\) voice B returns to <strong>unison</strong> with A, and the readout says <strong>&ldquo;not significant&rdquo;</strong>;</li>
+    <li>B's level is multiplied by \(0.5+0.5s\) (down to &minus;6 dB);</li>
+    <li>a soft band-pass noise cue (Q = 4) at B's pitch fades in with RMS \(0.3(1-s)\) times B's ungated level;</li>
+    <li>the stereo spread is multiplied by \(s\), so the voices collapse to the centre.</li>
+  </ul>
+  <p>The readout prints \(r\pm\sigma_r\), \(N_{\rm modes}\), and the interval or &ldquo;not significant&rdquo;.</p>
+  <div class="note warn">\(\sigma_r\) assumes Gaussian fields with independent modes. For pairs dominated by a few massive clusters (anything with tSZ at low \(\ell\)) or by the observer's local velocity field (kSZ pairs) the true scatter between realizations is larger, so treat the gate as a minimum requirement. See the <a class="inline" href="#ksz">kSZ</a> caveat.</div>
+
+  <h3 id="spread">Stereo spread and levels</h3>
+  <p>Voice A is panned left and B right by \(\pm\,0.95\,\tfrac{1-r}{2}\,s\): correlated probes sit together in the centre, anti-correlated ones far apart. (The mono voices are boosted by \(\sqrt2\) to undo the pan law, so their power matches the dB-re-REF readout at any pan.) With 3D Spatial on, the voices also take HRTF azimuths \(\mp80^\circ\) times the spread. In Absolute mode each voice's level is its own \(A_v\) relative to REF<sub>voice</sub>; when the two differ by more than 20 dB (CMB and tSZ at 143&nbsp;GHz differ by 34 dB at \(\ell=100\) and by more at larger scales) the fainter one is masked and the readout suggests <strong>Equalized</strong>, which normalizes each voice to its own maximum (labelled).</p>
+  <p>Examples with the current data: tSZ&times;CIB at 143&nbsp;GHz is \(r=-0.75\) at \(\ell=10\) (minor 2nd) and \(-0.29\pm0.004\) at \(\ell=500\) (tritone); at 353&nbsp;GHz it is \(+0.20\) at \(\ell=2000\) (perfect 5th). Switching bands across 217&nbsp;GHz flips the tSZ's sign and turns the dissonance into consonance.</p>
 </section>
 
-<section id="controls">
-  <h2>Sonifier controls &mdash; every option</h2>
-  <p>A reference for each control on the <a class="inline" href="sonifier.html">Power Spectrum Sonifier</a>, panel by panel.</p>
+<!-- ===================================================================== SKY VIEWS -->
+<section id="explorer" role="tabpanel" aria-labelledby="tab-explorer" tabindex="-1">
+  <h2>The sky views</h2>
+  <p>Three pages show the sky maps and let you listen to them point by point: the <a class="inline" href="sky.html">Sky Explorer</a> (a flat full-sky map that pans and zooms, longitude wrapping), the <a class="inline" href="globe.html">3D Globe</a>, and <a class="inline" href="lightcone.html">Inside the Lightcone</a> (the observer's view from the centre, with the clusters in 3D). They share one audio engine and one set of mappings (<code>sky_core.js</code>, <code>sky_audio.js</code>).</p>
 
-  <h3>Components</h3>
-  <p>Toggle any combination of <span class="tag cmb">CMB</span> (lensed), <span class="tag tsz">tSZ</span>, <span class="tag cib">CIB</span>, <span class="tag ksz">kSZ</span>, and <span class="tag tot">Total</span> on or off; selected components are mixed together. <strong>Total</strong> is the summed sky, CMB\(+\)tSZ\(+\)CIB (reconstructed from the \(a_{\ell m}\), so cross-terms are correct).</p>
+  <h3 id="valuemaps">What you hear: value maps in &mu;K</h3>
+  <p>Sound comes from <strong>value maps</strong>, not from the coloured images: one per component and band (tSZ, CIB and Total per band; CMB and kSZ once), 2048&times;1024 equirectangular pixels (\(\approx10.5'\)), 16-bit, decoded in the browser from the PNG bytes (no canvas read-back, which privacy protections can perturb) and converted exactly to &mu;K with each map's stored range: \(v=v_{\min}+(v_{\max}-v_{\min})\,u/65535\). Values are clipped at the 0.05 and 99.95 percentiles (the clipped fraction is stored) and interpolated bilinearly. The maps are band-limited to \(\ell\le3000\). The tSZ, CIB and Total maps follow the selected band, so above 217&nbsp;GHz the tSZ is an increment.</p>
+  <p>The images are for viewing only: CMB on the Planck CMB colour map, kSZ and Total red&ndash;blue diverging, the tSZ as \(|\Delta T|\) on <em>magma</em>, the CIB on <em>inferno</em>. When several components are overlaid, the diverging maps switch to dark-centred variants and are combined by per-channel maximum (a &ldquo;lighten&rdquo; blend), so each keeps its colour. A 1024&times;512 image loads first; the 4096&times;2048 image streams in for zoom.</p>
 
-  <h3>Observing frequency (band)</h3>
-  <p>Choose a band from <strong>SO MF</strong> (93, 145 GHz), <strong>SO HF</strong> (225, 280 GHz) or <strong>Planck</strong> (143, 353 GHz). The band sets the amplitude of the frequency-dependent components: tSZ nearly vanishes near its \(217\,\)GHz null (quiet at 225) and the CIB grows strongly toward 353 GHz, while CMB and kSZ are band-independent (their sound does not change with the band).</p>
+  <h3 id="voicemap">Voices: pitch, loudness, register, timbre</h3>
+  <p>Each active component is one voice with a fixed timbre in its own register. At a sky value \(\Delta T\):</p>
+  \[ f=f_c\,2^{\,s/12},\qquad s=\mathrm{clip}\Bigl(5\,\frac{\Delta T-c}{S},\,-5,\,5\Bigr),\qquad a=\min\Bigl(1,\ \frac{|\Delta T-e|}{3\sigma}\Bigr), \]
+  <ul>
+    <li><strong>Pitch = signed \(\Delta T\), hot = high</strong>: linear in semitones, \(\pm5\) semitones around the register centre \(f_c\) at \(\Delta T-c=\pm S\).</li>
+    <li><strong>Loudness = \(|\Delta T-e|/\sigma\)</strong>: amplitude grows linearly with the deviation from the <em>empty-sky level</em> \(e\) (the map median), reaching full scale at \(3\sigma\). Sparse signals (clusters, galaxies) are therefore quiet where the sky is empty. The empty-sky level matters because the tSZ and CIB maps carry a monopole much larger than their fluctuations (tSZ at 143&nbsp;GHz: median &minus;2.55 &mu;K, \(\sigma=1.39\) &mu;K).</li>
+    <li><strong>Registers</strong> do not overlap and are ordered by each component's typical angular scale (its power-weighted mean \(\ln\ell\): CMB 103 &lt; tSZ 932 &lt; kSZ 1032 &lt; CIB 2488 at 143&nbsp;GHz), the same direction as the Sonifier's \(\ell\to f\) map. Centres are 13 semitones apart (a minor ninth, so the voices do not fuse as octaves would), each spans \(\pm5\) semitones, leaving 3-semitone gaps.</li>
+  </ul>
+  <div class="tw"><table>
+    <tr><th>voice</th><th>register</th><th>centre</th><th>timbre (harmonic amplitudes)</th></tr>
+    <tr><td><span class="tag cmb">CMB</span></td><td>146.8&ndash;261.6 Hz</td><td>196.0 Hz (G3)</td><td>soft: 1, 0.35, 0.12, 0.05</td></tr>
+    <tr><td><span class="tag tot">Total</span></td><td>146.8&ndash;261.6 Hz (shares the CMB register; the two are exclusive)</td><td>196.0 Hz</td><td>bright: 1, 1/2, 1/3, 1/4, 1/5</td></tr>
+    <tr><td><span class="tag tsz">tSZ</span></td><td>311.1&ndash;554.4 Hz</td><td>415.3 Hz</td><td>hollow: odd harmonics 1, 0.42, 0.22, 0.10</td></tr>
+    <tr><td><span class="tag ksz">kSZ</span></td><td>659.3&ndash;1174.7 Hz</td><td>880.0 Hz</td><td>reedy: 1, 0.6, 0.4, 0.25, 0.15, 0.1</td></tr>
+    <tr><td><span class="tag cib">CIB</span></td><td>1396.9&ndash;2489.0 Hz</td><td>1864.7 Hz</td><td>pure sine</td></tr>
+  </table></div>
+  <p>Every timbre is normalized to the RMS of a unit sine, so equal data loudness means equal signal RMS before the equal-loudness weighting.</p>
 
-  <h3>Synthesis method</h3>
-  <p><strong>Shaped Noise</strong>, <strong>Additive</strong>, <strong>Scale Layers</strong>, <strong>Instruments</strong> and <strong>Duet</strong> render the same \(D_\ell\) in different ways &mdash; see the <a class="inline" href="#" onclick="document.querySelector('.tab[data-tab=synth]').click();return false;">Synthesis</a> tab. Instruments and Duet reveal extra options (below).</p>
+  <h3 id="scales">Scale modes (how &mu;K becomes pitch and loudness)</h3>
+  <div class="tw"><table>
+    <tr><th>Scale</th><th>pitch centre \(c\)</th><th>pitch scale \(S\)</th><th>loudness \(\sigma\)</th><th>what it answers</th></tr>
+    <tr><td><strong>equalized per map</strong> (default)</td><td>the map's median (empty sky)</td><td>the map's largest \(|v-\text{median}|\) over its stored range</td><td>the map's own \(\sigma\)</td><td>where is this component hotter or colder than its own empty sky, in units of its own fluctuations? Every component and band uses its full register; levels are <em>not</em> comparable across bands (labelled).</td></tr>
+    <tr><td><strong>physical per component</strong></td><td>0 &mu;K</td><td>the largest \(|v_{\min}|,|v_{\max}|\) of that component over all bands</td><td>the component's largest \(\sigma\) over bands</td><td>how does a component change with band? (tSZ quiet near 217&nbsp;GHz, CIB quiet at low frequency)</td></tr>
+    <tr><td><strong>common &micro;K</strong> (physical)</td><td>0 &mu;K</td><td>one scale for every map (the largest)</td><td>one \(\sigma\) for every map (the largest)</td><td>how big is each component in &mu;K? Weak components become quiet and nearly flat.</td></tr>
+  </table></div>
+  <p>The <strong>Sound key</strong> panel gives every number for the current selection: Hz ranges, &mu;K per semitone, the centre, the empty-sky level, full-scale loudness and which \(\sigma\) is used.</p>
+  <p><strong>tSZ polarity.</strong> Because pitch follows the signed value, clusters sound below the empty-sky pitch at 93&ndash;145&nbsp;GHz (decrement) and above it at 225&ndash;353&nbsp;GHz (increment), in every scale mode. The image shows \(|\Delta T|\); the note line under the controls states the audio polarity at the current band.</p>
 
-  <h3>Playback &amp; actions</h3>
-  <p><strong>&#9654; Play</strong> sounds the current \(\ell\) range as a steady tone. <strong>&#8467;-Sweep</strong> glides from large to small scales (low to high \(\ell\)); <strong>&#957;-Sweep</strong> instead sweeps the observing frequency so you hear tSZ/CIB rise and fall across the bands. <strong>Build-Up</strong> enters layer by layer (CMB \(\rightarrow +\)tSZ \(\rightarrow +\)CIB). <strong>&#9632; Stop</strong> halts everything.</p>
-  <p><strong>&#127775; Big Bang</strong> plays the CMB acoustic-peak sequence as a short motif. <strong>3D Spatial</strong> places each component at a fixed direction in HRTF 3D audio (best with headphones). <strong>&#9654; Tour</strong> runs a short guided walkthrough. <strong>&#9210; Record</strong> captures the live audio to a downloadable clip; <strong>&#128279; Share</strong> copies a link that reopens the app with your current settings.</p>
+  <h3 id="sky-eq">Equal loudness (on by default here)</h3>
+  <p>The ISO 226:2003 60-phon weighting is applied to each voice's fundamental, relative to the lowest register frequency (146.8&nbsp;Hz), so every gain is \(\le1\): 0 to &minus;6.4 dB in the CMB register, &minus;8 to &minus;12 (tSZ), &minus;12 to &minus;12.9 (kSZ), &minus;10.9 to &minus;16.2 dB (CIB). It is on by default in the sky views (off in the Sonifier) because here pitch and loudness carry two <em>different</em> quantities across four octaves: without it a 147 Hz CMB voice needs about 13.6 dB more sound pressure than a 2 kHz CIB voice to sound equally loud, which would confound the two. Turning it off applies a flat trim with the same median level. As in the Sonifier, the equalization is approximate (listener- and device-dependent).</p>
 
-  <h3>Stereo mode</h3>
-  <p><strong>Mono</strong> (centred), <strong>Components L/R</strong> (each component panned across the stereo field), or <strong>93&thinsp;|&thinsp;353 GHz</strong> (spread by observing frequency, low&rarr;left, high&rarr;right).</p>
+  <h3 id="clicks">Clicks, reference tone, mute and solo</h3>
+  <p>A click plays each active voice for 0.45 s (15 ms attack), with onsets 40 ms apart in register order so that simultaneous voices are easier to separate. <strong>Ref tone</strong> (option) plays a pure sine at each register centre (the empty-sky level in the default scale, 0 &mu;K in the physical scales) 0.12 s before each note, at 0.2 of full scale; while scanning it is a quiet drone. It is a reference, not data. Each component button has <strong>M</strong> (mute) and <strong>S</strong> (solo) for the audio only.</p>
 
-  <h3>Ranges &amp; sliders</h3>
-  <p><strong>\(\ell\) range</strong> restricts the multipoles that are sounded (the angular scales). <strong>Volume</strong> is the master level. <strong>Sweep speed</strong> sets how fast \(\ell\)- and \(\nu\)-sweeps move; <strong>Sweep position</strong> lets you drag (scrub) the sweep cursor by hand.</p>
+  <h3 id="scan">Scan: a moving ear</h3>
+  <p>With <strong>Scan</strong> on, dragging (or the arrow keys) moves a continuous &ldquo;ear&rdquo;. Each component is one continuous oscillator whose frequency and gain glide (time constant 10 ms) at a fixed 40 Hz control rate on the audio clock. The drag path is resampled along great circles at a fixed angular spacing (5 screen pixels at the current zoom, at least half a value pixel), and one sample sounds per tick, so the ear moves at a constant 200 px/s and what you hear does not depend on how fast your hand moves. If you drag faster, the ear lags by up to 1.5 s and then skips ahead. The pending path is drawn as dots.</p>
 
-  <h3>Sweep options</h3>
-  <p><strong>log volume</strong> applies a compressed (logarithmic) loudness map so faint scales stay audible; <strong>linear \(\ell\)-sweep</strong> moves linearly in \(\ell\) rather than logarithmically; <strong>ping-pong</strong> bounces the sweep back and forth; <strong>fixed pitch</strong> holds the audio pitch constant and lets only amplitude and timbre vary.</p>
+  <h3 id="earcons">Galaxy clusters: earcons</h3>
+  <p>The overlay shows the 3000 most massive halos of the HalfDome lightcone (\(M_{200c}\ge5.0\times10^{14}\,M_\odot/h\), \(\log_{10}M\) 14.70&ndash;15.41, \(z=0.02\)&ndash;1.62), dots sized by mass. Clicking near one, or scanning past it (once per cluster per 2 s, at most one per 150 ms), rings a bell-like <strong>earcon</strong> (inharmonic partials 1, 2.756, 5.404) that carries data:</p>
+  \[ f_{\rm halo}=880\,\mathrm{Hz}\times2^{-30(\log_{10}M_{200c}-14.7)/12},\qquad \text{level}=\frac{500}{\max(\chi,500)},\qquad f_{\rm LP}=\max\Bigl[700,\ 9000\Bigl(\frac{500}{\max(\chi,500)}\Bigr)^{0.75}\Bigr]\,\mathrm{Hz}, \]
+  <ul>
+    <li><strong>mass &rarr; pitch</strong>: heavier = lower (the size metaphor; magnitude-estimation studies find this negative polarity for size), &minus;3 semitones per 0.1 dex: 875 Hz for the lightest to 257 Hz for the heaviest. The slope is fixed, not fitted to the catalogue.</li>
+    <li><strong>distance &rarr; level, brightness and reverberance</strong>: the comoving distance \(\chi\) (Mpc/\(h\)) sets an inverse-distance level beyond 500 Mpc/\(h\), a low-pass that dulls distant clusters, and, with a constant reverb send, a direct-to-reverberant ratio that falls with distance. \(\chi\) comes from the halo redshift in the HalfDome cosmology (flat \(\Lambda\)CDM, \(h=0.6774\), \(\Omega_m=0.3089\)).</li>
+  </ul>
+  <p>Picking uses a radius of 6 CSS pixels (14 on touch screens). On the flat map it is converted to an angle with the current zoom and compared by great-circle distance; on the globe and in the lightcone the visible markers are compared on screen. Hidden clusters (&ldquo;Clusters: off&rdquo;) are silent. The readout and the screen-reader announcement give \(\log_{10}M\), \(z\) and \(\chi\).</p>
+  <p><strong>Artistic halo sound</strong> (off by default, labelled): a synthesized &ldquo;hey!&rdquo; or your own recorded clip (up to 3 s, stored only in your browser) replaces the bell. It is level-matched to the earcon and still pitch-shifted by mass and given the same distance cue, but its timbre is decorative.</p>
 
-  <h3>Instrument options</h3>
-  <p>Visible in <strong>Instruments</strong> mode. Pick a <strong>preset</strong> (Classical, Ambient, Cosmic, Rock, Jazz) or set the <strong>instrument per component</strong> individually. <strong>Snap notes to a scale</strong> quantizes the glide to a pentatonic scale (on by default).</p>
+  <h3 id="spatial">Directional audio (globe and lightcone)</h3>
+  <ul>
+    <li><strong>Globe</strong>: the listener follows the camera; click notes and earcons come from the clicked direction through an HRTF panner (use headphones), and the scan's panner follows the ear. Auto-spin turns the globe at one revolution per 65 s, independent of the frame rate. On the globe, Scan replaces drag-rotation.</li>
+    <li><strong>Lightcone</strong>: drawn to scale (1 unit = 1 Gpc/\(h\)) in the HalfDome cosmology. You start at the observer (the origin); clusters sit at their comoving distance \(\chi\) (62&ndash;3182 Mpc/\(h\)) and the CMB shell at \(\chi_*=9418\) Mpc/\(h\) (last scattering, \(z_*=1091.9\), radiation included). Earcons are placed at the clusters' 3D positions with an inverse-distance model (reference 0.5 Gpc/\(h\)), so their level follows your actual distance and changes as you fly. Clicking the shell plays the CMB voice from that direction. Markers dim with distance from you.</li>
+    <li>The flat map is mono.</li>
+  </ul>
 
-  <h3>Duet options</h3>
-  <p>Visible in <strong>Duet</strong> mode. Choose probe <strong>A</strong> and probe <strong>B</strong>; the meter and the harmony then track their cross-correlation \(r_\ell\) (see the Synthesis tab).</p>
+  <h3 id="coords">Coordinates</h3>
+  <p>All positions are in the <strong>simulation's HEALPix frame \((\theta,\phi)\)</strong>, not Galactic \((l,b)\). On the flat map \(\theta=0\) (the simulation's north pole) is at the top and \(\phi\) increases to the right (the mirror of the astronomical longitude-increases-left convention); on the globe north is up and \(\phi\) increases to the right seen from outside; from inside the lightcone the sky is the mirror image of the globe, as the real sky is. Readouts give \(\theta,\phi\) in degrees.</p>
+
+  <h3 id="a11y">Keyboard and screen readers</h3>
+  <p>The map and globe are focusable. Arrow keys move the ear (Shift for six times bigger steps; on the globe Up is north), Enter or Space plays the point, + and &minus; zoom; with Scan on, the arrows extend the scan path. In the lightcone, I/J/K/L look around, W/A/S/D or the arrows fly, Q/E (or Shift/Space) move down/up, + and &minus; change the field of view (10&ndash;100&deg;), and Enter listens at the crosshair. A polite live region announces \(\theta\), \(\phi\), every component's value in &mu;K and the nearest cluster after clicks and key moves (and, in the lightcone, the view direction and your distance from the observer).</p>
 </section>
 
-<section id="explorer">
-  <h2>The Sky Explorer</h2>
-  <p>The sky is shown in an equirectangular (plate&ndash;carr&eacute;e) projection: pixel \((x,y)\) maps to \((\phi,\theta)=(360^\circ x/W,\ 180^\circ y/H)\), so panning in longitude wraps seamlessly. A tiny overview loads instantly; a high-resolution image streams in behind it for sharp zoom.</p>
-  <p>Each component is drawn in a scientific colormap &mdash; CMB in the standard Planck CMB map, kSZ as a diverging red&ndash;blue map, tSZ in <em>magma</em>, CIB in <em>inferno</em>. A single selected component shows this classic view; when several are <strong>overlaid</strong>, the diverging maps switch to a dark-centred variant (blue&rarr;black&rarr;red) and all are combined by per-channel <strong>maximum</strong> (a "lighten" blend), so each keeps its colour and the composite stays clear instead of washing out to white. The map pans side-to-side with periodic (wrap-around) longitude. Massive clusters (\(M>5\times10^{14}M_\odot\)) are overlaid as points sized by \(\log M\).</p>
-  <h3>Scanning (audio)</h3>
-  <p>Each selected component is a voice. Its <strong>pitch</strong> reads the true (signed) sky value \(v\in[-1,1]\) under the cursor &mdash; cold low, hot high:</p>
-  \[ f_{\rm voice}=f_{\rm base}\cdot 2^{\,v}. \]
-  <p>Its <strong>loudness</strong> is weighted by how strong the component is at the selected band, relative to its strongest band:</p>
-  \[ w_c(\nu)=\sqrt{\frac{\langle D_\ell\rangle_{c,\nu}}{\max_{\nu'}\langle D_\ell\rangle_{c,\nu'}}}, \]
-  <p>so tSZ nearly silences at the \(225\,\)GHz null and CIB swells toward \(353\,\)GHz, while the frequency-independent CMB and kSZ hold steady. Nearby clusters add mass-pitched pings.</p>
+<!-- ===================================================================== FEATURES TABLE -->
+<section id="features" role="tabpanel" aria-labelledby="tab-features" tabindex="-1">
+  <h2>Which sound features carry data</h2>
+  <p>Every audible feature of every mode, what it encodes, and whether it is decorative. Key: <span class="b data">data</span> carries a data value; <span class="b id">identity</span> tells you which component or object you hear, but no value; <span class="b disp">display</span> a labelled, optional transform of the data (monotone, not proportional); <span class="b ref">reference</span> a fixed reference or technical aid; <span class="b deco">decorative</span> carries no data.</p>
+  <div class="tw"><table>
+    <tr><th>sound feature</th><th>data it carries</th><th>decorative?</th></tr>
+    <tr class="group"><td colspan="3">Sonifier: Shaped Noise, Additive, Scale Layers, Build-Up, &nu;-Sweep</td></tr>
+    <tr><td>pitch (position in the spectrum)</td><td>multipole \(\ell\), through the analysis map \(f\propto\ell^{0.662}\)</td><td><span class="b data">data</span></td></tr>
+    <tr><td>spectral shape (power per octave)</td><td>\(D_\ell\): audio power per \(\ln f\) \(\propto D_\ell\)</td><td><span class="b data">data</span></td></tr>
+    <tr><td>overall level (dB re REF)</td><td>sky RMS \(\sqrt{\int D_\ell\,d\ln\ell}\) in the heard \(\ell\) range; comparable across everything in Absolute mode</td><td><span class="b data">data</span> (Equalized: relative within the selection, labelled)</td></tr>
+    <tr><td>noise texture vs discrete partials (method choice)</td><td>none: the same spectrum and level in both</td><td><span class="b deco">decorative</span> (a rendering choice)</td></tr>
+    <tr><td>random phases (fine time structure)</td><td>none (seeded, reproducible)</td><td><span class="b deco">decorative</span></td></tr>
+    <tr><td>Scale Layers: level of each layer</td><td>band power of \(\ell\) 2&ndash;100, 100&ndash;1000, 1000&ndash;6000</td><td><span class="b data">data</span></td></tr>
+    <tr><td>Scale Layers: tone vs noise, tone positions</td><td>which \(\ell\) band (tones always at the CMB peaks)</td><td><span class="b id">identity</span> / <span class="b deco">decorative</span></td></tr>
+    <tr><td>Build-Up stage order, &nu;-Sweep band order</td><td>which selection or band is playing (shown on screen)</td><td><span class="b id">identity</span></td></tr>
+    <tr><td>stereo L/R content (stereo modes)</td><td>which components or bands are in each ear</td><td><span class="b id">identity</span></td></tr>
+    <tr><td>interaural coherence (stereo modes)</td><td>the data's correlation \(\rho(\ell)\) between the two channels' fields (CIB across bands assumed 1)</td><td><span class="b data">data</span></td></tr>
+    <tr class="group"><td colspan="3">Sonifier: &#8467;-Sweep</td></tr>
+    <tr><td>centre pitch of the window</td><td>current \(\ell_c\) (analysis map)</td><td><span class="b data">data</span></td></tr>
+    <tr><td>loudness</td><td>windowed band power \(A_w(\ell_c)\) re REF<sub>win</sub></td><td><span class="b data">data</span></td></tr>
+    <tr><td>fixed-pitch 440 Hz tone (option)</td><td>its loudness only: \(A_w(\ell_c)\)</td><td>pitch <span class="b deco">decorative</span>, loudness <span class="b data">data</span></td></tr>
+    <tr class="group"><td colspan="3">Sonifier: Instruments</td></tr>
+    <tr><td>pitch</td><td>\(\ell\) (musical map) and the band (its starting note)</td><td><span class="b data">data</span> (snapping rounds it to the scale)</td></tr>
+    <tr><td>loudness of each voice</td><td>that component's windowed band power \(A_v(\ell)\) re REF<sub>voice</sub></td><td><span class="b data">data</span></td></tr>
+    <tr><td>instrument timbre, 3D position</td><td>which component</td><td><span class="b id">identity</span></td></tr>
+    <tr><td>Analysis preset</td><td>no other features</td><td>none decorative</td></tr>
+    <tr><td>Musical preset: articulation, vibrato, auto-wah, chorus beating, reverb</td><td>none</td><td><span class="b deco">decorative</span> (labelled)</td></tr>
+    <tr class="group"><td colspan="3">Sonifier: Duet</td></tr>
+    <tr><td>interval between the voices</td><td>correlation \(r_\ell\) (four rungs)</td><td><span class="b data">data</span></td></tr>
+    <tr><td>stereo spread</td><td>\((1-r)/2\), times the significance weight</td><td><span class="b data">data</span></td></tr>
+    <tr><td>unison, &minus;6 dB on voice B, noise cue</td><td>\(|r|&lt;2\sigma_r\): not significant</td><td><span class="b data">data</span></td></tr>
+    <tr><td>loudness of each voice</td><td>each probe's \(A_v(\ell)\)</td><td><span class="b data">data</span> (Equalized: labelled)</td></tr>
+    <tr><td>pitch of voice A</td><td>\(\ell\) and band, as in Instruments</td><td><span class="b data">data</span></td></tr>
+    <tr class="group"><td colspan="3">Sonifier: Big Bang (artistic)</td></tr>
+    <tr><td>chord pitches and amplitudes</td><td>CMB peak multipoles (linear scaling) and \(\sqrt{D_\ell}\) at the peaks</td><td><span class="b data">data</span></td></tr>
+    <tr><td>downward glide, detuning, rumble, reverb</td><td>none</td><td><span class="b deco">decorative</span></td></tr>
+    <tr class="group"><td colspan="3">Sonifier: options and technical</td></tr>
+    <tr><td>log volume</td><td>level, compressed dB-linearly (floor &minus;60 dB)</td><td><span class="b disp">display</span></td></tr>
+    <tr><td>loudness compensation</td><td>level, weighted by the inverse 60-phon contour (approximate)</td><td><span class="b disp">display</span></td></tr>
+    <tr><td>beam deconvolution</td><td>\(D_\ell/B_\ell^2\) instead of the observed \(D_\ell\)</td><td><span class="b data">data</span> (a different, stated spectrum)</td></tr>
+    <tr><td>80 ms crossfades, monitor gain</td><td>none</td><td><span class="b ref">reference</span> (technical)</td></tr>
+    <tr class="group"><td colspan="3">Sky views (flat map, globe, lightcone)</td></tr>
+    <tr><td>voice pitch</td><td>signed \(\Delta T-c\) at the point (hot = high)</td><td><span class="b data">data</span></td></tr>
+    <tr><td>voice loudness</td><td>\(|\Delta T-e|/\sigma\): deviation from the empty sky</td><td><span class="b data">data</span></td></tr>
+    <tr><td>register and timbre</td><td>which component (registers ordered by angular scale)</td><td><span class="b id">identity</span></td></tr>
+    <tr><td>40 ms onset stagger</td><td>none (helps separate voices)</td><td><span class="b ref">reference</span> (technical)</td></tr>
+    <tr><td>reference tone</td><td>the zero of the pitch scale (\(c\))</td><td><span class="b ref">reference</span></td></tr>
+    <tr><td>equal-loudness weighting</td><td>level, weighted by the 60-phon contour (approximate)</td><td><span class="b disp">display</span></td></tr>
+    <tr><td>earcon pitch</td><td>halo mass \(M_{200c}\) (heavier = lower)</td><td><span class="b data">data</span></td></tr>
+    <tr><td>earcon level, brightness, reverberance</td><td>comoving distance \(\chi\) (lightcone: your distance)</td><td><span class="b data">data</span></td></tr>
+    <tr><td>earcon bell timbre</td><td>&ldquo;this is a cluster&rdquo;</td><td><span class="b id">identity</span></td></tr>
+    <tr><td>HRTF direction (globe, lightcone)</td><td>sky direction or 3D position of the point or cluster</td><td><span class="b data">data</span></td></tr>
+    <tr><td>artistic halo sound (&ldquo;hey!&rdquo;, your clip)</td><td>timbre none (pitch and distance cue still applied)</td><td><span class="b deco">decorative</span> (off by default, labelled)</td></tr>
+  </table></div>
 </section>
 
-<section id="repro">
-  <h2>Software &amp; reproducibility</h2>
-  <p>The pipeline starts from HalfDome spherical-harmonic maps (\(\ell_{\max}=9000\), \(2'\) beam): <code>precompute_cls.py</code> forms \(C_\ell\) (and reconstructs Total by summing \(a_{\ell m}\)); <code>export_web_data.py</code> writes the spectra and low-resolution sky textures; <code>export_sky_images.py</code> renders the high-resolution Sky Explorer images and faithful value maps.</p>
-  <p>The web app synthesizes all audio in the browser with the Web Audio API and renders with the Canvas 2D context &mdash; no server and no JavaScript dependencies (this docs page additionally loads MathJax from a CDN to typeset the equations).</p>
-  <h2>The HalfDome simulations</h2>
-  <p>Website: <a class="inline" href="https://halfdomesims.github.io" target="_blank" rel="noopener">halfdomesims.github.io</a>
-  &nbsp;&middot;&nbsp; Paper: <a class="inline" href="https://arxiv.org/abs/2407.17462" target="_blank" rel="noopener">Bayer et al. 2025, JCAP (arXiv:2407.17462)</a>.</p>
+<!-- ===================================================================== CONTROLS -->
+<section id="controls" role="tabpanel" aria-labelledby="tab-controls" tabindex="-1">
+  <h2>Controls &mdash; every option</h2>
+  <p>A reference for each control, page by page and panel by panel. Defaults are in bold.</p>
+
+  <h3 id="ctl-sonifier">Power Spectrum Sonifier</h3>
+  <div class="tw"><table>
+    <tr><th>control</th><th>what it does</th></tr>
+    <tr class="group"><td colspan="2">Plot and readouts</td></tr>
+    <tr><td>power-spectrum plot</td><td>\(D_\ell\) of every component at the current band (active ones bold; Total dashed), the heard mix (&ldquo;mix (heard)&rdquo;) when two or more are active, the \(\ell\) range (shaded), and during sweeps the cursor and the window as applied. Bottom axis \(\ell\); top axis the audio frequency (analysis map), or the unsnapped pitch (musical map) in Instruments and Duet. The beam setting applies; log volume and loudness compensation change only the sound.</td></tr>
+    <tr><td>level readout</td><td>what is playing, its level in dB re REF (or REF<sub>win</sub>, REF<sub>voice</sub>) and the REF value and its origin; per channel in the stereo modes.</td></tr>
+    <tr class="group"><td colspan="2">Components</td></tr>
+    <tr><td>CMB, tSZ, CIB, kSZ, Total</td><td>toggle; the active set is mixed with its cross terms. <strong>CMB</strong> by default. Total excludes CMB, tSZ and CIB (and vice versa).</td></tr>
+    <tr class="group"><td colspan="2">Observing frequency (GHz)</td></tr>
+    <tr><td>band buttons</td><td>built from the band list in <code>cl_data.json</code>, grouped by experiment: SO MF (93, 145), SO HF (225, 280), Planck (<strong>143</strong>, 353). Sets the level of tSZ, CIB and Total, the starting note on the musical map, and the Duet's \(r\). CMB and kSZ do not depend on the band.</td></tr>
+    <tr class="group"><td colspan="2">Synthesis method</td></tr>
+    <tr><td><strong>Shaped Noise</strong>, Additive, Scale Layers, Instruments, Duet</td><td>see <a class="inline" href="#synth">Synthesis</a> and <a class="inline" href="#voices">Instruments &amp; Duet</a>. The note under the buttons gives the formula in use.</td></tr>
+    <tr><td>Partials (Additive)</td><td><strong>one per 1/12 octave (92)</strong> or one per \(\ell\)-grid point (400).</td></tr>
+    <tr class="group"><td colspan="2">Instruments (visible in Instruments mode)</td></tr>
+    <tr><td>Voice preset</td><td><strong>Analysis</strong> (no decorative features) or Musical (decorative; labelled).</td></tr>
+    <tr><td>Instrument palette</td><td>Classical, Ambient, Cosmic, Rock, Jazz: four distinct instruments for CMB, tSZ, CIB, kSZ.</td></tr>
+    <tr><td>Instruments (per component)</td><td>piano, violin, electric guitar, flute, bass, synth pad. Duplicates are flagged (they fuse).</td></tr>
+    <tr><td>Snap notes to the A-minor pentatonic scale</td><td><strong>on</strong>: rounds the pitch to the scale; off: continuous glide.</td></tr>
+    <tr class="group"><td colspan="2">Duet (visible in Duet mode)</td></tr>
+    <tr><td>A, B</td><td>the two probes (CMB lensing, tSZ, CIB, kSZ; <strong>A = CMB, B = tSZ</strong>). Each voice uses that component's instrument.</td></tr>
+    <tr><td>correlation bar and readout</td><td>marker at the current \(r\) (&minus;1 to +1); \(r\pm\sigma_r\), \(N_{\rm modes}\), the interval or &ldquo;not significant&rdquo;. The ladder is printed under it.</td></tr>
+    <tr class="group"><td colspan="2">Level &amp; display</td></tr>
+    <tr><td><strong>Absolute</strong> / Equalized</td><td><a class="inline" href="#levelmodes">level reference</a>.</td></tr>
+    <tr><td>log volume</td><td>off by default; dB-linear, floor &minus;60 dB re REF (<a class="inline" href="#logvol">details</a>).</td></tr>
+    <tr><td>loudness comp.</td><td>off by default; inverse ISO 226:2003 60-phon contour, boost &le; +30 dB, approximate. The &ldquo;About loudness compensation&rdquo; box plots it.</td></tr>
+    <tr><td>beam: <strong>observed (2&prime;)</strong> / deconvolved</td><td>\(D_\ell\) or \(D_\ell/B_\ell^2\), for the plot and the sound.</td></tr>
+    <tr class="group"><td colspan="2">Stereo mode (Play with Shaped Noise, Additive or Scale Layers)</td></tr>
+    <tr><td><strong>Mono</strong>, Components L/R, lowest | highest band</td><td>see <a class="inline" href="#stereo">Stereo modes</a>.</td></tr>
+    <tr class="group"><td colspan="2">&#8467; range</td></tr>
+    <tr><td>min (2&ndash;1000, <strong>2</strong>), max (100&ndash;6000, <strong>6000</strong>)</td><td>Play sounds only this range (quieter when narrower); sweeps, Instruments and Duet run across it.</td></tr>
+    <tr class="group"><td colspan="2">Monitor gain</td></tr>
+    <tr><td>slider &minus;40 to +12 dB (<strong>0 dB</strong>)</td><td>listening level only, applied before the safety limiter; not part of renders. The meter shows the output after the limiter (&minus;60 to 0 dBFS) with RMS, peak and dB re the active reference.</td></tr>
+    <tr class="group"><td colspan="2">Playback</td></tr>
+    <tr><td>&#9654; Play</td><td>loops the current selection over the \(\ell\) range (in Instruments and Duet: sweeps \(\ell\)). Pressing again stops.</td></tr>
+    <tr><td>&#8467;-Sweep</td><td>sweeps the window across the \(\ell\) range (<a class="inline" href="#sweep">details</a>).</td></tr>
+    <tr><td>Build-Up</td><td>CMB &rarr; +tSZ &rarr; +CIB &rarr; Total at the current band, then stops.</td></tr>
+    <tr><td>&nu;-Sweep</td><td>steps the selection through the bands, crossfaded.</td></tr>
+    <tr><td>&#9632; Stop</td><td>fades everything out (80 ms; the reverb tail over 0.25 s).</td></tr>
+    <tr><td>&#9654; Tour</td><td>a guided sequence (CMB, a sweep, tSZ, the tSZ null band, CIB at the lowest and highest bands, a &nu;-sweep of CMB + tSZ + CIB, Big Bang). Faint steps use Equalized levels and say so in the caption; band choices and dB figures in the captions come from the data. Your settings are restored at the end.</td></tr>
+    <tr><td>&#127775; Big Bang (artistic)</td><td>the CMB acoustic-peak chord (<a class="inline" href="#bigbang">details</a>).</td></tr>
+    <tr><td>3D Spatial</td><td>HRTF placement of the Instruments and Duet voices (headphones).</td></tr>
+    <tr><td>&#9210; Record</td><td>captures what you hear (after the limiter, including monitor gain) as a lossy webm/ogg file. Use Render WAV for lossless, reproducible audio.</td></tr>
+    <tr><td>&#128279; Share</td><td>copies a link (<code>#s=&hellip;</code>) that restores every setting; version-1 links still work.</td></tr>
+    <tr class="group"><td colspan="2">Reproducible render</td></tr>
+    <tr><td>seed (<strong>42</strong>)</td><td>seeds every random draw (noise and partial phases, layer noise, stereo signs, flute breath, duet cue, reverb).</td></tr>
+    <tr><td><strong>16-bit</strong> / 24-bit WAV</td><td>bit depth of the render.</td></tr>
+    <tr><td>&#11015; Render WAV</td><td>renders the current mode offline and downloads the WAV and a JSON sidecar (<a class="inline" href="#render">details</a>).</td></tr>
+    <tr><td>load settings</td><td>reads a sidecar JSON back and restores its settings.</td></tr>
+    <tr class="group"><td colspan="2">Sweeps</td></tr>
+    <tr><td>Sweep speed (one pass)</td><td>2&ndash;30 s (<strong>10 s</strong>); also sets the Build-Up stage length and the &nu;-Sweep duration. A change applies smoothly from the next unscheduled control step.</td></tr>
+    <tr><td>Sweep position</td><td>drag to scrub the sweep by hand.</td></tr>
+    <tr><td>window</td><td>0.25, <strong>0.5</strong> or 1 \(\ell\)-octave (\(-3\) dB width).</td></tr>
+    <tr><td>linear &#8467;-sweep</td><td>linear in \(\ell\) instead of logarithmic (off).</td></tr>
+    <tr><td>ping-pong</td><td>bounce back and forth (off).</td></tr>
+    <tr><td>fixed pitch</td><td>a 440 Hz tone whose level follows the windowed band power (off).</td></tr>
+  </table></div>
+
+  <h3 id="ctl-sky">Sky Explorer, 3D Globe and Lightcone</h3>
+  <div class="tw"><table>
+    <tr><th>control</th><th>where</th><th>what it does</th></tr>
+    <tr><td>Components (with M / S)</td><td>map, globe</td><td>toggle overlays and voices; M mutes, S solos a voice (audio only). Total is exclusive with CMB, tSZ, CIB; at least one stays on. The lightcone has the CMB voice only.</td></tr>
+    <tr><td>Band (GHz)</td><td>map, globe</td><td>from <code>sky_img.json</code>; switches the tSZ, CIB and Total maps (and the tSZ sign).</td></tr>
+    <tr><td>Zoom &minus; / + / whole sky</td><td>map</td><td>zoom about the centre; the map opens on the whole sky. Wheel and pinch zoom too.</td></tr>
+    <tr><td>Scan</td><td>map, globe</td><td>drag (or arrow keys) to move a continuous ear (<a class="inline" href="#scan">details</a>); on the map it replaces panning, on the globe rotation.</td></tr>
+    <tr><td>Ref tone</td><td>all</td><td>reference sine at each register centre (off).</td></tr>
+    <tr><td>Equal loudness</td><td>all</td><td>ISO 226 60-phon weighting of each voice (<strong>on</strong>).</td></tr>
+    <tr><td>Scale</td><td>map, globe</td><td><strong>equalized per map</strong>, physical per component, common &micro;K (<a class="inline" href="#scales">details</a>).</td></tr>
+    <tr><td>Halo sound</td><td>all</td><td><strong>data earcon</strong> or artistic (&ldquo;hey!&rdquo; / your clip).</td></tr>
+    <tr><td>&#127908; record</td><td>all</td><td>record up to 3 s for the artistic halo sound (kept in this browser only).</td></tr>
+    <tr><td>Vol</td><td>all</td><td>0&ndash;200 (<strong>70</strong>). At 70 the voices plus a cluster earcon peak below &minus;3 dBFS at 99.9% of sky positions, 3 dB under the safety limiter (threshold 0 dBFS, knee 0, so its make-up gain is exactly 1), which then stays idle; louder settings may engage it on bright spots.</td></tr>
+    <tr><td>Sound key</td><td>all</td><td>panel with every number of the current mapping.</td></tr>
+    <tr><td>Auto-spin</td><td>globe, lightcone</td><td>rotate the sky (off).</td></tr>
+    <tr><td>Clusters: on/off</td><td>globe, lightcone</td><td>show or hide (and silence) the clusters.</td></tr>
+    <tr><td>CMB shell: on/off</td><td>lightcone</td><td>show or hide the last-scattering shell.</td></tr>
+    <tr><td>Back to centre</td><td>lightcone</td><td>return to the observer, keeping the view direction.</td></tr>
+    <tr><td>mouse / touch</td><td>all</td><td>map: drag pans (longitude wraps), click listens; globe: drag rotates, wheel zooms, click listens; lightcone: drag looks around, wheel changes the field of view, click a cluster or the CMB.</td></tr>
+    <tr><td>keyboard</td><td>all</td><td>see <a class="inline" href="#a11y">Keyboard and screen readers</a>.</td></tr>
+  </table></div>
+</section>
+
+<!-- ===================================================================== REPRODUCIBILITY -->
+<section id="repro" role="tabpanel" aria-labelledby="tab-repro" tabindex="-1">
+  <h2>Reproducibility</h2>
+  <h3 id="seed">Seeded randomness</h3>
+  <p>Every random number in the Sonifier comes from a seeded generator (mulberry32), with independent sub-streams derived from the seed and a name (noise phases, additive phases, layer noise, stereo signs, the flute's breath noise, the duet cue, the reverb impulse response). The seed is shown and editable (<strong>42</strong> by default, as in the offline scripts). The same seed gives the same buffers bit for bit; a different seed gives a different but statistically identical realization of the sound. The sky views' reverb is seeded too.</p>
+
+  <h3 id="render">Render WAV and the JSON sidecar</h3>
+  <p><strong>Render WAV</strong> builds the same audio graph as live playback inside an <code>OfflineAudioContext</code> (2 channels, 44.1&nbsp;kHz), schedules its whole automation in advance, and encodes the result as 16- or 24-bit PCM (rounded to nearest, no dither; clipped samples are counted and reported). The length depends on the mode: Play renders exactly one seamless loop (\(2^{19}\) samples = 11.89 s, so the file loops too); &#8467;-Sweep, Instruments and Duet one pass (twice for ping-pong); Build-Up, &nu;-Sweep and Big Bang their full length. The monitor gain and the safety limiter are not part of renders.</p>
+  <p>Next to the WAV the page downloads a <strong>JSON sidecar</strong> with:</p>
+  <ul>
+    <li>the generator (page and core versions), time, mode and every setting, including the seed;</li>
+    <li>the audio parameters and the FNV-1a hash of the WAV bytes, the clipped-sample count and the peak;</li>
+    <li>the level convention and the REF values with what defines them;</li>
+    <li>the conventions in use: sweep window width, Butterworth order and carrier; the duet ladder; the stereo coherence model and its CIB assumption; the Build-Up reference;</li>
+    <li>FNV-1a hashes of <code>cl_data.json</code> and <code>cross_data.json</code>, their version and the band list;</li>
+    <li>the instrument calibration (Instruments, Duet), a determinism statement and the browser's user agent.</li>
+  </ul>
+  <p><strong>Determinism.</strong> The same settings, data and browser give a byte-identical WAV. The Shaped Noise, Additive and Scale Layers buffers are computed in JavaScript and are identical in every browser; oscillators, filters and the HRTF panner are rendered by the browser's audio engine, so other browsers (or versions) can differ in the last bits. <strong>Load settings</strong> reads a sidecar back, and <strong>Share</strong> links carry every setting, so a sound can be reproduced from either.</p>
+
+  <h3 id="tests">Code and tests</h3>
+  <p>The pages are static: no backend and no build step. Audio uses the Web Audio API; the flat views use Canvas 2D; the globe and lightcone use three.js r128 from a CDN; this page loads MathJax from a CDN. All the mathematics is in two plain scripts with no DOM or audio dependencies, loaded by <code>&lt;script src&gt;</code> and testable in Node:</p>
+  <ul>
+    <li><code>web/sonify_core.js</code> (<code>window.SonifyCore</code>; a small public surface as <code>window.SONIFY_API</code>: <code>ellToFreq</code>, <code>freqToEll</code>, <code>musicalFreq</code>, <code>buildTargetPSD</code>, <code>mixDl</code>, <code>duetInterval</code>, <code>duetGate</code>, <code>duetSigmaR</code>, <code>loudnessCompDb</code>, <code>iso226SPL</code>, <code>stereoCoherence</code>, the three synthesizers, <code>LevelModel</code>, <code>encodeWAV</code>, <code>mulberry32</code>);</li>
+    <li><code>web/sky_core.js</code> (<code>window.SkyCore</code>: PNG decoding, geometry, picking, the scan path and every sky-view mapping) with <code>web/sky_audio.js</code> (the sky views' audio engine).</li>
+  </ul>
+  <p>The tests run with plain <code>node --test tests/*.test.js</code> (Node 18 or later) and check, among other things: the pitch maps and their inverses; the spectral-density convention (power per \(\ell\)-octave of the synthesized buffers against \(\int D_\ell\,d\ln\ell\)); seamless loops; mixing CMB + tSZ + CIB against the Total; the monotonicity of the duet ladder at every pitch and the significance gate; the sweep window's edges and leakage; the ISO 226 contour against its table; deterministic buffer and WAV hashes; the PNG decoder and the sky orientation; and smoke tests that run the real page scripts against a simulated DOM and Web Audio API.</p>
+
+  <h3 id="pipeline">Data pipeline</h3>
+  <p>The web data are produced from the HalfDome \(a_{\ell m}\) by Python scripts in the repository, all reading the band list from one config file (<code>sonify_config.py</code>):</p>
+  <div class="tw"><table>
+    <tr><th>script</th><th>output</th></tr>
+    <tr><td><code>precompute_cls.py</code></td><td><code>cls_cache.npz</code>: auto-spectra of every component and band; the Total from summed \(a_{\ell m}\)</td></tr>
+    <tr><td><code>precompute_cross.py</code></td><td><code>cross_data.json</code> v2: \(r_\ell\) per pair and band, bin edges and \(N_{\rm modes}\) (and <code>cross_cache.npz</code>)</td></tr>
+    <tr><td><code>export_web_data.py</code></td><td><code>cl_data.json</code> v2: the 400-point grid, \(D_\ell\), \(B_\ell^2\), the mixing check</td></tr>
+    <tr><td><code>export_sky_images.py</code></td><td><code>sky_img/*_val16.png</code> value maps, <code>sky_img.json</code> v2, display JPEGs</td></tr>
+    <tr><td><code>extract_halos.py</code></td><td><code>halos.json</code> v2: the top 3000 clusters with mass definition, units and \(\chi\)</td></tr>
+  </table></div>
+  <p>The heavy steps run as Slurm jobs (<code>run_pipeline.sbatch</code>, <code>export_sky_images.sbatch</code>). The offline scripts <code>sonify_cosmo.py</code> and <code>sonify_strauss.py</code> render audio with the same conventions (the offline additive mode uses grid partials). See the repository README for details.</p>
+</section>
+
+<!-- ===================================================================== DATA & CITING -->
+<section id="data" role="tabpanel" aria-labelledby="tab-data" tabindex="-1">
+  <h2>Data provenance</h2>
+  <p>Everything you hear and see comes from <strong>one realization (seed 100) of the HalfDome simulations</strong> (Bayer et al. 2025): FastPM N-body runs in a 3.75 Gpc/\(h\) box with \(6144^3\) particles and full-sky lightcones, in a flat \(\Lambda\)CDM cosmology with \(h=0.6774\), \(\Omega_m=0.3089\), \(\Omega_b=0.0486\), \(\sigma_8=0.8159\), \(n_s=0.9667\) (Planck 2015).</p>
+  <ul>
+    <li><strong>Maps.</strong> Lensed CMB temperature; tSZ from a halo-based Compton-\(y\) map (Battaglia et al. 2012 pressure profile) times \(g(x)\,T_{\rm CMB}\); CIB painted on the halos (Shang et al. 2012 model, XGPaint) per band and converted to thermodynamic \(\Delta T\); kSZ from the halos' optical depth and line-of-sight velocity. All in &mu;K (thermodynamic), HEALPix \(N_{\rm side}=8192\), transformed to \(a_{\ell m}\) up to \(\ell_{\max}=9000\) and <strong>convolved with a 2&prime; FWHM Gaussian beam</strong>. Bands are treated as single frequencies (no bandpass integration).</li>
+    <li><strong>Bands.</strong> 93 and 145 GHz (Simons Observatory mid-frequency), 225 and 280 GHz (SO high-frequency), 143 and 353 GHz (Planck). The pages read the band list from the data files, so adding bands needs no code change.</li>
+    <li><strong>Total.</strong> \(T_{\rm tot}=\) CMB \(+\) tSZ \(+\) CIB, summed as \(a_{\ell m}\) per band. <strong>It excludes the kSZ.</strong></li>
+    <li><strong>Clusters.</strong> The 3000 most massive halos of the HalfDome lightcone halo catalogue by \(M_{200c}\) (in \(M_\odot/h\); a calibrated estimate from the friends-of-friends mass, not a measured spherical-overdensity mass), with the cosmological redshift (no peculiar-velocity term) and \(\chi\) computed in the HalfDome cosmology.</li>
+    <li><strong>Raw data.</strong> The \(a_{\ell m}\) files (~810 MB each) are public at <a class="inline" href="https://users.flatironinstitute.org/~abayer/halfdome-b16/" target="_blank" rel="noopener">users.flatironinstitute.org/~abayer/halfdome-b16/</a>; everything the pages need is in the repository.</li>
+  </ul>
+
+  <div class="note warn" id="provisional">
+    <p><strong>Provisional data (November 2026).</strong></p>
+    <ul>
+      <li><strong>Sky-view value maps</strong> are provisional: they are upcast from the earlier 8-bit, 21&prime; maps (readouts are rounded to their level spacing), and the CIB in every band but 143&nbsp;GHz is the 143&nbsp;GHz pattern rescaled to that band's mean and fluctuation level, so its structure is identical across bands by construction. The pages say so where it applies. The full 16-bit render (10&prime; pixels, smooth taper at \(\ell\) 2500&ndash;3000, Gaussian smoothing to an effective resolution of &asymp;15&prime;) will replace them without any code change.</li>
+      <li><strong>The spectra and maps come from the June 2026 \(a_{\ell m}\) set, which is being regenerated.</strong> Its CIB comes from a run made before a halo-position unit fix (the corrected mean CIB intensity differs by &minus;4% to +16% depending on band), and its kSZ uses the opposite sign to the usual convention and only halos with \(M_{200c}>10^{13}\,M_\odot\) (see <a class="inline" href="#ksz">kSZ</a>). Levels, correlations and other numbers quoted on this page are from the current data and will change somewhat.</li>
+      <li>The <code>cross_data.json</code> bins currently follow the original binning (unweighted means, bins sharing their edge multipole); a re-run of the pipeline makes them half-open and \((2\ell+1)\)-weighted, consistent with <code>cl_data.json</code>.</li>
+    </ul>
+  </div>
+
+  <h2 class="sub" id="cite">How to cite</h2>
+  <p>If you use the suite, its sounds or its renders in work or teaching, please cite:</p>
+  <ul>
+    <li><strong>the software</strong>: <em>Experiencing the Multi-Probe Sky</em>, <a class="inline" href="https://adrianbayer.github.io/sonify/" target="_blank" rel="noopener">adrianbayer.github.io/sonify</a>, with the code version you used (it is recorded in every Share link and WAV sidecar). A paper describing the suite and a public code release are in preparation.</li>
+    <li><strong>the simulations</strong>:</li>
+  </ul>
+<pre>@article{bayer2025,
+  author  = {Bayer, Adrian E. and Zhong, Yici and Li, Zack and DeRose, Joseph and Feng, Yu and Liu, Jia},
+  title   = {The HalfDome Multi-Survey Cosmological Simulations: N-body Simulations},
+  journal = {Journal of Cosmology and Astroparticle Physics},
+  year    = {2025}, volume = {2025}, number = {05}, pages = {016},
+  doi     = {10.1088/1475-7516/2025/05/016},
+  eprint  = {2407.17462}, archivePrefix = {arXiv}
+}</pre>
+  <p>For a rendered sound, also give the mode and seed, or attach the JSON sidecar: it pins down the sound exactly.</p>
+
+  <h2 class="sub" id="bugs">Reporting bugs and asking questions</h2>
+  <p>Please contact the author through <a class="inline" href="https://adrianbayer.github.io/" target="_blank" rel="noopener">adrianbayer.github.io</a>. Include the page, your browser and device, and either a <strong>Share</strong> link or the JSON sidecar of a <strong>Render WAV</strong>: together they record every setting, the seed, the code version and the data hashes, so the problem can be reproduced exactly.</p>
+
+  <h2 class="sub" id="refs">References</h2>
+  <ul>
+    <li>Adenot P., Choi H., 2021, <em>Web Audio API</em>, W3C Recommendation, 17 June 2021.</li>
+    <li>Ade P. et al. (Simons Observatory), 2019, JCAP, 02, 056 (arXiv:1808.07445).</li>
+    <li>Battaglia N., Bond J. R., Pfrommer C., Sievers J. L., 2012, ApJ, 758, 75 (arXiv:1109.3711).</li>
+    <li>Bayer A. E., Zhong Y., Li Z., DeRose J., Feng Y., Liu J., 2025, JCAP, 05, 016 (<a class="inline" href="https://arxiv.org/abs/2407.17462" target="_blank" rel="noopener">arXiv:2407.17462</a>).</li>
+    <li>Cramer J. G., 2003, <em>The Sound of the Big Bang (WMAP version)</em>, faculty.washington.edu/jcramer/BBSound_2003.html.</li>
+    <li>G&oacute;rski K. M. et al., 2005, ApJ, 622, 759 (HEALPix).</li>
+    <li>ISO 226:2003, <em>Acoustics &mdash; Normal equal-loudness-level contours</em>, International Organization for Standardization.</li>
+    <li>Plomp R., Levelt W. J. M., 1965, J. Acoust. Soc. Am., 38, 548.</li>
+    <li>Sethares W. A., 1993, J. Acoust. Soc. Am., 94, 1218.</li>
+    <li>Shang C., Haiman Z., Knox L., Oh S. P., 2012, MNRAS, 421, 2832.</li>
+    <li>Sunyaev R. A., Zeldovich Ya. B., 1972, Comments Astrophys. Space Phys., 4, 173; 1980, MNRAS, 190, 413.</li>
+    <li>Walker B. N., 2002, J. Exp. Psychol. Appl., 8, 211; 2007, Appl. Cogn. Psychol., 21, 579.</li>
+    <li>Website of the HalfDome simulations: <a class="inline" href="https://halfdomesims.github.io" target="_blank" rel="noopener">halfdomesims.github.io</a>.</li>
+  </ul>
 </section>
 
 </div>
 <script>
-document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-  document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));
-  t.classList.add('active');
-  document.getElementById(t.dataset.tab).classList.add('active');
-  window.scrollTo(0,0);
-}));
+(function () {
+  'use strict';
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab[role="tab"]'));
+  var sections = Array.prototype.slice.call(document.querySelectorAll('section[role="tabpanel"]'));
+  var allBtn = document.getElementById('allBtn');
+  function isAll() { return document.body.classList.contains('all'); }
+  function sectionOf(el) { while (el && !(el.tagName === 'SECTION' && el.getAttribute('role') === 'tabpanel')) el = el.parentElement; return el; }
+  /** Select the tab of section `id`; scroll to `target` (an element inside it) or to the top. */
+  function activate(id, target, focusTab) {
+    var sec = document.getElementById(id);
+    if (!sec) return;
+    tabs.forEach(function (t) {
+      var on = t.getAttribute('aria-controls') === id;
+      t.classList.toggle('active', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      t.tabIndex = on ? 0 : -1;
+      if (on && focusTab) t.focus();
+    });
+    sections.forEach(function (s) { s.classList.toggle('active', s === sec); });
+    if (target && target !== sec) target.scrollIntoView();
+    else if (isAll()) sec.scrollIntoView();
+    else window.scrollTo(0, 0);
+  }
+  /** Open the section holding the element named by a #hash. Returns false if there is none. */
+  function go(hash) {
+    var id = decodeURIComponent(String(hash || '').replace(/^#/, ''));
+    var el = id ? document.getElementById(id) : null, sec = el ? sectionOf(el) : null;
+    if (!sec) return false;
+    activate(sec.id, el, false);
+    return true;
+  }
+  function setHash(id) { try { history.replaceState(null, '', '#' + id); } catch (e) { location.hash = id; } }
+  tabs.forEach(function (t, i) {
+    t.addEventListener('click', function () { var id = t.getAttribute('aria-controls'); activate(id, null, false); setHash(id); });
+    t.addEventListener('keydown', function (e) {
+      var j = null;
+      if (e.key === 'ArrowRight') j = (i + 1) % tabs.length;
+      else if (e.key === 'ArrowLeft') j = (i - 1 + tabs.length) % tabs.length;
+      else if (e.key === 'Home') j = 0;
+      else if (e.key === 'End') j = tabs.length - 1;
+      if (j === null) return;
+      e.preventDefault();
+      var id = tabs[j].getAttribute('aria-controls');
+      activate(id, null, true); setHash(id);
+    });
+  });
+  // in-page links (#id) open the right section
+  document.addEventListener('click', function (e) {
+    var a = e.target && e.target.closest ? e.target.closest('a[href^="#"]') : null;
+    if (!a) return;
+    var h = a.getAttribute('href');
+    if (go(h)) { e.preventDefault(); setHash(h.slice(1)); }
+  });
+  window.addEventListener('hashchange', function () { go(location.hash); });
+  allBtn.addEventListener('click', function () {
+    var on = !isAll();
+    document.body.classList.toggle('all', on);
+    allBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    allBtn.textContent = on ? 'Tabbed view' : 'Single page';
+    var cur = tabs.filter(function (t) { return t.classList.contains('active'); })[0];
+    activate(cur ? cur.getAttribute('aria-controls') : 'overview', null, false);
+  });
+  if (location.hash) go(location.hash);
+})();
 </script>
 </body>
 </html>

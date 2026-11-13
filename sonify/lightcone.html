@@ -7,210 +7,448 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <style>
-:root{--bg:#04060c;--panel:#131829;--border:#1e2744;--text:#c8cde0;--accent:#4a9eff;}
+:root{--bg:#04060c;--panel:#131829;--border:#1e2744;--text:#c8cde0;--muted:#8a93b4;--accent:#4a9eff;--focus:#ffd58a;--cmb:#4a9eff;}
 *{margin:0;padding:0;box-sizing:border-box;}
-body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;}
-header{display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid var(--border);position:relative;z-index:5;}
+html,body{height:100%;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;display:flex;flex-direction:column;}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:8px 14px;border-bottom:1px solid var(--border);}
 header h1{font-size:1.05em;font-weight:600;color:#e8ecf4;}
-header .sub{font-size:0.78em;color:#6b7394;}
+header .sub{font-size:0.78em;color:var(--muted);}
 a.back{color:var(--accent);text-decoration:none;font-size:0.82em;border:1px solid var(--border);padding:4px 10px;border-radius:6px;}
 a.back:hover{background:#1e2744;}
-.controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border);position:relative;z-index:5;}
-.clabel{font-size:0.68em;text-transform:uppercase;letter-spacing:0.6px;color:#6b7394;}
+.controls{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:6px 14px;border-bottom:1px solid var(--border);}
+.clabel{font-size:0.68em;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);}
 .btn{padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text);cursor:pointer;font-size:0.8em;}
 .btn.active{background:var(--accent);color:var(--bg);border-color:var(--accent);}
 .btn:hover{filter:brightness(1.15);}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
+select{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:0.8em;padding:3px 4px;}
 input[type=range]{accent-color:var(--accent);}
-#view{position:fixed;inset:0;}
-canvas{display:block;}
-.readout{position:fixed;left:10px;bottom:10px;font-size:0.75em;color:#9aa3c4;background:rgba(4,6,12,0.7);padding:4px 8px;border-radius:6px;pointer-events:none;z-index:5;}
-.hint{position:fixed;right:10px;bottom:10px;font-size:0.72em;color:#6b7394;background:rgba(4,6,12,0.7);padding:4px 8px;border-radius:6px;pointer-events:none;z-index:5;max-width:46%;text-align:right;}
+.note{font-size:0.74em;color:var(--muted);padding:4px 14px;border-bottom:1px solid var(--border);}
+.note b{color:var(--text);font-weight:600;}
+.warn{color:#ffb86b;}
+#view{position:relative;flex:1;min-height:0;}
+#view canvas{display:block;}
+#view canvas:focus-visible{outline:2px solid var(--focus);outline-offset:-2px;}
+.readout{position:absolute;left:10px;bottom:10px;font-size:0.75em;color:#aab3d4;background:rgba(4,6,12,0.8);padding:4px 8px;border-radius:6px;pointer-events:none;max-width:calc(100% - 20px);}
+.readout b{color:var(--accent);font-weight:600;}
+.hint{position:absolute;right:10px;top:10px;font-size:0.72em;color:var(--muted);background:rgba(4,6,12,0.8);padding:4px 8px;border-radius:6px;pointer-events:none;max-width:46%;text-align:right;}
+.hint:empty{padding:0;background:none;}   /* stays in the accessibility tree (role=status) */
+.cross{position:absolute;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;pointer-events:none;opacity:0.5;
+  background:linear-gradient(#fff,#fff) center/1px 100% no-repeat,linear-gradient(#fff,#fff) center/100% 1px no-repeat;}
+.key{position:absolute;right:10px;top:10px;width:min(420px,calc(100% - 20px));max-height:calc(100% - 60px);overflow:auto;
+  font-size:0.74em;line-height:1.45;background:rgba(10,14,26,0.95);border:1px solid var(--border);border-radius:8px;padding:10px 12px;z-index:3;}
+.key h2{font-size:1.05em;color:#e8ecf4;margin:0 0 4px;}
+.key h3{font-size:0.95em;color:#e8ecf4;margin:8px 0 2px;}
+.key table{border-collapse:collapse;width:100%;}
+.key td,.key th{border-bottom:1px solid var(--border);padding:2px 4px;text-align:left;vertical-align:top;}
+.key th{color:var(--muted);font-weight:normal;}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
 </style>
 </head>
 <body>
 <header>
   <h1>Inside the Lightcone</h1>
-  <span class="sub">you are at the centre &middot; clusters fill the volume by distance &middot; CMB is the outer shell</span>
+  <span class="sub" id="sub">you start at the observer (the centre) &middot; clusters at their comoving distance &chi; &middot; the CMB shell at &chi;<sub>*</sub>, on the same scale</span>
   <a class="back" href="index.html">&larr; All toys</a>
   <a class="back" href="globe.html">3D Globe</a>
   <a class="back" href="about.html">How it works</a>
 </header>
-<div class="controls">
-  <button class="btn" id="spinBtn">Auto-spin</button>
-  <button class="btn" id="haloBtn">Clusters: on</button>
-  <button class="btn" id="cmbBtn">CMB shell: on</button>
-  <button class="btn" id="recenterBtn">Recenter</button>
-  <button class="btn" id="haloRecBtn" title="Record a short sound (say &quot;hey!&quot;) to play on clusters">&#127908; Halo sound</button>
-  <span class="clabel">Vol</span>
-  <input type="range" id="vol" min="0" max="100" value="70" style="width:80px;">
+<div class="controls" role="group" aria-label="Lightcone controls">
+  <button class="btn" id="spinBtn" aria-pressed="false">Auto-spin</button>
+  <button class="btn active" id="haloBtn" aria-pressed="true">Clusters: on</button>
+  <button class="btn active" id="cmbBtn" aria-pressed="true">CMB shell: on</button>
+  <button class="btn" id="recenterBtn" title="Return to the observer (the origin), keeping the view direction">Back to centre</button>
+  <span class="clabel">Audio</span>
+  <button class="btn" id="refBtn" aria-pressed="false" title="Play the CMB voice's centre pitch (the empty-sky level, the map median) as a reference">Ref tone</button>
+  <button class="btn active" id="eqBtn" aria-pressed="true" title="ISO 226 (60 phon) equal-loudness weighting">Equal loudness</button>
+  <label class="clabel" for="haloSel">Halo sound</label>
+  <select id="haloSel">
+    <option value="data" selected>data earcon</option>
+    <option value="artistic">artistic ('hey!' / your clip)</option>
+  </select>
+  <button class="btn" id="haloRecBtn" title="Record a short clip (up to 3 s) for the artistic halo sound">&#127908; record</button>
+  <label class="clabel" for="vol">Vol</label>
+  <input type="range" id="vol" min="0" max="200" value="70" style="width:90px;" title="Default 70: the limiter stays idle at 99.9% of sky positions; louder settings may engage it on bright spots">
+  <button class="btn" id="keyBtn" aria-expanded="false" aria-controls="key">Sound key</button>
 </div>
-<div id="view"></div>
-<div class="readout" id="readout">drag to look &middot; <b>WASD</b>/arrows to fly, Q/E down&middot;up &middot; wheel zoom &middot; click a cluster or the CMB</div>
-<div class="hint" id="hint">loading…</div>
+<div class="note" id="note">loading&hellip;</div>
+<div id="view">
+  <div class="cross" aria-hidden="true"></div>
+  <div class="readout" id="readout" aria-hidden="true">drag or <b>I/J/K/L</b> to look &middot; <b>WASD</b>/arrows fly, Q/E (Shift/Space) down/up &middot; wheel or +/&minus; zoom (field of view) &middot; click a cluster or the CMB &middot; Enter listens at the centre</div>
+  <div class="hint" id="hint" role="status" aria-live="polite">loading&hellip;</div>
+  <aside class="key" id="key" hidden aria-label="Sound key"></aside>
+  <div class="sr-only" id="live" aria-live="polite"></div>
+</div>
 
+<script src="sonify_core.js"></script>
+<script src="sky_core.js"></script>
+<script src="sky_audio.js"></script>
 <script>
-const V = { meta:null, halos:null, cl:null, comps:new Set(['dT_cmblens']),
-  valMaps:{}, volume:0.7, audioCtx:null, gain:null, limiter:null, keys:{} };
-const R_CMB = 12, R_HALO_MAX = 9;
-const ORDER=['dT_cmblens'];
-const canvas_unused=null;
-
-// ---- value maps + audio (reused from the other sky toys) ----
-function valInfo(comp){ if(!V.meta) return null; return V.meta.images[comp]; }
-function loadValMap(comp){ if(V.valMaps[comp]) return; const info=valInfo(comp); if(!info||!info.val) return;
-  V.valMaps[comp]='loading'; const im=new Image(); im.crossOrigin='anonymous';
-  im.onload=()=>{ const c=document.createElement('canvas'); c.width=im.naturalWidth; c.height=im.naturalHeight;
-    const cx=c.getContext('2d',{willReadFrequently:true}); cx.drawImage(im,0,0); V.valMaps[comp]={cx,w:c.width,h:c.height,mode:info.mode}; };
-  im.onerror=()=>{ delete V.valMaps[comp]; }; im.src='sky_img/'+info.val; }
-function loadValMaps(){ for(const c of V.comps) loadValMap(c); }
-function sampleValue(comp,fx,fy){ const vm=V.valMaps[comp]; if(!vm||vm==='loading') return null;
-  const x=Math.min(vm.w-1,Math.max(0,Math.floor(fx*vm.w))), y=Math.min(vm.h-1,Math.max(0,Math.floor(fy*vm.h)));
-  let g; try{ g=vm.cx.getImageData(x,y,1,1).data[0]; }catch(e){ return null; } return vm.mode==='sym'?(g-128)/127:(g/255)*2-1; }
-function initAudio(){ if(V.audioCtx) return;
-  V.audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-  V.gain=V.audioCtx.createGain(); V.gain.gain.value=V.volume;
-  V.limiter=V.audioCtx.createDynamicsCompressor(); V.limiter.threshold.value=-3; V.limiter.ratio.value=12; V.limiter.attack.value=0.003; V.limiter.release.value=0.25;
-  V.gain.connect(V.limiter); V.limiter.connect(V.audioCtx.destination); }
-function playVoice(comp,norm){ initAudio(); if(V.audioCtx.state==='suspended') V.audioCtx.resume();
-  const ctx=V.audioCtx, now=ctx.currentTime, freq=196*Math.pow(2,Math.max(-1,Math.min(1,norm)));
-  const o=ctx.createOscillator(), g=ctx.createGain(); o.type='sine'; o.frequency.value=freq;
-  g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.22,now+0.01); g.gain.exponentialRampToValueAtTime(0.001,now+0.3);
-  o.connect(g); g.connect(V.gain); o.start(now); o.stop(now+0.34); }
-function heySynth(){ initAudio(); if(V.audioCtx.state==='suspended') V.audioCtx.resume();
-  const ctx=V.audioCtx, now=ctx.currentTime;
-  const o=ctx.createOscillator(); o.type='sawtooth';
-  o.frequency.setValueAtTime(300,now); o.frequency.exponentialRampToValueAtTime(540,now+0.08); o.frequency.exponentialRampToValueAtTime(300,now+0.34);
-  const f1=ctx.createBiquadFilter(); f1.type='bandpass'; f1.frequency.value=720; f1.Q.value=5;
-  const f2=ctx.createBiquadFilter(); f2.type='bandpass'; f2.frequency.setValueAtTime(1650,now); f2.frequency.linearRampToValueAtTime(2200,now+0.22); f2.Q.value=7;
-  const g=ctx.createGain(); g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.5,now+0.03); g.gain.setValueAtTime(0.5,now+0.18); g.gain.exponentialRampToValueAtTime(0.001,now+0.36);
-  o.connect(f1); o.connect(f2); f1.connect(g); f2.connect(g); g.connect(V.gain); o.start(now); o.stop(now+0.4); }
-function playHaloSound(){ initAudio(); if(V.audioCtx.state==='suspended') V.audioCtx.resume();
-  if(V.haloBuf){ const s=V.audioCtx.createBufferSource(); s.buffer=V.haloBuf; const g=V.audioCtx.createGain(); g.gain.value=1.0; s.connect(g); g.connect(V.gain); s.start(); } else heySynth(); }
-function loadHaloSound(){ try{ const d=localStorage.getItem('haloSound'); if(!d) return;
-  fetch(d).then(r=>r.arrayBuffer()).then(ab=>{ initAudio(); V.audioCtx.decodeAudioData(ab,b=>{V.haloBuf=b;}); }).catch(()=>{}); }catch(e){} }
-function recordHaloSound(){ const btn=document.getElementById('haloRecBtn');
-  if(typeof MediaRecorder==='undefined' || !navigator.mediaDevices){ btn.textContent='no mic'; return; }
-  if(V._haloRec && V._haloRec.state==='recording'){ V._haloRec.stop(); return; }
-  navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
-    const rec=new MediaRecorder(stream), chunks=[]; rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
-    rec.onstop=()=>{ stream.getTracks().forEach(t=>t.stop()); const fr=new FileReader();
-      fr.onload=()=>{ try{ localStorage.setItem('haloSound', fr.result); }catch(e){} initAudio(); fetch(fr.result).then(r=>r.arrayBuffer()).then(ab=>V.audioCtx.decodeAudioData(ab,b=>{V.haloBuf=b;})).catch(()=>{}); };
-      fr.readAsDataURL(new Blob(chunks));
-      btn.innerHTML='&#127908; Halo sound'; btn.classList.remove('active'); btn.style.background=''; btn.style.color=''; V._haloRec=null; };
-    rec.start(); V._haloRec=rec; btn.innerHTML='&#9632; recording…'; btn.classList.add('active'); btn.style.background='#cc3333'; btn.style.color='#fff';
-    setTimeout(()=>{ if(V._haloRec && V._haloRec.state==='recording') V._haloRec.stop(); }, 3000);
-  }).catch(()=>{ btn.textContent='mic denied'; }); }
-
-// ---- geometry: comoving distance (flat LCDM, Om=0.31), arbitrary units ----
-function comoving(z){ const Om=0.31,OL=0.69,N=128; let s=0; for(let i=0;i<N;i++){ const zp=(i+0.5)/N*z; s+=1/Math.sqrt(Om*Math.pow(1+zp,3)+OL); } return (z/N)*s; }
-function skyToVec(theta,phi,r){ return new THREE.Vector3(-r*Math.cos(phi)*Math.sin(theta), -r*Math.cos(theta), r*Math.sin(phi)*Math.sin(theta)); }
-
-// ============================================================
-let scene, camera, renderer, controls, cmbSphere, haloPoints, raycaster, mouse;
-function initThree(){
-  const view=document.getElementById('view');
-  scene=new THREE.Scene();
-  camera=new THREE.PerspectiveCamera(60, view.clientWidth/view.clientHeight, 0.01, 200);
-  camera.position.set(0,0,3);
-  renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
-  renderer.setSize(view.clientWidth, view.clientHeight); renderer.setClearColor(0x04060c,1);
-  view.appendChild(renderer.domElement);
-
-  // CMB enclosing shell (seen from the inside)
-  const tex=new THREE.TextureLoader().load('sky_img/dT_cmblens.jpg', ()=>{document.getElementById('hint').textContent='';});
-  const cmbMat=new THREE.MeshBasicMaterial({map:tex, side:THREE.BackSide});
-  cmbSphere=new THREE.Mesh(new THREE.SphereGeometry(R_CMB, 96, 48), cmbMat); scene.add(cmbSphere);
-
-  controls=new THREE.OrbitControls(camera, renderer.domElement);
-  controls.enablePan=false; controls.rotateSpeed=-0.35; controls.minDistance=0.1; controls.maxDistance=R_CMB*1.7;
-  controls.enableDamping=true; controls.dampingFactor=0.08;
-
-  raycaster=new THREE.Raycaster(); raycaster.params.Points.threshold=0.25; mouse=new THREE.Vector2();
-  let downX=0,downY=0;
-  renderer.domElement.addEventListener('pointerdown',e=>{ downX=e.clientX; downY=e.clientY; });
-  renderer.domElement.addEventListener('pointerup',e=>{
-    if(Math.abs(e.clientX-downX)+Math.abs(e.clientY-downY)>6) return;
-    const r=renderer.domElement.getBoundingClientRect();
-    mouse.x=((e.clientX-r.left)/r.width)*2-1; mouse.y=-((e.clientY-r.top)/r.height)*2+1;
-    raycaster.setFromCamera(mouse,camera);
-    const objs=[]; if(haloPoints && haloPoints.visible) objs.push(haloPoints); if(cmbSphere.visible) objs.push(cmbSphere);
-    const hits=raycaster.intersectObjects(objs,false);
-    if(!hits.length) return; const h=hits[0];
-    if(h.object===haloPoints){ const i=h.index; playHaloSound();
-      document.getElementById('readout').innerHTML='&#9899; cluster: log&#8321;&#8320; M='+V.halos.log_mass[i].toFixed(2)+' M&#8857;, z='+(V.halos.redshift?V.halos.redshift[i]:0).toFixed(2); }
-    else if(h.uv){ const theta=(1-h.uv.y)*Math.PI, phi=h.uv.x*2*Math.PI;
-      const n=sampleValue('dT_cmblens', phi/(2*Math.PI), theta/Math.PI);
-      if(n===null){ loadValMap('dT_cmblens'); } else playVoice('dT_cmblens', n);
-      document.getElementById('readout').innerHTML='CMB &nbsp; l/b &asymp; <b>'+(phi*180/Math.PI).toFixed(0)+'&deg;, '+(90-theta*180/Math.PI).toFixed(0)+'&deg;</b>'; }
-  });
-  window.addEventListener('resize',()=>{ camera.aspect=view.clientWidth/view.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(view.clientWidth, view.clientHeight); });
+'use strict';
+if (typeof SkyCore === 'undefined' || typeof SkyAudio === 'undefined') {
+  document.getElementById('hint').textContent = 'Could not load the page scripts (sonify_core.js, sky_core.js, sky_audio.js).';
+  throw new Error('sky page scripts missing');
 }
-function galaxyTexture(){   // soft round glow: bright core, smooth falloff to transparent
-  const s=64, c=document.createElement('canvas'); c.width=c.height=s; const x=c.getContext('2d');
-  const g=x.createRadialGradient(s/2,s/2,0, s/2,s/2,s/2);   // centred -> no "bump" look
-  g.addColorStop(0.00,'rgba(255,255,255,1.00)');
-  g.addColorStop(0.16,'rgba(255,252,244,0.92)');
-  g.addColorStop(0.42,'rgba(255,240,214,0.42)');
-  g.addColorStop(0.72,'rgba(255,232,200,0.12)');
-  g.addColorStop(1.00,'rgba(255,232,200,0.00)');
-  x.fillStyle=g; x.fillRect(0,0,s,s);
+const C = SkyCore;
+const audio = SkyAudio.createSkyAudio({ volume: 0.7 });
+// Scene units: 1 unit = 1 Gpc/h = 1000 Mpc/h. Clusters sit at their comoving distance chi and the
+// CMB shell at chi_* (last scattering), so the picture is to scale (HalfDome cosmology).
+const UNIT_MPC = 1000;
+const EPS = 1e-4;                               // camera-target separation (the camera is effectively a point)
+const FLY_SPEED = 0.8;                          // units (Gpc/h) per second
+const SPIN_RAD_PER_S = 2 * Math.PI / 100;
+const FOV0 = 70, FOV_MIN = 10, FOV_MAX = 100;
+const PICK_PX = 6, PICK_PX_TOUCH = 14;           // cluster pick radius [CSS px] on screen, around the projected markers
+// Keyboard look: I/K pitch up/down, J/L turn left/right, LOOK_STEP_DEG per key press (auto-repeat
+// keeps turning), scaled with the field of view so a zoomed-in view turns finely.
+const LOOK_STEP_DEG = 4, LOOK_MAX_ELEV_DEG = 89;
+const LOOK_KEYS = { KeyJ: [1, 0], KeyL: [-1, 0], KeyI: [0, 1], KeyK: [0, -1] };   // [turn left +, look up +]
+const FLY_CODES = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'ShiftLeft'];
+const ANNOUNCE_MS = 350;                        // announce the view after the last turn / flight key
+const BIN_PX = [2.5, 3.5, 5, 7];                // marker size [CSS px] per mass bin (bigger = more massive)
+const V = { meta: null, halos: null, store: null, scales: null, keys: {}, spin: false, touch: false,
+  chiStar: null, rShell: null, haloLocal: null, colourCam: null };
+const $ = (id) => document.getElementById(id);
+
+let scene, camera, renderer, controls, skyGroup, cmbSphere, haloGroup, haloBins = [], raycaster;
+function viewSize() { const v = $('view'); return [v.clientWidth, v.clientHeight]; }
+function worldToSky(p) { const l = skyGroup.worldToLocal(p.clone()); return C.vecToSky(l.x, l.y, l.z); }
+function setHint(t) { if ($('hint').textContent !== t) $('hint').textContent = t; }   // a live region: announce changes only
+function setFov(fov) {
+  camera.fov = Math.min(FOV_MAX, Math.max(FOV_MIN, fov));
+  camera.updateProjectionMatrix();
+  controls.rotateSpeed = -0.35 * camera.fov / FOV0;               // finer look-around when zoomed in
+}
+/** After a programmatic camera change: update the controls and the matrices used for picking. */
+function refreshView() { controls.update(); camera.updateMatrixWorld(); }
+
+function initThree() {
+  const view = $('view'), [w, h] = viewSize();
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(FOV0, w / h, 0.001, 60);
+  camera.position.set(0, 0, 0);
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(w, h); renderer.setClearColor(0x04060c, 1);
+  const cv = renderer.domElement;
+  cv.tabIndex = 0; cv.setAttribute('role', 'application'); cv.style.touchAction = 'none';
+  cv.setAttribute('aria-label', 'Lightcone. I, J, K, L turn the view (look up, left, down, right); arrow keys or W A S D fly, ' +
+    'Q and E move down and up; plus and minus zoom the field of view; Enter listens in the view direction.');
+  view.insertBefore(cv, view.firstChild);
+
+  skyGroup = new THREE.Group(); scene.add(skyGroup);
+  // CMB shell at chi_* (seen from the inside); the texture is the CMB display image
+  const e = C.findMap(V.meta, 'dT_cmblens', null);
+  const loader = new THREE.TextureLoader();
+  const mat = new THREE.MeshBasicMaterial({ side: THREE.BackSide });
+  loader.load('sky_img/' + e.display.lo, (t) => {
+    if (!mat.map) { mat.map = t; mat.needsUpdate = true; }
+    if (!V.store.error('dT_cmblens', null)) setHint('');
+    loader.load('sky_img/' + e.display.hi, (t2) => { mat.map = t2; mat.needsUpdate = true; });
+  });
+  cmbSphere = new THREE.Mesh(new THREE.SphereGeometry(V.rShell, 192, 96), mat);
+  skyGroup.add(cmbSphere);
+
+  // "look around" from the observer: OrbitControls orbiting a target EPS in front of the camera
+  controls = new THREE.OrbitControls(camera, cv);
+  controls.target.set(0, 0, -EPS);
+  controls.enablePan = false; controls.enableZoom = false;
+  controls.minDistance = EPS; controls.maxDistance = EPS;
+  controls.rotateSpeed = -0.35; controls.enableDamping = true; controls.dampingFactor = 0.08;
+  controls.update();
+  raycaster = new THREE.Raycaster();
+
+  let downX = 0, downY = 0;
+  cv.addEventListener('pointerdown', (e) => { downX = e.clientX; downY = e.clientY; V.touch = e.pointerType === 'touch'; cv.focus({ preventScroll: true }); });
+  cv.addEventListener('pointerup', (e) => {
+    if (Math.abs(e.clientX - downX) + Math.abs(e.clientY - downY) > 6) return;     // a drag (look around)
+    const r = cv.getBoundingClientRect();
+    listenToward(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1),
+      V.touch ? PICK_PX_TOUCH : PICK_PX);
+  });
+  cv.addEventListener('wheel', (e) => { e.preventDefault(); setFov(camera.fov * (e.deltaY < 0 ? 1 / 1.1 : 1.1)); }, { passive: false });
+  window.addEventListener('resize', () => {
+    const [w2, h2] = viewSize(); camera.aspect = w2 / h2; camera.updateProjectionMatrix(); renderer.setSize(w2, h2);
+  });
+}
+
+// ============================== halos: positions to scale, size by mass, brightness by distance ==============================
+function dotTexture() {   // soft round glow
+  const s = 64, c = document.createElement('canvas'); c.width = c.height = s; const x = c.getContext('2d');
+  const g = x.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+  g.addColorStop(0.00, 'rgba(255,255,255,1.00)'); g.addColorStop(0.16, 'rgba(255,252,244,0.92)');
+  g.addColorStop(0.42, 'rgba(255,240,214,0.42)'); g.addColorStop(0.72, 'rgba(255,232,200,0.12)');
+  g.addColorStop(1.00, 'rgba(255,232,200,0.00)');
+  x.fillStyle = g; x.fillRect(0, 0, s, s);
   return new THREE.CanvasTexture(c);
 }
-function buildHalos(){
-  if(!V.halos) return; const n=V.halos.n, pos=new Float32Array(n*3), col=new Float32Array(n*3);
-  const Dc4=comoving(4)||1;
-  for(let i=0;i<n;i++){
-    const th=V.halos.theta[i]*Math.PI/180, ph=V.halos.phi[i]*Math.PI/180;
-    const z=(V.halos.redshift?V.halos.redshift[i]:1.0);
-    const r=Math.min(R_CMB-0.5, R_HALO_MAX*comoving(z)/Dc4);
-    const v=skyToVec(th,ph,r); pos[3*i]=v.x; pos[3*i+1]=v.y; pos[3*i+2]=v.z;
-    const b=Math.min(1,Math.max(0.35,(V.halos.log_mass[i]-14.5)*0.9+0.35));
-    const t=Math.min(1,Math.max(0,(V.halos.log_mass[i]-14.6)/0.9));   // mass ramp: warm gold -> hot white
-    col[3*i]=1.0*b; col[3*i+1]=(0.80+0.16*t)*b; col[3*i+2]=(0.52+0.40*t)*b;
+function haloChi(i) { const H = V.halos; return H.chi ? H.chi[i] : C.comovingDistance(H.redshift[i]); }
+function buildHalos() {
+  if (!V.halos) return;
+  const H = V.halos, tex = dotTexture();
+  V.haloLocal = new Float64Array(3 * H.n);
+  for (let i = 0; i < H.n; i++) V.haloLocal.set(C.skyToVec(H.theta[i] * C.DEG, H.phi[i] * C.DEG, haloChi(i) / UNIT_MPC), 3 * i);
+  const bins = [[], [], [], []];
+  for (let i = 0; i < H.n; i++) bins[C.massBin(H.log_mass[i])].push(i);
+  haloGroup = new THREE.Group(); skyGroup.add(haloGroup);
+  haloBins = bins.map((idx, b) => {
+    const pos = new Float32Array(idx.length * 3), col = new Float32Array(idx.length * 3);
+    idx.forEach((i, k) => pos.set(V.haloLocal.subarray(3 * i, 3 * i + 3), 3 * k));
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    const pts = new THREE.Points(g, new THREE.PointsMaterial({ size: BIN_PX[b], map: tex, sizeAttenuation: false,
+      vertexColors: true, transparent: true, depthWrite: false }));
+    haloGroup.add(pts);
+    return { idx, pts, col };
+  });
+  recolourHalos();
+}
+/** Colour = mass (warm gold -> hot white); brightness falls with the distance d from the camera
+ *  (~ d^-1/2 beyond 0.5 Gpc/h, floor 0.3): farther = dimmer, as farther = quieter in the audio. */
+function recolourHalos() {
+  if (!haloBins.length) return;
+  const H = V.halos, cam = camera.position, p = new THREE.Vector3();
+  skyGroup.updateMatrixWorld(true);
+  for (const bin of haloBins) {
+    bin.idx.forEach((i, k) => {
+      p.set(V.haloLocal[3 * i], V.haloLocal[3 * i + 1], V.haloLocal[3 * i + 2]); skyGroup.localToWorld(p);
+      const d = p.distanceTo(cam), br = Math.min(1, Math.max(0.3, Math.sqrt(0.5 / Math.max(d, 1e-3))));
+      const t = Math.min(1, Math.max(0, (H.log_mass[i] - 14.6) / 0.9));
+      bin.col[3 * k] = br; bin.col[3 * k + 1] = (0.80 + 0.16 * t) * br; bin.col[3 * k + 2] = (0.52 + 0.40 * t) * br;
+    });
+    bin.pts.geometry.attributes.color.needsUpdate = true;
   }
-  const g=new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(pos,3));
-  g.setAttribute('color', new THREE.BufferAttribute(col,3));
-  haloPoints=new THREE.Points(g, new THREE.PointsMaterial({size:0.2, map:galaxyTexture(), sizeAttenuation:true, vertexColors:true, transparent:true, depthWrite:false, blending:THREE.NormalBlending}));
-  scene.add(haloPoints);
+  V.colourCam = cam.clone(); V.colourRot = skyGroup.rotation.y;
 }
-function moveCamera(){   // WASD/arrows fly through the volume; Q/E (or Shift/Space) down/up
-  if(!controls) return; const sp=0.08, K=V.keys; let f=0,r=0,u=0;
-  if(K['KeyW']||K['ArrowUp']) f+=1; if(K['KeyS']||K['ArrowDown']) f-=1;
-  if(K['KeyD']||K['ArrowRight']) r+=1; if(K['KeyA']||K['ArrowLeft']) r-=1;
-  if(K['KeyE']||K['Space']) u+=1; if(K['KeyQ']||K['ShiftLeft']) u-=1;
-  if(!f&&!r&&!u) return;
-  const fwd=new THREE.Vector3().subVectors(controls.target, camera.position).normalize();
-  const right=new THREE.Vector3().crossVectors(fwd, camera.up).normalize();
-  const mv=new THREE.Vector3();
-  mv.addScaledVector(fwd, f*sp); mv.addScaledVector(right, r*sp); mv.addScaledVector(new THREE.Vector3(0,1,0), u*sp);
+
+// ============================== listening ==============================
+/** The CMB voice sample at a sky point (SkyCore.voiceSample; scale 'equalized per map', which for
+ *  the single CMB map is its own median, range and sigma). */
+function cmbSample(sky) {
+  const m = V.store.get('dT_cmblens', null);
+  return C.voiceSample('dT_cmblens', m ? C.sampleMap(m, sky.theta, sky.phi) : null, C.findMap(V.meta, 'dT_cmblens', null), V.scales.dT_cmblens);
+}
+const _M = new THREE.Matrix4(), _P = new THREE.Vector3(), _W = new THREE.Vector3(), _CAM = new THREE.Vector3(), _FWD = new THREE.Vector3();
+/** The visible cluster whose marker is nearest to the canvas point (x, y) [CSS px] within radiusPx:
+ *  every cluster in front of the camera is projected with it (screen distance, so the radius is
+ *  the same number of pixels everywhere in the view, at any field of view). dist = your distance. */
+function pickHaloScreen(x, y, radiusPx) {
+  if (!haloGroup || !haloGroup.visible) return null;            // hidden clusters are silent
+  const H = V.halos, [w, h] = viewSize(), L = V.haloLocal, Mw = skyGroup.matrixWorld;
+  _CAM.setFromMatrixPosition(camera.matrixWorld); camera.getWorldDirection(_FWD);
+  _M.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse).multiply(Mw);
+  let best = -1, bestD2 = radiusPx * radiusPx, bestD = 0;
+  for (let i = 0; i < H.n; i++) {
+    _W.set(L[3 * i], L[3 * i + 1], L[3 * i + 2]).applyMatrix4(Mw).sub(_CAM);
+    if (_W.dot(_FWD) <= camera.near) continue;                  // behind the camera (or clipped)
+    _P.set(L[3 * i], L[3 * i + 1], L[3 * i + 2]).applyMatrix4(_M);
+    const dx = (_P.x + 1) / 2 * w - x, dy = (1 - _P.y) / 2 * h - y, d2 = dx * dx + dy * dy;
+    if (d2 <= bestD2) { bestD2 = d2; best = i; bestD = _W.length(); }
+  }
+  return best < 0 ? null : { index: best, px: Math.sqrt(bestD2), dist: bestD };
+}
+/** Where a ray from the camera meets the CMB shell (the camera is always inside it). */
+function shellHit(dir) {
+  const o = camera.position, b = o.dot(dir), c = o.lengthSq() - V.rShell * V.rShell;
+  const t = -b + Math.sqrt(Math.max(0, b * b - c));
+  return o.clone().addScaledVector(dir, t);
+}
+function haloReadout(i, distUnits) {
+  const H = V.halos;
+  return 'cluster: log₁₀ M₂₀₀c = ' + H.log_mass[i].toFixed(2) + ' (M⊙/h), z = ' + H.redshift[i].toFixed(2) +
+    ', χ = ' + Math.round(haloChi(i)) + ' Mpc/h from the observer, ' + Math.round(distUnits * UNIT_MPC) + ' Mpc/h from you';
+}
+function listenToward(ndc, radiusPx) {
+  raycaster.setFromCamera(ndc, camera);
+  const dir = raycaster.ray.direction.clone().normalize();
+  const [w, h] = viewSize();
+  const hp = pickHaloScreen((ndc.x + 1) / 2 * w, (1 - ndc.y) / 2 * h, radiusPx);
+  if (hp) {
+    const H = V.halos, i = hp.index;
+    const w = new THREE.Vector3(V.haloLocal[3 * i], V.haloLocal[3 * i + 1], V.haloLocal[3 * i + 2]); skyGroup.localToWorld(w);
+    // HRTF at the cluster's position; the panner's inverse-distance model gives level ~ 1/distance
+    // (refDistance = the cue's chiRef); the low-pass follows your actual distance in Mpc/h.
+    audio.playHalo({ logM: H.log_mass[i], chi: haloChi(i) },
+      { position: [w.x, w.y, w.z], pannerDistance: true, refDistance: C.DIST_CUE.chiRef / UNIT_MPC, cueChi: hp.dist * UNIT_MPC });
+    const txt = haloReadout(i, hp.dist);
+    $('readout').innerHTML = '<span style="color:#ffd58a">&#9679; ' + txt + '</span>';
+    $('live').textContent = txt;
+    return;
+  }
+  if (!cmbSphere.visible) return;
+  const P = shellHit(dir), sky = worldToSky(P), s = cmbSample(sky);
+  audio.playPoint([s], { position: [P.x, P.y, P.z] });         // HRTF direction (the shell is 'at infinity')
+  const val = s.uK !== null ? C.formatMicroK(s.uK, s.step) : V.store.error('dT_cmblens', null) ? '(unavailable)' : '(loading)';
+  $('readout').innerHTML = '<b>CMB</b> ' + val + ' &nbsp;|&nbsp; ' + C.formatSkyCoords(sky.theta, sky.phi) +
+    ' &nbsp;|&nbsp; last scattering, χ<sub>*</sub> = ' + Math.round(V.chiStar) + ' Mpc/h';
+  $('live').textContent = 'CMB ' + val + ' at ' + C.formatSkyCoords(sky.theta, sky.phi);
+}
+
+// ============================== motion (frame-rate independent) ==============================
+function moveCamera(dt) {
+  const K = V.keys; let f = 0, r = 0, u = 0;
+  if (K.KeyW || K.ArrowUp) f += 1; if (K.KeyS || K.ArrowDown) f -= 1;
+  if (K.KeyD || K.ArrowRight) r += 1; if (K.KeyA || K.ArrowLeft) r -= 1;
+  if (K.KeyE || K.Space) u += 1; if (K.KeyQ || K.ShiftLeft) u -= 1;
+  if (!f && !r && !u) return false;
+  const fwd = new THREE.Vector3().subVectors(controls.target, camera.position).normalize();
+  const right = new THREE.Vector3().crossVectors(fwd, camera.up);
+  if (right.lengthSq() < 1e-12) right.set(1, 0, 0);            // looking straight up or down
+  right.normalize();
+  const mv = new THREE.Vector3().addScaledVector(fwd, f).addScaledVector(right, r).addScaledVector(camera.up, u);
+  if (mv.lengthSq() === 0) return false;
+  mv.setLength(FLY_SPEED * dt);
+  const next = camera.position.clone().add(mv), maxR = 0.92 * V.rShell;   // stay inside the shell
+  if (next.length() > maxR) next.setLength(maxR);
+  mv.subVectors(next, camera.position);
   camera.position.add(mv); controls.target.add(mv);
-  const maxR=R_CMB*1.4; if(camera.position.length()>maxR) camera.position.setLength(maxR);
+  return true;
 }
-function animate(){ requestAnimationFrame(animate); moveCamera(); if(controls) controls.update(); if(renderer) renderer.render(scene,camera); }
-
-function wireControls(){
-  document.getElementById('spinBtn').addEventListener('click',()=>{ controls.autoRotate=!controls.autoRotate; controls.autoRotateSpeed=0.6; document.getElementById('spinBtn').classList.toggle('active',controls.autoRotate); });
-  document.getElementById('haloBtn').addEventListener('click',()=>{ if(haloPoints){ haloPoints.visible=!haloPoints.visible; const on=haloPoints.visible; document.getElementById('haloBtn').textContent='Clusters: '+(on?'on':'off'); document.getElementById('haloBtn').classList.toggle('active',on);} });
-  document.getElementById('cmbBtn').addEventListener('click',()=>{ cmbSphere.visible=!cmbSphere.visible; const on=cmbSphere.visible; document.getElementById('cmbBtn').textContent='CMB shell: '+(on?'on':'off'); document.getElementById('cmbBtn').classList.toggle('active',on); });
-  document.getElementById('recenterBtn').addEventListener('click',()=>{ camera.position.set(0,0,5); controls.target.set(0,0,0); controls.update(); });
-  document.getElementById('haloRecBtn').addEventListener('click', recordHaloSound);
-  document.getElementById('vol').addEventListener('input',e=>{ V.volume=e.target.value/100; if(V.gain) V.gain.gain.value=V.volume; });
-  window.addEventListener('keydown',e=>{ if(e.target.tagName==='INPUT') return; V.keys[e.code]=true; if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].indexOf(e.code)>=0) e.preventDefault(); });
-  window.addEventListener('keyup',e=>{ V.keys[e.code]=false; });
+/** Keyboard look: turn the view direction about the camera (the camera stays where it is). */
+function look(turnLeft, lookUp) {
+  const step = LOOK_STEP_DEG * C.DEG * camera.fov / FOV0, lim = LOOK_MAX_ELEV_DEG * C.DEG;
+  const f = new THREE.Vector3().subVectors(controls.target, camera.position).normalize();
+  const az = Math.atan2(f.x, f.z) + turnLeft * step;
+  const el = Math.max(-lim, Math.min(lim, Math.asin(Math.max(-1, Math.min(1, f.y))) + lookUp * step));
+  f.set(Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az));
+  controls.target.copy(camera.position).addScaledVector(f, EPS);
+  refreshView();
+  scheduleAnnounce();
+}
+/** What is in the view direction: the CMB shell point (theta, phi) under the crosshair, your
+ *  distance from the observer and the cluster under the crosshair (aria-live, after turning or flying). */
+function viewReport() {
+  const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
+  const sky = worldToSky(shellHit(dir)), r = camera.position.length() * UNIT_MPC;
+  const [w, h] = viewSize(), hp = pickHaloScreen(w / 2, h / 2, PICK_PX);
+  return 'Looking at ' + C.formatSkyCoords(sky.theta, sky.phi) + ' on the CMB shell; ' +
+    (r < 1 ? 'you are at the observer' : 'you are ' + Math.round(r) + ' Mpc/h from the observer') + '; ' +
+    (hp ? 'under the crosshair: ' + haloReadout(hp.index, hp.dist) : 'no cluster under the crosshair') + '. Enter listens.';
+}
+let announceTimer = null;
+function scheduleAnnounce() {
+  clearTimeout(announceTimer);
+  announceTimer = setTimeout(() => { $('live').textContent = viewReport(); }, ANNOUNCE_MS);
 }
 
-async function init(){
-  if(typeof THREE==='undefined'){ document.getElementById('hint').textContent='Could not load 3D library (check connection).'; return; }
-  try{
-    const [a,b]=await Promise.all([fetch('sky_img/sky_img.json'),fetch('halos.json')]);
-    if(!a.ok) throw new Error('sky_img.json HTTP '+a.status);
-    V.meta=await a.json(); V.halos = b.ok?await b.json():null;
-  }catch(err){ document.getElementById('hint').textContent='Load failed: '+err.message+(location.protocol==='file:'?' (serve over http)':''); return; }
+let lastT = null;
+const tmpF = new THREE.Vector3(), tmpU = new THREE.Vector3();
+function animate(t) {
+  requestAnimationFrame(animate);
+  const dt = lastT === null ? 0 : Math.min(0.1, (t - lastT) / 1000); lastT = t;
+  const moved = moveCamera(dt);
+  if (V.spin) skyGroup.rotation.y += SPIN_RAD_PER_S * dt;
+  controls.dampingFactor = 1 - Math.pow(1 - 0.08, dt * 60);
+  controls.update();
+  // marker brightness depends on the camera-halo distances: refresh when they change
+  const offCentre = camera.position.lengthSq() > 1e-6;
+  if (!V.colourCam || (moved && V.colourCam.distanceToSquared(camera.position) > 1e-4) ||
+      (offCentre && Math.abs(V.colourRot - skyGroup.rotation.y) > 0.01)) recolourHalos();
+  if (audio.ctx) {
+    camera.getWorldDirection(tmpF); tmpU.set(0, 1, 0).applyQuaternion(camera.quaternion);
+    audio.setListener([camera.position.x, camera.position.y, camera.position.z], [tmpF.x, tmpF.y, tmpF.z], [tmpU.x, tmpU.y, tmpU.z]);
+  }
+  renderer.render(scene, camera);
+}
+
+// ============================== controls ==============================
+function setToggle(id, on) { const b = $(id); b.classList.toggle('active', on); b.setAttribute('aria-pressed', on); }
+function renderKey() {
+  const k = $('key'); if (k.hidden || !V.meta) return;
+  k.innerHTML = C.keyHTML({ meta: V.meta, band: null, comps: ['dT_cmblens'], scales: V.scales, scaleMode: C.DEFAULT_SCALE_MODE,
+    ref: audio.state.ref, eq: audio.state.eq, artistic: audio.state.artistic, pickPx: PICK_PX, pickMode: 'screen', scanPx: 0,
+    controlRate: SkyAudio.CONTROL_RATE, stagger: SkyAudio.STAGGER, maxLagS: 0, view: 'lightcone' }) +
+    '<h3>Keys</h3><p>I / K look up / down, J / L turn left / right (' + LOOK_STEP_DEG + '° per press at a ' + FOV0 +
+    '° field of view, finer when zoomed in); W A S D or the arrows fly, Q / E (Shift / Space) down / up; + / − zoom the ' +
+    'field of view; Enter listens at the crosshair. After turning or flying, the view direction (θ, φ on the CMB shell) and ' +
+    'the cluster under the crosshair are announced to screen readers.</p>' +
+    '<h3>Geometry</h3><p>1 unit = 1 Gpc/h. Clusters sit at their comoving distance χ (' +
+    Math.round(V.chiMin) + '–' + Math.round(V.chiMax) + ' Mpc/h) and the CMB shell at χ<sub>*</sub> = ' + Math.round(V.chiStar) +
+    ' Mpc/h (z<sub>*</sub> = ' + (V.halos && V.halos.z_star ? V.halos.z_star : 1091.9) + '), all in the HalfDome cosmology (h = ' +
+    C.HALFDOME.h + ', Ω<sub>m</sub> = ' + C.HALFDOME.Om + ', flat ΛCDM): the picture is to scale. Marker size grows with mass; ' +
+    'markers get dimmer with distance from you.</p>';
+}
+function wireControls() {
+  $('spinBtn').addEventListener('click', () => { V.spin = !V.spin; setToggle('spinBtn', V.spin); });
+  $('haloBtn').addEventListener('click', () => {
+    if (!haloGroup) return; haloGroup.visible = !haloGroup.visible;
+    $('haloBtn').textContent = 'Clusters: ' + (haloGroup.visible ? 'on' : 'off'); setToggle('haloBtn', haloGroup.visible);
+  });
+  $('cmbBtn').addEventListener('click', () => {
+    cmbSphere.visible = !cmbSphere.visible;
+    $('cmbBtn').textContent = 'CMB shell: ' + (cmbSphere.visible ? 'on' : 'off'); setToggle('cmbBtn', cmbSphere.visible);
+  });
+  $('recenterBtn').addEventListener('click', () => {
+    const fwd = new THREE.Vector3().subVectors(controls.target, camera.position).normalize();
+    camera.position.set(0, 0, 0); controls.target.copy(fwd.multiplyScalar(EPS)); controls.update(); recolourHalos();
+  });
+  $('refBtn').addEventListener('click', () => { const on = !audio.state.ref; audio.setRef(on); setToggle('refBtn', on); renderKey(); });
+  $('eqBtn').addEventListener('click', () => { const on = !audio.state.eq; audio.setEq(on); setToggle('eqBtn', on); renderKey(); });
+  $('haloSel').addEventListener('change', (e) => { audio.setArtistic(e.target.value === 'artistic'); renderKey(); });
+  $('vol').addEventListener('input', (e) => audio.setVolume(e.target.value / 100));
+  $('haloRecBtn').addEventListener('click', () => audio.recordClip((st) => {
+    const b = $('haloRecBtn');
+    if (st === 'recording') { b.innerHTML = '&#9632; recording…'; b.classList.add('active'); }
+    else { b.classList.remove('active'); b.innerHTML = st === 'nomic' ? 'no mic' : st === 'denied' ? 'mic denied' : '&#127908; record'; }
+    if (st === 'idle') { $('haloSel').value = 'artistic'; audio.setArtistic(true); renderKey(); }
+  }));
+  $('keyBtn').addEventListener('click', () => {
+    const k = $('key'), open = k.hidden; k.hidden = !open; $('keyBtn').setAttribute('aria-expanded', open);
+    setToggle('keyBtn', open); if (open) renderKey();
+  });
+  // flight keys work anywhere on the page except in form controls (as in v1); Enter listens at the
+  // crosshair when the 3D view (or the page) has focus
+  const formTarget = (e) => /^(INPUT|SELECT|TEXTAREA|BUTTON|A)$/.test(e.target.tagName);
+  window.addEventListener('keydown', (e) => {
+    if (formTarget(e)) return;
+    if (e.key === 'Enter') { e.preventDefault(); listenToward(new THREE.Vector2(0, 0), PICK_PX); return; }
+    const mod = e.ctrlKey || e.metaKey || e.altKey;
+    if (!mod && LOOK_KEYS[e.code]) { e.preventDefault(); look(LOOK_KEYS[e.code][0], LOOK_KEYS[e.code][1]); return; }
+    if (!mod && (e.key === '+' || e.key === '=' || e.key === '-' || e.key === '_')) {
+      e.preventDefault(); setFov(camera.fov * ((e.key === '+' || e.key === '=') ? 1 / 1.2 : 1.2)); refreshView(); scheduleAnnounce(); return;
+    }
+    V.keys[e.code] = true;
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].indexOf(e.code) >= 0) e.preventDefault();
+  });
+  window.addEventListener('keyup', (e) => {
+    const was = V.keys[e.code]; V.keys[e.code] = false;
+    if (was && FLY_CODES.indexOf(e.code) >= 0) scheduleAnnounce();    // a flight step ended: say where you are
+  });
+  window.addEventListener('blur', () => { V.keys = {}; });
+}
+
+async function init() {
+  if (typeof THREE === 'undefined') { setHint('Could not load the 3D library (check the connection).'); return; }
+  try {
+    const [a, b] = await Promise.all([fetch('sky_img/sky_img.json'), fetch('halos.json')]);
+    if (!a.ok) throw new Error('sky_img.json HTTP ' + a.status);
+    V.meta = await a.json();
+    if (V.meta.version !== 2) throw new Error('sky_img.json version ' + V.meta.version + ' (need 2)');
+    V.halos = b.ok ? await b.json() : null;
+  } catch (err) {
+    setHint('Load failed: ' + err.message + (location.protocol === 'file:' ? ' (serve over http)' : ''));
+    $('note').textContent = ''; return;
+  }
+  // distances in the HalfDome cosmology: chi from halos.json (fallback: computed here), chi_* with radiation
+  V.chiStar = (V.halos && V.halos.chi_star_Mpc_h) || C.comovingDistance(1091.9, C.HALFDOME, true);
+  V.rShell = V.chiStar / UNIT_MPC;
+  if (V.halos) {
+    let lo = Infinity, hi = 0; for (let i = 0; i < V.halos.n; i++) { const c = haloChi(i); lo = Math.min(lo, c); hi = Math.max(hi, c); }
+    V.chiMin = lo; V.chiMax = hi;
+  }
+  V.scales = { dT_cmblens: C.voiceScales(V.meta, 'dT_cmblens', null, C.DEFAULT_SCALE_MODE) };
+  V.store = C.createMapStore(V.meta, { base: 'sky_img/', fetch: (u) => fetch(u), inflate: C.inflateStream,   // failures reported once
+    onError: (err) => setHint('sky values unavailable: ' + err.message) });
+  V.store.get('dT_cmblens', null);
+  $('note').innerHTML = '<b>Audio:</b> the CMB voice’s pitch = signed ΔT relative to the empty sky (hot = high), loudness = |ΔT − empty sky| / σ; ' +
+    'cluster earcons: heavier = lower, farther = quieter, duller and more reverberant, from their 3D direction (HRTF; headphones help). ' +
+    'To scale: 1 unit = 1 Gpc/h, shell at χ<sub>*</sub> = ' + Math.round(V.chiStar) + ' Mpc/h' +
+    (V.meta.provisional ? ' &middot; <span class="warn">sky values are PROVISIONAL</span>' : '');
   initThree(); buildHalos(); wireControls();
-  loadValMaps(); loadHaloSound();
-  document.getElementById('haloBtn').classList.add('active'); document.getElementById('cmbBtn').classList.add('active');
-  animate();
+  audio.loadStoredClip();
+  requestAnimationFrame(animate);
 }
 init();
 </script>
