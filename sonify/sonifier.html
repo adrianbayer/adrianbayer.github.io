@@ -1774,7 +1774,11 @@ function drawSpectrum() {
   // l range
   ctx.fillStyle = 'rgba(74,158,255,0.05)';
   ctx.fillRect(xOf(S.ellMin), pad.top, xOf(S.ellMax) - xOf(S.ellMin), pH);
-  const comps = activeComps(), band = activeBand(), ell = RT.cl.ell;
+  // Duet (idle or playing): show the two probes the duet compares, which are what is heard, not the component
+  // selection; Build-Up and nu-Sweep play Shaped Noise of the selection in this mode, so they keep showing it.
+  const pl = RT.player, duetPlot = duet && (!pl || pl.kind === 'duet');
+  const comps = duetPlot ? (S.duetA === S.duetB ? [S.duetA] : [S.duetA, S.duetB]) : activeComps();
+  const band = activeBand(), ell = RT.cl.ell;
   function line(D, color, width, alpha, dash) {
     ctx.globalAlpha = alpha; ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash || []);
     ctx.beginPath();
@@ -1792,11 +1796,13 @@ function drawSpectrum() {
     const on = comps.indexOf(c) >= 0;
     line(D, COLORS[c], on ? 2 : 0.8, on ? 1 : 0.15, c === 'T_tot' ? [6, 4] : null);
   }
-  if (comps.length > 1) { const Dm = plotSpectrum(comps, band); if (Dm) line(Dm, '#ffffff', 1.4, 0.85, [3, 3]); }
-  // sweep cursor and the applied window
+  // the mix as heard; the duet does not mix its probes, so it has none
+  if (comps.length > 1 && !duetPlot) { const Dm = plotSpectrum(comps, band); if (Dm) line(Dm, '#ffffff', 1.4, 0.85, [3, 3]); }
+  // sweep cursor and the applied window (the duet reads r_l at the cursor: no window)
   const p = RT.player;
   if (p && p.ellAt && RT.ctx) {
     const se = p.ellAt(RT.ctx.currentTime), xs = xOf(se);
+    if (p.kind !== 'duet') {
     ctx.fillStyle = 'rgba(74,158,255,0.22)';
     ctx.beginPath(); ctx.moveTo(pad.left, pad.top + pH);
     const fc = Core.ellToFreq(se), useDigital = p.kind === 'sweep' && !S.fixedPitch;
@@ -1808,6 +1814,7 @@ function drawSpectrum() {
       ctx.lineTo(xOf(e), pad.top + pH - Math.min(1, w) * pH * 0.92);
     }
     ctx.lineTo(pad.left + pW, pad.top + pH); ctx.closePath(); ctx.fill();
+    }
     ctx.strokeStyle = 'rgba(74,158,255,0.9)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(xs, pad.top); ctx.lineTo(xs, pad.top + pH); ctx.stroke();
     for (const c of comps) {
@@ -1827,7 +1834,7 @@ function drawSpectrum() {
     ctx.globalAlpha = on ? 1 : 0.3; ctx.fillStyle = COLORS[c]; ctx.fillRect(W - 120, ly - 7, 12, 3);
     ctx.fillStyle = on ? '#c8cde0' : '#4a5580'; ctx.fillText(COMP_LABELS[c], W - 104, ly); ly += 15;
   }
-  if (comps.length > 1) { ctx.globalAlpha = 1; ctx.fillStyle = '#ffffff'; ctx.fillRect(W - 120, ly - 7, 12, 2); ctx.fillText('mix (heard)', W - 104, ly); }
+  if (comps.length > 1 && !duetPlot) { ctx.globalAlpha = 1; ctx.fillStyle = '#ffffff'; ctx.fillRect(W - 120, ly - 7, 12, 2); ctx.fillText('mix (heard)', W - 104, ly); }
   ctx.globalAlpha = 1;
 }
 function drawIsoHelp() {
