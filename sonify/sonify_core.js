@@ -410,21 +410,33 @@
    * (CMB, kSZ) is the same field in both; the tSZ is one y map times g(nu) (cl_data: the tSZ spectra
    * of all bands are proportional to 1e-5), so it carries over with the sign of g(nuX) g(nuY);
    * CIB x CIB across bands uses CIB_INTERBAND_R.
+   * i (optional): the cl_data grid bin of ell. When cl_data carries the exact per-pair cross-spectra
+   * (Dl_cross), the within-band r is then that bin's D_XY / sqrt(D_X D_Y): the cross term mixDl adds,
+   * so the stereo pair and the mix agree. (Added 2026-11-14 with the first data to carry Dl_cross:
+   * the cross_data r_l, 71 bins interpolated in ln l, put rho up to 0.33 off the mix identity, e.g.
+   * tSZ | CIB at 280 GHz, l = 17, and the mono fold-down up to 19% off the heard mix in one bin.)
    */
-  function pairR(clData, crossData, X, bX, Y, bY, ell) {
+  function pairR(clData, crossData, X, bX, Y, bY, ell, i) {
     const iX = isFreqIndep(clData, X), iY = isFreqIndep(clData, Y);
     if (iX) bX = bY;
     if (iY) bY = bX;
-    if (String(bX) === String(bY)) return crossR(crossData, X, Y, bX, ell);
+    const r = function (b) {
+      const ex = (i == null || X === Y) ? null : exactCross(clData, X, Y, b);
+      if (!ex) return crossR(crossData, X, Y, b, ell);
+      const den = Math.sqrt(Math.max(getSpectrum(clData, X, b)[i], 0) * Math.max(getSpectrum(clData, Y, b)[i], 0));
+      return den > 0 ? ex[i] / den : 0;
+    };
+    if (String(bX) === String(bY)) return r(bX);
     if (X === Y) return X === 'dT_tsz' ? tszSign(bX) * tszSign(bY) : (X === 'dT_cib' ? CIB_INTERBAND_R : 1);
-    if (X === 'dT_tsz') return tszSign(bX) * tszSign(bY) * crossR(crossData, X, Y, bY, ell);   // tSZ@bX = c tSZ@bY
-    if (Y === 'dT_tsz') return tszSign(bX) * tszSign(bY) * crossR(crossData, X, Y, bX, ell);
+    if (X === 'dT_tsz') return tszSign(bX) * tszSign(bY) * r(bY);   // tSZ@bX = c tSZ@bY
+    if (Y === 'dT_tsz') return tszSign(bX) * tszSign(bY) * r(bX);
     return 0;
   }
   /**
    * Correlation coefficient rho(l) on the cl_data grid between the field of selection compsL in band
    * bandL (left channel) and of compsR in bandR (right channel):
-   *   rho = sum_{X in L, Y in R} r_{X,Y} sqrt(D_X D_Y) / sqrt(D_mix,L D_mix,R)   (T_tot through its parts).
+   *   rho = sum_{X in L, Y in R} r_{X,Y} sqrt(D_X D_Y) / sqrt(D_mix,L D_mix,R)   (T_tot through its parts),
+   * with r_{X,Y} from the exact D_XY of each grid bin when cl_data has Dl_cross (pairR), as mixDl does.
    * For one band this equals (D_mix(L u R) - D_mix(L) - D_mix(R)) / (2 sqrt(D_mix(L) D_mix(R))).
    */
   function stereoCoherence(clData, crossData, compsL, bandL, compsR, bandR) {
@@ -436,7 +448,7 @@
       for (const cr of validateSelection(compsR, clData)) for (const Y of parts(cr)) {
         const dy = getSpectrum(clData, Y, bandR);
         if (!dx || !dy) continue;
-        for (let i = 0; i < n; i++) C[i] += pairR(clData, crossData, X, bandL, Y, bandR, g.ell[i]) * Math.sqrt(Math.max(dx[i], 0) * Math.max(dy[i], 0));
+        for (let i = 0; i < n; i++) C[i] += pairR(clData, crossData, X, bandL, Y, bandR, g.ell[i], i) * Math.sqrt(Math.max(dx[i], 0) * Math.max(dy[i], 0));
       }
     }
     for (let i = 0; i < n; i++) { const den = Math.sqrt(DL[i] * DR[i]); out[i] = den > 0 ? clamp(C[i] / den, -1, 1) : 0; }
@@ -1029,34 +1041,48 @@
     return _finish(Xre, Xim, N);
   }
   /**
-   * Acoustic peaks of a spectrum: local maxima of D smoothed by a Gaussian in ln l (sigma = 0.02),
-   * kept if they stand at least `minProm` (5%) above the higher of the lowest points within
-   * +-0.35 in ln l on either side (so cosmic-variance wiggles are rejected). Returns the first nMax
-   * peak multipoles with lo <= l <= hi, rounded to integers. On the v2 CMB spectrum this gives
-   * l = 220, 527, 813, 1125, 1411 in 100-2000. (A 5-point running mean on the v2 grid, as in
-   * sonify_cosmo.cmb_peaks, returns cosmic-variance wiggles at l = 103, 109, 121 instead.)
+   * Acoustic peaks of a spectrum: local maxima of D smoothed by a Gaussian of fixed width in l
+   * (sigma_l = 15, i.e. 15/l in ln l, as the paper's single-l estimate N3.cmb.acoustic_peak_ells),
+   * kept if they stand at least `minProm` (5%) above their base: on each side the lowest point
+   * before the curve rises above the peak again, within +-0.35 in ln l; the higher of the two bases
+   * counts (topographic prominence, so cosmic-variance wiggles are rejected, also on the top or flank
+   * of a higher peak). Returns the first nMax peak multipoles with lo <= l <= hi, rounded to integers.
+   * On the b16_v2 CMB spectrum this gives l = 223, 539, 810, 1125, 1422 in 100-2000 (the paper's
+   * estimate: 223, 539, 808, 1126, 1420). (A 5-point running mean on the grid, as in
+   * sonify_cosmo.cmb_peaks, returns cosmic-variance wiggles at l ~ 100-120 instead.)
+   * Why (2026-11-14): the earlier rule (sigma 0.02 in ln l, base = the lowest points +-0.35 away)
+   * returned four wiggles on the flat top of the first peak of the b16_v2 realization (l = 189, 204,
+   * 218, 232), so Scale Layers played three tones on one peak. 0.02 in ln l is +-4 in l at the first
+   * peak: it averages ~3 grid bins (2.3% cosmic variance) where that peak's top is flat to ~2% over
+   * +-10% in l. In a Monte Carlo of Gaussian realizations with the grid's cosmic variance 2 D^2/n_modes
+   * (which the scatter between the two archive realizations matches: 0.94-1.12 of it), the old rule
+   * found the first three peaks in 10/300 realizations (the previous map was a lucky one), this rule
+   * in 1000/1000 (all five in 100-2000), with position scatter 2.1, 0.6, 0.4, 0.3, 0.4% rms.
    */
   function cmbPeaks(ell, D, lo, hi, nMax, opts) {
     opts = opts || {};
-    const sig = opts.sigma || 0.02, minProm = opts.minProm == null ? 0.05 : opts.minProm, reach = opts.reach || 0.35;
-    const g = makeGrid(ell), fg = fineGrid(2048), Df = resampleFine(g, D, fg);
-    const K = Math.ceil(4 * sig / fg.dx), w = [];
-    for (let j = -K; j <= K; j++) w.push(Math.exp(-0.5 * Math.pow(j * fg.dx / sig, 2)));
-    const S = new Float64Array(fg.M);
-    for (let i = 0; i < fg.M; i++) {
+    const sigEll = opts.sigmaEll || 15, minProm = opts.minProm == null ? 0.05 : opts.minProm, reach = opts.reach || 0.35;
+    const g = makeGrid(ell), fg = fineGrid(2048), Df = resampleFine(g, D, fg), M = fg.M;
+    const R = Math.round(reach / fg.dx), out = [];
+    // the smoothed curve is needed only on [lo, hi] widened by the reach (and one step)
+    const i0 = Math.max(0, Math.floor((Math.log(lo) - fg.lnEll[0]) / fg.dx) - R - 1);
+    const i1 = Math.min(M - 1, Math.ceil((Math.log(hi) - fg.lnEll[0]) / fg.dx) + R + 1);
+    const S = new Float64Array(M);
+    for (let i = i0; i <= i1; i++) {
+      const sig = sigEll / Math.exp(fg.lnEll[i]), K = Math.min(M, Math.ceil(4 * sig / fg.dx));
       let s = 0, ws = 0;
-      for (let j = -K; j <= K; j++) { const k = i + j; if (k < 0 || k >= fg.M) continue; s += Df[k] * w[j + K]; ws += w[j + K]; }
+      for (let k = Math.max(0, i - K); k <= Math.min(M - 1, i + K); k++) {
+        const w = Math.exp(-0.5 * Math.pow((k - i) * fg.dx / sig, 2));
+        s += Df[k] * w; ws += w;
+      }
       S[i] = s / ws;
     }
-    const R = Math.round(reach / fg.dx), out = [];
-    for (let i = 1; i < fg.M - 1; i++) {
+    for (let i = Math.max(1, i0 + 1); i < i1; i++) {
       const l = Math.exp(fg.lnEll[i]);
       if (l < lo || l > hi || !(S[i] >= S[i - 1] && S[i] > S[i + 1])) continue;
       let lmin = Infinity, rmin = Infinity;
-      for (let j = 1; j <= R; j++) {
-        if (i - j >= 0) lmin = Math.min(lmin, S[i - j]);
-        if (i + j < fg.M) rmin = Math.min(rmin, S[i + j]);
-      }
+      for (let j = 1; j <= R && i - j >= 0 && S[i - j] <= S[i]; j++) lmin = Math.min(lmin, S[i - j]);
+      for (let j = 1; j <= R && i + j < M && S[i + j] <= S[i]; j++) rmin = Math.min(rmin, S[i + j]);
       if (S[i] / Math.max(lmin, rmin) - 1 >= minProm) out.push(Math.round(l));
       if (nMax && out.length >= nMax) break;
     }

@@ -1,6 +1,6 @@
 {
  "version": 3,
- "provisional": true,
+ "provisional": false,
  "bands": [
   93,
   143,
@@ -20,7 +20,13 @@
   "dT_cib",
   "T_tot"
  ],
- "T_tot_def": "T_tot = dT_cmblens + dT_tsz + dT_cib per band (kSZ not included)",
+ "T_tot_parts": [
+  "dT_cmblens",
+  "dT_tsz",
+  "dT_cib",
+  "dT_ksz"
+ ],
+ "T_tot_def": "T_tot = dT_cmblens + dT_tsz + dT_cib + dT_ksz per band (T_tot_parts)",
  "coords": "simulation HEALPix (theta, phi) of the HalfDome lightcone, the same frame for the display images and the value maps; NOT Galactic (l, b)",
  "projection": {
   "applies_to": "the display JPEGs only (the value maps are HEALPix: value_maps)",
@@ -52,7 +58,7 @@
   "decode": "v [muK] = vmin + (vmax - vmin) * u / 65535",
   "encode": "u = round((clip(v, vmin, vmax) - vmin) / (vmax - vmin) * 65535)",
   "clip": "vmin, vmax = the 0.05 and 99.95 percentiles of the map's pixels (equal areas, so these are sky-area percentiles); clip_frac = sky-area fraction outside [vmin, vmax]",
-  "pixel_value": "PROVISIONAL (v1-derived): the v1 8-bit value of the sharp l <= 3000 field (nearest NSIDE-1024 pixel at each 4096x2048 grid centre, Lanczos-downsampled to 1024x512, ~21 arcmin), decoded with a half-level bias correction and averaged onto the NSIDE-512 HEALPix pixels (the v1 cells taken as constant; mean over the 64 NSIDE-4096 sub-pixel centres of each pixel); no smoothing",
+  "pixel_value": "mean over the pixel area of the field band-limited to l <= 3000 (cosine taper 2500-3000), computed as the plain mean of the 16 NSIDE-2048 sub-pixels of each NSIDE-512 pixel (equal areas; = healpy.ud_grade); no smoothing",
   "resolution": {
    "pixel": "HEALPix NSIDE 512 (RING), equal areas",
    "pixel_area_arcmin2": 47.21026754312813,
@@ -61,16 +67,16 @@
    "effective_fwhm_arcmin": 5.080922740408475,
    "effective_fwhm_axes_arcmin": {
     "equator": [
-     4.745294634399624,
-     5.449873539974539
+     4.745294634399623,
+     5.449873539974543
     ],
     "mid_latitude_50deg": [
      4.366627649175865,
-     5.965450987835587
+     5.96545098783559
     ],
     "polar_cap_20deg": [
-     4.001626967658482,
-     6.604376963314527
+     4.001626967658484,
+     6.604376963314531
     ],
     "pole": [
      4.427541211465899,
@@ -83,14 +89,12 @@
     "ell_hi": 3000,
     "why": "kept at l = 2500-3000 for the NSIDE-512 value maps. (1) It is the field the display images show, so eye and ear get the same field (the ear its 6.87-arcmin pixel means) and one NSIDE-2048 synthesis serves both. (2) The pixel mean suppresses higher l strongly: extending to the beam-limited l <= 6000 would add 4.8 per cent to the stored variance of a CIB-143-like map (each pixel changing by 0.20 sigma rms), 0.6 per cent for tSZ- and kSZ-like maps (0.07 sigma), and would need NSIDE-4096 syntheses to keep the area-mean quadrature accurate. (3) A lower taper would remove power the pixel means should contain: 1250-1500 (~2.5 NSIDE, no power above the pixel scale) would remove 36 per cent of the stored CIB variance, 13 (tSZ) and 15 (kSZ) per cent. Power between ~1.5 NSIDE and l = 3000 stays in each pixel mean as pixel-scale structure; nothing is interpolated between pixel centres, so this \"aliasing\" creates no artefact. (Synthetic Gaussian realizations of the cls_cache.npz spectra, stretched to 1/4 scale, 64 sub-pixels per pixel; 2026-11-13.)"
    },
-   "replaces": "v2: 2048x1024 equirectangular cells (10.5 arcmin, narrowing as sin(theta)) of the field smoothed by a 13.2-arcmin Gaussian, effective 15.1 arcmin",
-   "provisional": "the provisional maps carry no structure finer than the ~21-arcmin v1 cells: the NSIDE-512 pixels only resample them"
+   "replaces": "v2: 2048x1024 equirectangular cells (10.5 arcmin, narrowing as sin(theta)) of the field smoothed by a 13.2-arcmin Gaussian, effective 15.1 arcmin"
   },
   "units": "muK, thermodynamic temperature, beam-convolved (2 arcmin FWHM); monopole kept",
   "stats": "mean_uK, median_uK, sigma_uK (std about the mean) and rms_uK (about zero) are taken over the pixels of the STORED map (equal areas): use sigma_uK for loudness weights. tSZ and CIB have a large monopole (the median is the empty-sky level), so |v - median_uK|/sigma_uK is quiet where the sky is empty. sigma_field_uK: see sigma_field.",
-  "sigma_field": "sigma_field_uK = sqrt(sum_{l>=1} (2l+1) C_l W_l^2 / 4 pi) from cls_cache.npz with the v1 sharp l <= 3000 cut (the provisional maps have no alms); for reference only",
-  "shared_files": "tSZ entries share two files (+y and -y orientation) and differ only in vmin/vmax; decode them like any other entry. The provisional CIB entries share one file (the 143 GHz pattern; each band its own vmin/vmax).",
-  "v1_clipping": "v1_clip_frac = fraction of v1's 4096x2048 grid pixels (unweighted, np.percentile) clipped when v1 built its 8-bit value map: 0.005 for the symmetric maps (|v| above the 99.5th percentile of |v|), 0.015 for the CIB (below the 1st or above the 99.5th percentile). saturated_code_frac_after_downsampling = area-weighted fraction of the 1024x512 v1 pixels whose 8-bit code is still at a limit (sym: 0, 1 or 255; CIB: 0 or 255) after v1's 4x Lanczos downsampling, which averages most clipped pixels with unclipped neighbours; it understates the clipping, use v1_clip_frac"
+  "sigma_field": "sigma_field_uK = sqrt(sum_{l>=1} (2l+1) C_l / 4 pi), C_l = healpy alm2cl of the alm that was synthesized (band-limited and tapered; for T_tot the summed alm): the std about the mean of that continuous field before pixel averaging and quantization, so sigma_uK is below it by the pixel window (most for the high-l CIB and tSZ)",
+  "shared_files": "tSZ entries share two files (+y and -y orientation) and differ only in vmin/vmax; decode them like any other entry."
  },
  "tsz_g": {
   "93": -1.571964250525785,
@@ -105,33 +109,31 @@
    "component": "dT_cmblens",
    "band": null,
    "file": "dT_cmblens_val16_n512.png",
-   "vmin": -294.3377815463477,
-   "vmax": 296.2138522777508,
-   "clip_frac": 0.000999768575032552,
-   "mean_uK": 0.16132529136077822,
-   "median_uK": 0.04141695469218121,
-   "sigma_uK": 97.77385666087498,
-   "rms_uK": 97.77398975285286,
-   "bytes": 4980487,
+   "vmin": -338.2734952553424,
+   "vmax": 337.89671415663355,
+   "clip_frac": 0.0010000864664713542,
+   "mean_uK": 0.17803079490890936,
+   "median_uK": 0.054075307381367566,
+   "sigma_uK": 102.8718873678831,
+   "rms_uK": 102.87204141842606,
+   "bytes": 5982009,
    "ell_max": 3000,
    "taper": {
-    "type": "sharp",
+    "type": "cosine",
+    "ell_lo": 2500,
     "ell_hi": 3000,
-    "note": "v1 render: sharp l<=3000 cut, NSIDE 1024 nearest-pixel 4096x2048 grid, 8-bit quantization, Lanczos downsampling to 1024x512 (~21 arcmin); here each 1024x512 v1 grid (cells taken as constant) is averaged over every NSIDE-512 pixel (mean over the 64 NSIDE-4096 sub-pixel centres)"
+    "w": "1 for l<=ell_lo; 0.5(1+cos(pi(l-ell_lo)/(ell_hi-ell_lo))) up to ell_hi; 0 above"
    },
-   "provisional": true,
-   "provisional_method": "v1 8-bit map averaged onto the NSIDE-512 HEALPix pixels, 16 bit",
-   "v1_clip_frac": 0.005,
-   "saturated_code_frac_after_downsampling": 0.0009806938852600364,
-   "sigma_field_uK": 108.3044443290663,
+   "provisional": false,
+   "sigma_field_uK": 105.46979487131212,
    "display": {
     "hi": "dT_cmblens.jpg",
     "lo": "dT_cmblens_lo.jpg",
     "cmap": "planck",
     "mode": "sym",
     "range_uK": [
-     -302.7698932738378,
-     302.7698932738378
+     -289.9760495168567,
+     289.9760495168567
     ],
     "hi_dk": "dT_cmblens_dk.jpg",
     "lo_dk": "dT_cmblens_dk_lo.jpg"
@@ -141,33 +143,31 @@
    "component": "dT_ksz",
    "band": null,
    "file": "dT_ksz_val16_n512.png",
-   "vmin": -2.408416462349977,
-   "vmax": 3.003362140631939,
-   "clip_frac": 0.0009988149007161458,
-   "mean_uK": 0.16733292871110853,
-   "median_uK": 0.15275410866526862,
-   "sigma_uK": 0.4740266164016135,
-   "rms_uK": 0.5026942829277049,
-   "bytes": 4817156,
+   "vmin": -6.054731818161815,
+   "vmax": 4.642644741579359,
+   "clip_frac": 0.0010000864664713542,
+   "mean_uK": -0.1842121078404,
+   "median_uK": -0.1539129788447573,
+   "sigma_uK": 0.8055783046827576,
+   "rms_uK": 0.8263718930666439,
+   "bytes": 5982743,
    "ell_max": 3000,
    "taper": {
-    "type": "sharp",
+    "type": "cosine",
+    "ell_lo": 2500,
     "ell_hi": 3000,
-    "note": "v1 render: sharp l<=3000 cut, NSIDE 1024 nearest-pixel 4096x2048 grid, 8-bit quantization, Lanczos downsampling to 1024x512 (~21 arcmin); here each 1024x512 v1 grid (cells taken as constant) is averaged over every NSIDE-512 pixel (mean over the 64 NSIDE-4096 sub-pixel centres)"
+    "w": "1 for l<=ell_lo; 0.5(1+cos(pi(l-ell_lo)/(ell_hi-ell_lo))) up to ell_hi; 0 above"
    },
-   "provisional": true,
-   "provisional_method": "v1 8-bit map averaged onto the NSIDE-512 HEALPix pixels, 16 bit",
-   "v1_clip_frac": 0.005,
-   "saturated_code_frac_after_downsampling": 6.446418065327359e-05,
-   "sigma_field_uK": 1.0263837736107013,
+   "provisional": false,
+   "sigma_field_uK": 1.0256982932573635,
    "display": {
     "hi": "dT_ksz.jpg",
     "lo": "dT_ksz_lo.jpg",
     "cmap": "RdBu_r",
     "mode": "sym",
     "range_uK": [
-     -4.309909512545269,
-     4.309909512545269
+     -3.8532978532643756,
+     3.8532978532643756
     ],
     "hi_dk": "dT_ksz_dk.jpg",
     "lo_dk": "dT_ksz_dk_lo.jpg"
@@ -177,27 +177,25 @@
    "component": "dT_tsz",
    "band": 93,
    "file": "dT_tsz_dec_val16_n512.png",
-   "vmin": -26.94190467237494,
-   "vmax": -1.1174061845685457,
-   "clip_frac": 0.0007677078247070312,
-   "mean_uK": -4.297875065258451,
-   "median_uK": -3.8525529611591334,
-   "sigma_uK": 1.9422531285053437,
-   "rms_uK": 4.716362718426049,
-   "bytes": 4046559,
+   "vmin": -70.26709965434365,
+   "vmax": -0.7768211727077132,
+   "clip_frac": 0.0010000864664713542,
+   "mean_uK": -4.396765779671374,
+   "median_uK": -3.482843766514609,
+   "sigma_uK": 3.906828957365765,
+   "rms_uK": 5.881739693611145,
+   "bytes": 5728126,
    "tsz_g": -1.571964250525785,
    "shared_file": true,
    "ell_max": 3000,
    "taper": {
-    "type": "sharp",
+    "type": "cosine",
+    "ell_lo": 2500,
     "ell_hi": 3000,
-    "note": "v1 render: sharp l<=3000 cut, NSIDE 1024 nearest-pixel 4096x2048 grid, 8-bit quantization, Lanczos downsampling to 1024x512 (~21 arcmin); here each 1024x512 v1 grid (cells taken as constant) is averaged over every NSIDE-512 pixel (mean over the 64 NSIDE-4096 sub-pixel centres)"
+    "w": "1 for l<=ell_lo; 0.5(1+cos(pi(l-ell_lo)/(ell_hi-ell_lo))) up to ell_hi; 0 above"
    },
-   "provisional": true,
-   "provisional_method": "v1 143 GHz map averaged onto the NSIDE-512 HEALPix pixels, x g(x_nu)/g(x_143) (exact band scaling of a provisional map)",
-   "v1_clip_frac": 0.005,
-   "saturated_code_frac_after_downsampling": 0.000225179945385023,
-   "sigma_field_uK": 5.6443139646969405,
+   "provisional": false,
+   "sigma_field_uK": 5.520836127104364,
    "display": {
     "hi": "dT_tsz.jpg",
     "lo": "dT_tsz_lo.jpg",
@@ -205,7 +203,7 @@
     "mode": "mag",
     "range_uK": [
      0.0,
-     31.535685653378955
+     28.37546607789001
     ],
     "shared": "the |dT| display is per-map normalized, so it is the same image in every band"
    }
@@ -214,27 +212,25 @@
    "component": "dT_tsz",
    "band": 143,
    "file": "dT_tsz_dec_val16_n512.png",
-   "vmin": -17.8359726154483,
-   "vmax": -0.7397407997190538,
-   "clip_frac": 0.0007677078247070312,
-   "mean_uK": -2.845262163189538,
-   "median_uK": -2.5504517943475222,
-   "sigma_uK": 1.2858026941135496,
-   "rms_uK": 3.1223076955142774,
-   "bytes": 4046559,
+   "vmin": -46.51794594488752,
+   "vmax": -0.514268064266514,
+   "clip_frac": 0.0010000864664713542,
+   "mean_uK": -2.910729400774995,
+   "median_uK": -2.305698383200592,
+   "sigma_uK": 2.5863833735654627,
+   "rms_uK": 3.8938059273147942,
+   "bytes": 5728126,
    "tsz_g": -1.0406655233098667,
    "shared_file": true,
    "ell_max": 3000,
    "taper": {
-    "type": "sharp",
+    "type": "cosine",
+    "ell_lo": 2500,
     "ell_hi": 3000,
-    "note": "v1 render: sharp l<=3000 cut, NSIDE 1024 nearest-pixel 4096x2048 grid, 8-bit quantization, Lanczos downsampling to 1024x512 (~21 arcmin); here each 1024x512 v1 grid (cells taken as constant) is averaged over every NSIDE-512 pixel (mean over the 64 NSIDE-4096 sub-pixel centres)"
+    "w": "1 for l<=ell_lo; 0.5(1+cos(pi(l-ell_lo)/(ell_hi-ell_lo))) up to ell_hi; 0 above"
    },
-   "provisional": true,
-   "provisional_method": "v1 143 GHz map averaged onto the NSIDE-512 HEALPix pixels, x g(x_nu)/g(x_143) (exact band scaling of a provisional map)",
-   "v1_clip_frac": 0.005,
-   "saturated_code_frac_after_downsampling": 0.000225179945385023,
-   "sigma_field_uK": 3.736626290217395,
+   "provisional": false,
+   "sigma_field_uK": 3.6548819830981523,
    "display": {
     "hi": "dT_tsz.jpg",
     "lo": "dT_tsz_lo.jpg",
@@ -242,7 +238,7 @@
     "mode": "mag",
     "range_uK": [
      0.0,
-     20.87712923651552
+     18.785013237566886
     ],
     "shared": "the |dT| display is per-map normalized, so it is the same image in every band"
    }
@@ -251,27 +247,25 @@
    "component": "dT_tsz",
    "band": 145,
    "file": "dT_tsz_dec_val16_n512.png",
-   "vmin": -17.414629801739526,
-   "vmax": -0.7222657521458788,
-   "clip_frac": 0.0007677078247070312,
-   "mean_uK": -2.778047955620108,
-   "median_uK": -2.49020195216464,
-   "sigma_uK": 1.2554279151938457,
-   "rms_uK": 3.048548784909475,
-   "bytes": 4046559,
+   "vmin": -45.41904303362181,
+   "vmax": -0.5021194050444796,
+   "clip_frac": 0.0010000864664713542,
+   "mean_uK": -2.8419686473185126,
+   "median_uK": -2.2512304006976325,
+   "sigma_uK": 2.5252847123686095,
+   "rms_uK": 3.8018217568507917,
+   "bytes": 5728126,
    "tsz_g": -1.0160816697026172,
    "shared_file": true,
    "ell_max": 3000,
    "taper": {
-    "type": "sharp",
+    "type": "cosine",
+    "ell_lo": 2500,
     "ell_hi": 3000,
-    "note": "v1 render: sharp l<=3000 cut, NSIDE 1024 nearest-pixel 4096x2048 grid, 8-bit quantization, Lanczos downsampling to 1024x512 (~21 arcmin); here each 1024x512 v1 grid (cells taken as constant) is averaged over every NSIDE-512 pixel (mean over the 64 NSIDE-4096 sub-pixel centres)"
+    "w": "1 for l<=ell_lo; 0.5(1+cos(pi(l-ell_lo)/(ell_hi-ell_lo))) up to ell_hi; 0 above"
    },
-   "provisional": true,
-   "provisional_method": "v1 143 GHz map averaged onto the NSIDE-512 HEALPix pixels, x g(x_nu)/g(x_143) (exact band scaling of a provisional map)",
-   "v1_clip_frac": 0.005,
-   "saturated_code_frac_after_downsampling": 0.000225179945385023,
-   "sigma_field_uK": 3.648355206332979,
+   "provisional": false,
+   "sigma_field_uK": 3.568541961629501,
    "display": {
     "hi": "dT_tsz.jpg",
     "lo": "dT_tsz_lo.jpg",
@@ -279,7 +273,7 @@
     "mode": "mag",
     "range_uK": [
      0.0,
-     20.38394456056147
+     18.341251043952752
     ],
     "shared": "the |dT| display is per-map normalized, so it is the same image in every band"
    }
@@ -288,27 +282,25 @@
    "component": "dT_tsz",
    "band": 225,
    "file": "dT_tsz_inc_val16_n512.png",
-   "vmin": 0.08176869094148537,
-   "vmax": 1.9715339927002584,
-   "clip_frac": 0.0007677078247070312,
-   "mean_uK": 0.3145065981999465,
-   "median_uK": 0.2819191595385349,
-   "sigma_uK": 0.1421287066316074,
-   "rms_uK": 0.3451303660359026,
-   "bytes": 4051028,
+   "vmin": 0.05684562271549044,
+   "vmax": 5.141951811559998,
+   "clip_frac": 0.0010000864664713542,
+   "mean_uK": 0.32174314689234107,
+   "median_uK": 0.25486486424949795,
+   "sigma_uK": 0.2858909266726814,
+   "rms_uK": 0.4304094266230131,
+   "bytes": 5726084,
    "tsz_g": 0.11503199172102097,
    "shared_file": true,
    "ell_max": 3000,
    "taper": {
-    "type": "sharp",
+    "type": "cosine",
+    "ell_lo": 2500,
     "ell_hi": 3000,
-    "note": "v1 render: sharp l<=3000 cut, NSIDE 1024 nearest-pixel 4096x2048 grid, 8-bit quantization, Lanczos downsampling to 1024x512 (~21 arcmin); here each 1024x512 v1 grid (cells taken as constant) is averaged over every NSIDE-512 pixel (mean over the 64 NSIDE-4096 sub-pixel centres)"
+    "w": "1 for l<=ell_lo; 0.5(1+cos(pi(l-ell_lo)/(ell_hi-ell_lo))) up to ell_hi; 0 above"
    },
-   "provisional": true,
-   "provisional_method": "v1 143 GHz map averaged onto the NSIDE-512 HEALPix pixels, x g(x_nu)/g(x_143) (exact band scaling of a provisional map)",
-   "v1_clip_frac": 0.005,
-   "saturated_code_frac_after_downsampling": 0.000225179945385023,
-   "sigma_field_uK": 0.41303526911677146,
+   "provisional": false,
+   "sigma_field_uK": 0.40399950282187774,
    "display": {
     "hi": "dT_tsz.jpg",
     "lo": "dT_tsz_lo.jpg",
@@ -316,7 +308,7 @@
     "mode": "mag",
     "range_uK": [
      0.0,
-     2.3076941665708093
+     2.076438047404828
     ],
     "shared": "the |dT| display is per-map normalized, so it is the same image in every band"
    }
@@ -325,27 +317,25 @@
    "component": "dT_tsz",
    "band": 280,
    "file": "dT_tsz_inc_val16_n512.png",
-   "vmin": 0.7118109266581406,
-   "vmax": 17.162552342757394,
-   "clip_frac": 0.0007677078247070312,
-   "mean_uK": 2.7378356009760125,
-   "median_uK": 2.454156179868561,
-   "sigma_uK": 1.2372555461914516,
-   "rms_uK": 3.0044209200032523,
-   "bytes": 4051028,
+   "vmin": 0.4948512066865341,
+   "vmax": 44.76160057933709,
+   "clip_frac": 0.0010000864664713542,
+   "mean_uK": 2.8008310381198736,
+   "median_uK": 2.218643751113241,
+   "sigma_uK": 2.488731115723291,
+   "rms_uK": 3.7467902357170924,
+   "bytes": 5726084,
    "tsz_g": 1.0013738471228129,
    "shared_file": true,
    "ell_max": 3000,
    "taper": {
-    "type": "sharp",
+    "type": "cosine",
+    "ell_lo": 2500,
     "ell_hi": 3000,
-    "note": "v1 render: sharp l<=3000 cut, NSIDE 1024 nearest-pixel 4096x2048 grid, 8-bit quantization, Lanczos downsampling to 1024x512 (~21 arcmin); here each 1024x512 v1 grid (cells taken as constant) is averaged over every NSIDE-512 pixel (mean over the 64 NSIDE-4096 sub-pixel centres)"
+    "w": "1 for l<=ell_lo; 0.5(1+cos(pi(l-ell_lo)/(ell_hi-ell_lo))) up to ell_hi; 0 above"
    },
-   "provisional": true,
-   "provisional_method": "v1 143 GHz map averaged onto the NSIDE-512 HEALPix pixels, x g(x_nu)/g(x_143) (exact band scaling of a provisional map)",
-   "v1_clip_frac": 0.005,
-   "saturated_code_frac_after_downsampling": 0.000225179945385023,
-   "sigma_field_uK": 3.5955451196215873,
+   "provisional": false,
+   "sigma_field_uK": 3.5168871748094666,
    "display": {
     "hi": "dT_tsz.jpg",
     "lo": "dT_tsz_lo.jpg",
@@ -353,7 +343,7 @@
     "mode": "mag",
     "range_uK": [
      0.0,
-     20.088886152351968
+     18.07576070563668
     ],
     "shared": "the |dT| display is per-map normalized, so it is the same image in every band"
    }
@@ -362,27 +352,25 @@
    "component": "dT_tsz",
    "band": 353,
    "file": "dT_tsz_inc_val16_n512.png",
-   "vmin": 1.5920508556805169,
-   "vmax": 38.386115075852466,
-   "clip_frac": 0.0007677078247070312,
-   "mean_uK": 6.123499019199261,
-   "median_uK": 5.489015832444284,
-   "sigma_uK": 2.7672710227382953,
-   "rms_uK": 6.7197491881335365,
-   "bytes": 4051028,
+   "vmin": 1.1067943150839,
+   "vmax": 100.11471000948583,
+   "clip_frac": 0.0010000864664713542,
+   "mean_uK": 6.26439590045355,
+   "median_uK": 4.9622639244851925,
+   "sigma_uK": 5.566346840091291,
+   "rms_uK": 8.380147560861527,
+   "bytes": 5726084,
    "tsz_g": 2.2396931972549297,
    "shared_file": true,
    "ell_max": 3000,
    "taper": {
-    "type": "sharp",
+    "type": "cosine",
+    "ell_lo": 2500,
     "ell_hi": 3000,
-    "note": "v1 render: sharp l<=3000 cut, NSIDE 1024 nearest-pixel 4096x2048 grid, 8-bit quantization, Lanczos downsampling to 1024x512 (~21 arcmin); here each 1024x512 v1 grid (cells taken as constant) is averaged over every NSIDE-512 pixel (mean over the 64 NSIDE-4096 sub-pixel centres)"
+    "w": "1 for l<=ell_lo; 0.5(1+cos(pi(l-ell_lo)/(ell_hi-ell_lo))) up to ell_hi; 0 above"
    },
-   "provisional": true,
-   "provisional_method": "v1 143 GHz map averaged onto the NSIDE-512 HEALPix pixels, x g(x_nu)/g(x_143) (exact band scaling of a provisional map)",
-   "v1_clip_frac": 0.005,
-   "saturated_code_frac_after_downsampling": 0.000225179945385023,
-   "sigma_field_uK": 8.04186964536531,
+   "provisional": false,
+   "sigma_field_uK": 7.865941679589153,
    "display": {
     "hi": "dT_tsz.jpg",
     "lo": "dT_tsz_lo.jpg",
@@ -390,7 +378,7 @@
     "mode": "mag",
     "range_uK": [
      0.0,
-     44.93121303809458
+     40.42861555046911
     ],
     "shared": "the |dT| display is per-map normalized, so it is the same image in every band"
    }
@@ -398,414 +386,394 @@
   {
    "component": "dT_cib",
    "band": 93,
-   "file": "dT_cib_provisional_val16_n512.png",
-   "vmin": 1.5280516838201288,
-   "vmax": 3.996649171099671,
-   "clip_frac": 0.000999768575032552,
-   "mean_uK": 2.5505952398326053,
-   "median_uK": 2.5307463738925193,
-   "sigma_uK": 0.3493698800789754,
-   "rms_uK": 2.574411659110318,
-   "bytes": 4905069,
+   "file": "dT_cib_f93_val16_n512.png",
+   "vmin": 1.043837002716846,
+   "vmax": 7.048222419588595,
+   "clip_frac": 0.0010000864664713542,
+   "mean_uK": 2.96798878700563,
+   "median_uK": 2.9067677829297596,
+   "sigma_uK": 0.750351972470217,
+   "rms_uK": 3.0613698767677704,
+   "bytes": 6173866,
    "ell_max": 3000,
    "taper": {
-    "type": "sharp",
+    "type": "cosine",
+    "ell_lo": 2500,
     "ell_hi": 3000,
-    "note": "v1 render: sharp l<=3000 cut, NSIDE 1024 nearest-pixel 4096x2048 grid, 8-bit quantization, Lanczos downsampling to 1024x512 (~21 arcmin); here each 1024x512 v1 grid (cells taken as constant) is averaged over every NSIDE-512 pixel (mean over the 64 NSIDE-4096 sub-pixel centres)"
+    "w": "1 for l<=ell_lo; 0.5(1+cos(pi(l-ell_lo)/(ell_hi-ell_lo))) up to ell_hi; 0 above"
    },
-   "provisional": true,
-   "provisional_method": "APPROXIMATE: v1 143 GHz CIB pattern (averaged onto the NSIDE-512 HEALPix pixels) rescaled to the 93 GHz mean (monopole ratio) and sigma (C_l ratio); the true per-band CIB pattern differs (redshift-dependent SED)",
-   "v1_clip_frac": 0.015,
-   "saturated_code_frac_after_downsampling": 0.0,
-   "sigma_field_uK": 1.7389725299810854,
-   "shared_file": true,
+   "provisional": false,
+   "sigma_field_uK": 1.2144727625308982,
    "display": {
-    "hi": "dT_cib.jpg",
-    "lo": "dT_cib_lo.jpg",
-    "cmap": "inferno",
-    "mode": "pos",
-    "range_uK": null,
-    "shared": "provisional: the 143 GHz CIB image is shown for every band"
-   }
-  },
-  {
-   "component": "dT_cib",
-   "band": 143,
-   "file": "dT_cib_provisional_val16_n512.png",
-   "vmin": 3.6253783563101596,
-   "vmax": 9.719798297858684,
-   "clip_frac": 0.000999768575032552,
-   "mean_uK": 6.149811712082552,
-   "median_uK": 6.100809262300549,
-   "sigma_uK": 0.8625167833562716,
-   "rms_uK": 6.210001553593919,
-   "bytes": 4905069,
-   "ell_max": 3000,
-   "taper": {
-    "type": "sharp",
-    "ell_hi": 3000,
-    "note": "v1 render: sharp l<=3000 cut, NSIDE 1024 nearest-pixel 4096x2048 grid, 8-bit quantization, Lanczos downsampling to 1024x512 (~21 arcmin); here each 1024x512 v1 grid (cells taken as constant) is averaged over every NSIDE-512 pixel (mean over the 64 NSIDE-4096 sub-pixel centres)"
-   },
-   "provisional": true,
-   "provisional_method": "v1 143 GHz map averaged onto the NSIDE-512 HEALPix pixels, 16 bit",
-   "v1_clip_frac": 0.015,
-   "saturated_code_frac_after_downsampling": 0.0,
-   "sigma_field_uK": 4.293137669924924,
-   "shared_file": true,
-   "display": {
-    "hi": "dT_cib.jpg",
-    "lo": "dT_cib_lo.jpg",
+    "hi": "dT_cib_f93.jpg",
+    "lo": "dT_cib_f93_lo.jpg",
     "cmap": "inferno",
     "mode": "pos",
     "range_uK": [
-     1.3239671994229947,
-     15.245030980148917
+     1.1693655369259566,
+     5.8364366563872405
     ]
-   }
-  },
-  {
-   "component": "dT_cib",
-   "band": 145,
-   "file": "dT_cib_provisional_val16_n512.png",
-   "vmin": 3.740624266836275,
-   "vmax": 10.039153724766745,
-   "clip_frac": 0.000999768575032552,
-   "mean_uK": 6.34960395783449,
-   "median_uK": 6.2989603565692605,
-   "sigma_uK": 0.8914035166648773,
-   "rms_uK": 6.4118695129322445,
-   "bytes": 4905069,
-   "ell_max": 3000,
-   "taper": {
-    "type": "sharp",
-    "ell_hi": 3000,
-    "note": "v1 render: sharp l<=3000 cut, NSIDE 1024 nearest-pixel 4096x2048 grid, 8-bit quantization, Lanczos downsampling to 1024x512 (~21 arcmin); here each 1024x512 v1 grid (cells taken as constant) is averaged over every NSIDE-512 pixel (mean over the 64 NSIDE-4096 sub-pixel centres)"
-   },
-   "provisional": true,
-   "provisional_method": "APPROXIMATE: v1 143 GHz CIB pattern (averaged onto the NSIDE-512 HEALPix pixels) rescaled to the 145 GHz mean (monopole ratio) and sigma (C_l ratio); the true per-band CIB pattern differs (redshift-dependent SED)",
-   "v1_clip_frac": 0.015,
-   "saturated_code_frac_after_downsampling": 0.0,
-   "sigma_field_uK": 4.436920058072407,
-   "shared_file": true,
-   "display": {
-    "hi": "dT_cib.jpg",
-    "lo": "dT_cib_lo.jpg",
-    "cmap": "inferno",
-    "mode": "pos",
-    "range_uK": null,
-    "shared": "provisional: the 143 GHz CIB image is shown for every band"
-   }
-  },
-  {
-   "component": "dT_cib",
-   "band": 225,
-   "file": "dT_cib_provisional_val16_n512.png",
-   "vmin": 12.105730989093837,
-   "vmax": 33.9618188477754,
-   "clip_frac": 0.000999768575032552,
-   "mean_uK": 21.1589694837041,
-   "median_uK": 20.983234654467218,
-   "sigma_uK": 3.0931971832305667,
-   "rms_uK": 21.383869117319893,
-   "bytes": 4905069,
-   "ell_max": 3000,
-   "taper": {
-    "type": "sharp",
-    "ell_hi": 3000,
-    "note": "v1 render: sharp l<=3000 cut, NSIDE 1024 nearest-pixel 4096x2048 grid, 8-bit quantization, Lanczos downsampling to 1024x512 (~21 arcmin); here each 1024x512 v1 grid (cells taken as constant) is averaged over every NSIDE-512 pixel (mean over the 64 NSIDE-4096 sub-pixel centres)"
-   },
-   "provisional": true,
-   "provisional_method": "APPROXIMATE: v1 143 GHz CIB pattern (averaged onto the NSIDE-512 HEALPix pixels) rescaled to the 225 GHz mean (monopole ratio) and sigma (C_l ratio); the true per-band CIB pattern differs (redshift-dependent SED)",
-   "v1_clip_frac": 0.015,
-   "saturated_code_frac_after_downsampling": 0.0,
-   "sigma_field_uK": 15.39624689523005,
-   "shared_file": true,
-   "display": {
-    "hi": "dT_cib.jpg",
-    "lo": "dT_cib_lo.jpg",
-    "cmap": "inferno",
-    "mode": "pos",
-    "range_uK": null,
-    "shared": "provisional: the 143 GHz CIB image is shown for every band"
-   }
-  },
-  {
-   "component": "dT_cib",
-   "band": 280,
-   "file": "dT_cib_provisional_val16_n512.png",
-   "vmin": 26.247604898064278,
-   "vmax": 76.18472298412398,
-   "clip_frac": 0.000999768575032552,
-   "mean_uK": 46.93258030124636,
-   "median_uK": 46.531058721713066,
-   "sigma_uK": 7.067383422010549,
-   "rms_uK": 47.46172144124829,
-   "bytes": 4905069,
-   "ell_max": 3000,
-   "taper": {
-    "type": "sharp",
-    "ell_hi": 3000,
-    "note": "v1 render: sharp l<=3000 cut, NSIDE 1024 nearest-pixel 4096x2048 grid, 8-bit quantization, Lanczos downsampling to 1024x512 (~21 arcmin); here each 1024x512 v1 grid (cells taken as constant) is averaged over every NSIDE-512 pixel (mean over the 64 NSIDE-4096 sub-pixel centres)"
-   },
-   "provisional": true,
-   "provisional_method": "APPROXIMATE: v1 143 GHz CIB pattern (averaged onto the NSIDE-512 HEALPix pixels) rescaled to the 280 GHz mean (monopole ratio) and sigma (C_l ratio); the true per-band CIB pattern differs (redshift-dependent SED)",
-   "v1_clip_frac": 0.015,
-   "saturated_code_frac_after_downsampling": 0.0,
-   "sigma_field_uK": 35.1775763467128,
-   "shared_file": true,
-   "display": {
-    "hi": "dT_cib.jpg",
-    "lo": "dT_cib_lo.jpg",
-    "cmap": "inferno",
-    "mode": "pos",
-    "range_uK": null,
-    "shared": "provisional: the 143 GHz CIB image is shown for every band"
-   }
-  },
-  {
-   "component": "dT_cib",
-   "band": 353,
-   "file": "dT_cib_provisional_val16_n512.png",
-   "vmin": 72.92621333151348,
-   "vmax": 222.5405656808101,
-   "clip_frac": 0.000999768575032552,
-   "mean_uK": 134.89953732219337,
-   "median_uK": 133.6965565860481,
-   "sigma_uK": 21.174269441540698,
-   "rms_uK": 136.55121697050083,
-   "bytes": 4905069,
-   "ell_max": 3000,
-   "taper": {
-    "type": "sharp",
-    "ell_hi": 3000,
-    "note": "v1 render: sharp l<=3000 cut, NSIDE 1024 nearest-pixel 4096x2048 grid, 8-bit quantization, Lanczos downsampling to 1024x512 (~21 arcmin); here each 1024x512 v1 grid (cells taken as constant) is averaged over every NSIDE-512 pixel (mean over the 64 NSIDE-4096 sub-pixel centres)"
-   },
-   "provisional": true,
-   "provisional_method": "APPROXIMATE: v1 143 GHz CIB pattern (averaged onto the NSIDE-512 HEALPix pixels) rescaled to the 353 GHz mean (monopole ratio) and sigma (C_l ratio); the true per-band CIB pattern differs (redshift-dependent SED)",
-   "v1_clip_frac": 0.015,
-   "saturated_code_frac_after_downsampling": 0.0,
-   "sigma_field_uK": 105.39395351692498,
-   "shared_file": true,
-   "display": {
-    "hi": "dT_cib.jpg",
-    "lo": "dT_cib_lo.jpg",
-    "cmap": "inferno",
-    "mode": "pos",
-    "range_uK": null,
-    "shared": "provisional: the 143 GHz CIB image is shown for every band"
    }
   },
   {
    "component": "T_tot",
    "band": 93,
    "file": "T_tot_f93_val16_n512.png",
-   "vmin": -295.1479099130445,
-   "vmax": 295.1479099130445,
-   "clip_frac": 0.0009822845458984375,
-   "mean_uK": -1.6818514519325054,
-   "median_uK": -1.5267435944231806,
-   "sigma_uK": 97.78363967128476,
-   "rms_uK": 97.7981022907399,
-   "bytes": 4993636,
+   "vmin": -341.44995608520486,
+   "vmax": 336.3684665611603,
+   "clip_frac": 0.0010000864664713542,
+   "mean_uK": -1.4523799710776866,
+   "median_uK": -1.563345800550053,
+   "sigma_uK": 102.93502938049366,
+   "rms_uK": 102.94527517639405,
+   "bytes": 5982592,
    "ell_max": 3000,
    "taper": {
-    "type": "sharp",
+    "type": "cosine",
+    "ell_lo": 2500,
     "ell_hi": 3000,
-    "note": "v1 render: sharp l<=3000 cut, NSIDE 1024 nearest-pixel 4096x2048 grid, 8-bit quantization, Lanczos downsampling to 1024x512 (~21 arcmin); here each 1024x512 v1 grid (cells taken as constant) is averaged over every NSIDE-512 pixel (mean over the 64 NSIDE-4096 sub-pixel centres)"
+    "w": "1 for l<=ell_lo; 0.5(1+cos(pi(l-ell_lo)/(ell_hi-ell_lo))) up to ell_hi; 0 above"
    },
-   "provisional": true,
-   "provisional_method": "v1 8-bit map averaged onto the NSIDE-512 HEALPix pixels, 16 bit",
-   "v1_clip_frac": 0.005,
-   "saturated_code_frac_after_downsampling": 0.0009805283995650376,
-   "sigma_field_uK": 108.41945553870214,
+   "provisional": false,
+   "sigma_field_uK": 105.58083751813052,
    "display": {
     "hi": "T_tot_f93.jpg",
     "lo": "T_tot_f93_lo.jpg",
     "cmap": "RdBu_r",
     "mode": "sym",
     "range_uK": [
-     -303.5124255785963,
-     303.5124255785963
+     -290.3336701955732,
+     290.3336701955732
     ],
     "hi_dk": "T_tot_f93_dk.jpg",
     "lo_dk": "T_tot_f93_dk_lo.jpg"
    }
   },
   {
+   "component": "dT_cib",
+   "band": 143,
+   "file": "dT_cib_f143_val16_n512.png",
+   "vmin": 2.4342768143105733,
+   "vmax": 16.946056329641632,
+   "clip_frac": 0.0010000864664713542,
+   "mean_uK": 6.920471173632574,
+   "median_uK": 6.777071044182744,
+   "sigma_uK": 1.7505019281627903,
+   "rms_uK": 7.138429677847995,
+   "bytes": 6163409,
+   "ell_max": 3000,
+   "taper": {
+    "type": "cosine",
+    "ell_lo": 2500,
+    "ell_hi": 3000,
+    "w": "1 for l<=ell_lo; 0.5(1+cos(pi(l-ell_lo)/(ell_hi-ell_lo))) up to ell_hi; 0 above"
+   },
+   "provisional": false,
+   "sigma_field_uK": 2.8759290345624526,
+   "display": {
+    "hi": "dT_cib_f143.jpg",
+    "lo": "dT_cib_f143_lo.jpg",
+    "cmap": "inferno",
+    "mode": "pos",
+    "range_uK": [
+     2.7328068692146066,
+     13.626671942971017
+    ]
+   }
+  },
+  {
    "component": "T_tot",
    "band": 143,
    "file": "T_tot_f143_val16_n512.png",
-   "vmin": -292.3317061455412,
-   "vmax": 296.99082424680256,
-   "clip_frac": 0.0009930928548177083,
-   "mean_uK": 3.4001988712943483,
-   "median_uK": 3.575018277903723,
-   "sigma_uK": 97.77835268075097,
-   "rms_uK": 97.83745502273487,
-   "bytes": 4991028,
+   "vmin": -334.9576778986716,
+   "vmax": 341.9599587640354,
+   "clip_frac": 0.0010000864664713542,
+   "mean_uK": 3.9959928860392453,
+   "median_uK": 3.8884817216855367,
+   "sigma_uK": 102.91129374140655,
+   "rms_uK": 102.98884570027636,
+   "bytes": 5982453,
    "ell_max": 3000,
    "taper": {
-    "type": "sharp",
+    "type": "cosine",
+    "ell_lo": 2500,
     "ell_hi": 3000,
-    "note": "v1 render: sharp l<=3000 cut, NSIDE 1024 nearest-pixel 4096x2048 grid, 8-bit quantization, Lanczos downsampling to 1024x512 (~21 arcmin); here each 1024x512 v1 grid (cells taken as constant) is averaged over every NSIDE-512 pixel (mean over the 64 NSIDE-4096 sub-pixel centres)"
+    "w": "1 for l<=ell_lo; 0.5(1+cos(pi(l-ell_lo)/(ell_hi-ell_lo))) up to ell_hi; 0 above"
    },
-   "provisional": true,
-   "provisional_method": "v1 8-bit map averaged onto the NSIDE-512 HEALPix pixels, 16 bit",
-   "v1_clip_frac": 0.005,
-   "saturated_code_frac_after_downsampling": 0.0009756823868939096,
-   "sigma_field_uK": 108.41496630647362,
+   "provisional": false,
+   "sigma_field_uK": 105.54020489502994,
    "display": {
     "hi": "T_tot_f143.jpg",
     "lo": "T_tot_f143_lo.jpg",
     "cmap": "RdBu_r",
     "mode": "sym",
     "range_uK": [
-     -302.95449541641705,
-     302.95449541641705
+     -290.5966850845031,
+     290.5966850845031
     ],
     "hi_dk": "T_tot_f143_dk.jpg",
     "lo_dk": "T_tot_f143_dk_lo.jpg"
    }
   },
   {
+   "component": "dT_cib",
+   "band": 145,
+   "file": "dT_cib_f145_val16_n512.png",
+   "vmin": 2.5103406872766403,
+   "vmax": 17.4958263060339,
+   "clip_frac": 0.0010000864664713542,
+   "mean_uK": 7.135549169372074,
+   "median_uK": 6.987578932722084,
+   "sigma_uK": 1.8049933002820833,
+   "rms_uK": 7.360303170562314,
+   "bytes": 6162970,
+   "ell_max": 3000,
+   "taper": {
+    "type": "cosine",
+    "ell_lo": 2500,
+    "ell_hi": 3000,
+    "w": "1 for l<=ell_lo; 0.5(1+cos(pi(l-ell_lo)/(ell_hi-ell_lo))) up to ell_hi; 0 above"
+   },
+   "provisional": false,
+   "sigma_field_uK": 2.967340139658275,
+   "display": {
+    "hi": "dT_cib_f145.jpg",
+    "lo": "dT_cib_f145_lo.jpg",
+    "cmap": "inferno",
+    "mode": "pos",
+    "range_uK": [
+     2.8178071685815924,
+     14.05070043056458
+    ]
+   }
+  },
+  {
    "component": "T_tot",
    "band": 145,
    "file": "T_tot_f145_val16_n512.png",
-   "vmin": -292.21361460420525,
-   "vmax": 296.9844491283556,
-   "clip_frac": 0.0009962717692057292,
-   "mean_uK": 3.6679408874964587,
-   "median_uK": 3.576669927743353,
-   "sigma_uK": 97.77591535691656,
-   "rms_uK": 97.8446902710468,
-   "bytes": 4992892,
+   "vmin": -334.63470378192744,
+   "vmax": 342.3210327374498,
+   "clip_frac": 0.0010000864664713542,
+   "mean_uK": 4.280368037373338,
+   "median_uK": 4.168549473570465,
+   "sigma_uK": 102.91144114196831,
+   "rms_uK": 103.00041877804267,
+   "bytes": 5982007,
    "ell_max": 3000,
    "taper": {
-    "type": "sharp",
+    "type": "cosine",
+    "ell_lo": 2500,
     "ell_hi": 3000,
-    "note": "v1 render: sharp l<=3000 cut, NSIDE 1024 nearest-pixel 4096x2048 grid, 8-bit quantization, Lanczos downsampling to 1024x512 (~21 arcmin); here each 1024x512 v1 grid (cells taken as constant) is averaged over every NSIDE-512 pixel (mean over the 64 NSIDE-4096 sub-pixel centres)"
+    "w": "1 for l<=ell_lo; 0.5(1+cos(pi(l-ell_lo)/(ell_hi-ell_lo))) up to ell_hi; 0 above"
    },
-   "provisional": true,
-   "provisional_method": "v1 8-bit map averaged onto the NSIDE-512 HEALPix pixels, 16 bit",
-   "v1_clip_frac": 0.005,
-   "saturated_code_frac_after_downsampling": 0.000984329991807969,
-   "sigma_field_uK": 108.41846125452756,
+   "provisional": false,
+   "sigma_field_uK": 105.54052326562001,
    "display": {
     "hi": "T_tot_f145.jpg",
     "lo": "T_tot_f145_lo.jpg",
     "cmap": "RdBu_r",
     "mode": "sym",
     "range_uK": [
-     -302.9479922835434,
-     302.9479922835434
+     -290.6349629669213,
+     290.6349629669213
     ],
     "hi_dk": "T_tot_f145_dk.jpg",
     "lo_dk": "T_tot_f145_dk_lo.jpg"
    }
   },
   {
+   "component": "dT_cib",
+   "band": 225,
+   "file": "dT_cib_f225_val16_n512.png",
+   "vmin": 7.90868022345841,
+   "vmax": 58.14500939980164,
+   "clip_frac": 0.0010000864664713542,
+   "mean_uK": 22.482582663814046,
+   "median_uK": 22.00720110865418,
+   "sigma_uK": 5.709555492301796,
+   "rms_uK": 23.19623993570739,
+   "bytes": 6146120,
+   "ell_max": 3000,
+   "taper": {
+    "type": "cosine",
+    "ell_lo": 2500,
+    "ell_hi": 3000,
+    "w": "1 for l<=ell_lo; 0.5(1+cos(pi(l-ell_lo)/(ell_hi-ell_lo))) up to ell_hi; 0 above"
+   },
+   "provisional": false,
+   "sigma_field_uK": 9.652631445260447,
+   "display": {
+    "hi": "dT_cib_f225.jpg",
+    "lo": "dT_cib_f225_lo.jpg",
+    "cmap": "inferno",
+    "mode": "pos",
+    "range_uK": [
+     8.888005341067636,
+     44.47096461760756
+    ]
+   }
+  },
+  {
    "component": "T_tot",
    "band": 225,
    "file": "T_tot_f225_val16_n512.png",
-   "vmin": -285.8827166678337,
-   "vmax": 306.71565931862796,
-   "clip_frac": 0.000980059305826823,
-   "mean_uK": 21.614566062367796,
-   "median_uK": 21.443765435651017,
-   "sigma_uK": 97.87244538324184,
-   "rms_uK": 100.23075890843145,
-   "bytes": 4984244,
+   "vmin": -315.55989743962533,
+   "vmax": 361.93593211596084,
+   "clip_frac": 0.0010000864664713542,
+   "mean_uK": 22.817807567547266,
+   "median_uK": 22.696965962507534,
+   "sigma_uK": 103.11233461958246,
+   "rms_uK": 105.60684586185855,
+   "bytes": 5984930,
    "ell_max": 3000,
    "taper": {
-    "type": "sharp",
+    "type": "cosine",
+    "ell_lo": 2500,
     "ell_hi": 3000,
-    "note": "v1 render: sharp l<=3000 cut, NSIDE 1024 nearest-pixel 4096x2048 grid, 8-bit quantization, Lanczos downsampling to 1024x512 (~21 arcmin); here each 1024x512 v1 grid (cells taken as constant) is averaged over every NSIDE-512 pixel (mean over the 64 NSIDE-4096 sub-pixel centres)"
+    "w": "1 for l<=ell_lo; 0.5(1+cos(pi(l-ell_lo)/(ell_hi-ell_lo))) up to ell_hi; 0 above"
    },
-   "provisional": true,
-   "provisional_method": "v1 8-bit map averaged onto the NSIDE-512 HEALPix pixels, 16 bit",
-   "v1_clip_frac": 0.005,
-   "saturated_code_frac_after_downsampling": 0.000974583524819471,
-   "sigma_field_uK": 109.46273717655987,
+   "provisional": false,
+   "sigma_field_uK": 105.98000027749057,
    "display": {
     "hi": "T_tot_f225.jpg",
     "lo": "T_tot_f225_lo.jpg",
     "cmap": "RdBu_r",
     "mode": "sym",
     "range_uK": [
-     -308.9966384409777,
-     308.9966384409777
+     -298.6967499581776,
+     298.6967499581776
     ],
     "hi_dk": "T_tot_f225_dk.jpg",
     "lo_dk": "T_tot_f225_dk_lo.jpg"
    }
   },
   {
+   "component": "dT_cib",
+   "band": 280,
+   "file": "dT_cib_f280_val16_n512.png",
+   "vmin": 16.830139021044324,
+   "vmax": 129.37040903360227,
+   "clip_frac": 0.0010000864664713542,
+   "mean_uK": 47.92343058280452,
+   "median_uK": 46.885526306613706,
+   "sigma_uK": 12.23671791121285,
+   "rms_uK": 49.46101964237576,
+   "bytes": 6133853,
+   "ell_max": 3000,
+   "taper": {
+    "type": "cosine",
+    "ell_lo": 2500,
+    "ell_hi": 3000,
+    "w": "1 for l<=ell_lo; 0.5(1+cos(pi(l-ell_lo)/(ell_hi-ell_lo))) up to ell_hi; 0 above"
+   },
+   "provisional": false,
+   "sigma_field_uK": 21.145929855016956,
+   "display": {
+    "hi": "dT_cib_f280.jpg",
+    "lo": "dT_cib_f280_lo.jpg",
+    "cmap": "inferno",
+    "mode": "pos",
+    "range_uK": [
+     18.92903673142118,
+     95.32543897241356
+    ]
+   }
+  },
+  {
    "component": "T_tot",
    "band": 280,
    "file": "T_tot_f280_val16_n512.png",
-   "vmin": -268.98007059468097,
-   "vmax": 334.1961437453311,
-   "clip_frac": 0.000988324483235677,
-   "mean_uK": 49.83728936752172,
-   "median_uK": 49.64901865895263,
-   "sigma_uK": 98.22162166847261,
-   "rms_uK": 110.14191924370425,
-   "bytes": 4964833,
+   "vmin": -289.60687581572654,
+   "vmax": 396.3579947419412,
+   "clip_frac": 0.0010000864664713542,
+   "mean_uK": 50.763578735267465,
+   "median_uK": 50.596530346863176,
+   "sigma_uK": 103.95125654942177,
+   "rms_uK": 115.6840726470823,
+   "bytes": 5995020,
    "ell_max": 3000,
    "taper": {
-    "type": "sharp",
+    "type": "cosine",
+    "ell_lo": 2500,
     "ell_hi": 3000,
-    "note": "v1 render: sharp l<=3000 cut, NSIDE 1024 nearest-pixel 4096x2048 grid, 8-bit quantization, Lanczos downsampling to 1024x512 (~21 arcmin); here each 1024x512 v1 grid (cells taken as constant) is averaged over every NSIDE-512 pixel (mean over the 64 NSIDE-4096 sub-pixel centres)"
+    "w": "1 for l<=ell_lo; 0.5(1+cos(pi(l-ell_lo)/(ell_hi-ell_lo))) up to ell_hi; 0 above"
    },
-   "provisional": true,
-   "provisional_method": "v1 8-bit map averaged onto the NSIDE-512 HEALPix pixels, 16 bit",
-   "v1_clip_frac": 0.005,
-   "saturated_code_frac_after_downsampling": 0.0007409918159568537,
-   "sigma_field_uK": 114.30724088822421,
+   "provisional": false,
+   "sigma_field_uK": 107.97294989488117,
    "display": {
     "hi": "T_tot_f280.jpg",
     "lo": "T_tot_f280_lo.jpg",
     "cmap": "RdBu_r",
     "mode": "sym",
     "range_uK": [
-     -336.556344487926,
-     336.556344487926
+     -324.2687682345935,
+     324.2687682345935
     ],
     "hi_dk": "T_tot_f280_dk.jpg",
     "lo_dk": "T_tot_f280_dk_lo.jpg"
    }
   },
   {
+   "component": "dT_cib",
+   "band": 353,
+   "file": "dT_cib_f353_val16_n512.png",
+   "vmin": 45.56154139935005,
+   "vmax": 374.23352178392474,
+   "clip_frac": 0.0010000864664713542,
+   "mean_uK": 130.52832995027197,
+   "median_uK": 127.5953795492011,
+   "sigma_uK": 33.70206786803204,
+   "rms_uK": 134.80902899356747,
+   "bytes": 6118396,
+   "ell_max": 3000,
+   "taper": {
+    "type": "cosine",
+    "ell_lo": 2500,
+    "ell_hi": 3000,
+    "w": "1 for l<=ell_lo; 0.5(1+cos(pi(l-ell_lo)/(ell_hi-ell_lo))) up to ell_hi; 0 above"
+   },
+   "provisional": false,
+   "sigma_field_uK": 60.153942245807634,
+   "display": {
+    "hi": "dT_cib_f353.jpg",
+    "lo": "dT_cib_f353_lo.jpg",
+    "cmap": "inferno",
+    "mode": "pos",
+    "range_uK": [
+     51.33120175547987,
+     262.33938170495225
+    ]
+   }
+  },
+  {
    "component": "T_tot",
    "band": 353,
    "file": "T_tot_f353_val16_n512.png",
-   "vmin": -187.61146300286129,
-   "vmax": 454.5226165533239,
-   "clip_frac": 0.0009454091389973959,
-   "mean_uK": 141.0179634436283,
-   "median_uK": 141.19136461088573,
-   "sigma_uK": 100.62668314094277,
-   "rms_uK": 173.23912772158658,
-   "bytes": 4801114,
+   "vmin": -217.69115292688605,
+   "vmax": 534.2321025969444,
+   "clip_frac": 0.0010000864664713542,
+   "mean_uK": 136.85264450488498,
+   "median_uK": 136.17803219352254,
+   "sigma_uK": 109.65832349900923,
+   "rms_uK": 175.36702717613085,
+   "bytes": 6041571,
    "ell_max": 3000,
    "taper": {
-    "type": "sharp",
+    "type": "cosine",
+    "ell_lo": 2500,
     "ell_hi": 3000,
-    "note": "v1 render: sharp l<=3000 cut, NSIDE 1024 nearest-pixel 4096x2048 grid, 8-bit quantization, Lanczos downsampling to 1024x512 (~21 arcmin); here each 1024x512 v1 grid (cells taken as constant) is averaged over every NSIDE-512 pixel (mean over the 64 NSIDE-4096 sub-pixel centres)"
+    "w": "1 for l<=ell_lo; 0.5(1+cos(pi(l-ell_lo)/(ell_hi-ell_lo))) up to ell_hi; 0 above"
    },
-   "provisional": true,
-   "provisional_method": "v1 8-bit map averaged onto the NSIDE-512 HEALPix pixels, 16 bit",
-   "v1_clip_frac": 0.005,
-   "saturated_code_frac_after_downsampling": 4.82540619947475e-05,
-   "sigma_field_uK": 152.8127951040759,
+   "provisional": false,
+   "sigma_field_uK": 123.18188209885675,
    "display": {
     "hi": "T_tot_f353.jpg",
     "lo": "T_tot_f353_lo.jpg",
     "cmap": "RdBu_r",
     "mode": "sym",
     "range_uK": [
-     -491.2712536363585,
-     491.2712536363585
+     -437.34347826767674,
+     437.34347826767674
     ],
     "hi_dk": "T_tot_f353_dk.jpg",
     "lo_dk": "T_tot_f353_dk_lo.jpg"
@@ -813,8 +781,36 @@
   }
  ],
  "source": {
-  "generated_by": "export_sky_images.py --provisional-from-v1",
-  "v1_source": "git f8f822e:web/sky_img/",
-  "warning": "PROVISIONAL: built from the 8-bit 21-arcmin v1 value maps; rerun export_sky_images.py (full render, export_sky_images.sbatch) once the regenerated alms exist."
+  "generated_by": "export_sky_images.py (full render)",
+  "data_dir": "/mnt/ceph/users/abayer/fastpm/halfdome/sonification/b16_v2",
+  "nside_render": 2048,
+  "tsz_linearity_check": {
+   "93": {
+    "s_fit": 1.5105374544609047,
+    "s_g": 1.5105374544609753,
+    "resid": 4.6651705668092893e-14
+   },
+   "145": {
+    "s_fit": 0.9763767963321366,
+    "s_g": 0.9763767963321588,
+    "resid": 2.279503774138936e-14
+   },
+   "225": {
+    "s_fit": -0.11053694885092175,
+    "s_g": -0.11053694885092225,
+    "resid": 6.150894420666729e-15
+   },
+   "280": {
+    "s_fit": -0.9622437033734449,
+    "s_g": -0.9622437033735051,
+    "resid": 6.2391096279212e-14
+   },
+   "353": {
+    "s_fit": -2.1521739186008912,
+    "s_g": -2.1521739186011666,
+    "resid": 1.277289272824988e-13
+   }
+  },
+  "seconds": 89.3
  }
 }
