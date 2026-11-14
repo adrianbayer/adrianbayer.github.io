@@ -45,7 +45,10 @@
   const LOG_FLOOR_DB = -60;    // 'log volume' floor (amplitude dB re REF)
   const COMPONENTS = ['dT_cmblens', 'dT_ksz', 'dT_tsz', 'dT_cib', 'T_tot'];
   const VOICED = ['dT_cmblens', 'dT_tsz', 'dT_cib', 'dT_ksz'];
-  const T_TOT_PARTS = ['dT_cmblens', 'dT_tsz', 'dT_cib'];
+  // The Total's parts come from the data (T_tot_parts in cl_data.json / sky_img.json, see totalParts);
+  // files written before that field existed summed CMB + tSZ + CIB.
+  const LEGACY_T_TOT_PARTS = Object.freeze(['dT_cmblens', 'dT_tsz', 'dT_cib']);
+  const COMP_LABELS = Object.freeze({ dT_cmblens: 'CMB', dT_tsz: 'tSZ', dT_cib: 'CIB', dT_ksz: 'kSZ', T_tot: 'Total' });
   const SHORT = { dT_cmblens: 'cmblens', dT_tsz: 'tsz', dT_cib: 'cib', dT_ksz: 'ksz', T_tot: 'ttot' };
   const LAYER_BANDS = [[2, 100], [100, 1000], [1000, 6000]];
   const BUFFER_LOG2 = 19;      // loop length 2^19 samples = 11.9 s at 44.1 kHz (>= 8 s up to 65 kHz)
@@ -285,6 +288,15 @@
     return v[String(band)] || null;
   }
   function bandsOf(clData) { return sortedBands(clData.bands || []); }
+  /** The components summed into T_tot, from the data's T_tot_parts (cl_data.json or sky_img.json), in
+   *  VOICED order; LEGACY_T_TOT_PARTS when the field is absent (data written before it existed). */
+  function totalParts(data) {
+    const d = data && data.T_tot_parts;
+    const p = Array.isArray(d) ? VOICED.filter(function (c) { return d.indexOf(c) >= 0; }) : [];
+    return p.length ? p : LEGACY_T_TOT_PARTS.slice();
+  }
+  /** 'CMB + tSZ + CIB + kSZ': the Total's parts as text. */
+  function totalPartsLabel(data) { return totalParts(data).map(function (c) { return COMP_LABELS[c]; }).join(' + '); }
 
   const _crossCache = new WeakMap();
   function _crossLn(crossData) {
@@ -332,24 +344,24 @@
   // ==========================================================================
   // 2.4 Mixing with cross terms
   // ==========================================================================
-  /** Check an active set: T_tot and its parts are mutually exclusive. Returns a cleaned list. */
-  function validateSelection(comps) {
-    const out = [];
+  /** Check an active set: T_tot and its parts (totalParts(data)) are mutually exclusive. Returns a cleaned list. */
+  function validateSelection(comps, data) {
+    const out = [], parts = totalParts(data);
     for (const c of comps) if (COMPONENTS.indexOf(c) >= 0 && out.indexOf(c) < 0) out.push(c);
-    if (out.indexOf('T_tot') >= 0 && out.some(function (c) { return T_TOT_PARTS.indexOf(c) >= 0; })) {
-      throw new Error('T_tot and its components (CMB, tSZ, CIB) are mutually exclusive');
+    if (out.indexOf('T_tot') >= 0 && out.some(function (c) { return parts.indexOf(c) >= 0; })) {
+      throw new Error('T_tot and its components (' + parts.map(function (c) { return COMP_LABELS[c]; }).join(', ') + ') are mutually exclusive');
     }
     return out;
   }
   /**
    * D_mix(l) = sum_X D_X + 2 sum_{X<Y} D_XY on the cl_data grid, D_XY = r_XY sqrt(D_X D_Y) with r from
    * cross_data.json (interpolated in ln l at the band), or the exact D_XY when cl_data has Dl_cross.
-   * T_tot (with kSZ) mixes through its parts: D_{Ttot,Y} = sum_{P in parts} D_{P,Y}.
+   * T_tot (with a non-part) mixes through its parts: D_{Ttot,Y} = sum_{P in totalParts} D_{P,Y}.
    * opts.exact (default true): use Dl_cross when present.
    */
   function mixDl(clData, crossData, comps, band, opts) {
     opts = opts || {};
-    const sel = validateSelection(comps), g = gridOf(clData), n = g.n;
+    const sel = validateSelection(comps, clData), g = gridOf(clData), n = g.n, tp = totalParts(clData);
     const out = new Float64Array(n);
     const D = {};
     function spec(c) {
@@ -361,7 +373,7 @@
       return D[c];
     }
     for (const c of sel) { const s = spec(c); for (let i = 0; i < n; i++) out[i] += s[i]; }
-    const parts = function (c) { return c === 'T_tot' ? T_TOT_PARTS : [c]; };
+    const parts = function (c) { return c === 'T_tot' ? tp : [c]; };
     for (let a = 0; a < sel.length; a++) {
       for (let b = a + 1; b < sel.length; b++) {
         for (const X of parts(sel[a])) {
@@ -416,12 +428,12 @@
    * For one band this equals (D_mix(L u R) - D_mix(L) - D_mix(R)) / (2 sqrt(D_mix(L) D_mix(R))).
    */
   function stereoCoherence(clData, crossData, compsL, bandL, compsR, bandR) {
-    const g = gridOf(clData), n = g.n, parts = function (c) { return c === 'T_tot' ? T_TOT_PARTS : [c]; };
+    const g = gridOf(clData), n = g.n, tp = totalParts(clData), parts = function (c) { return c === 'T_tot' ? tp : [c]; };
     const DL = mixDl(clData, crossData, compsL, bandL), DR = mixDl(clData, crossData, compsR, bandR);
     const C = new Float64Array(n), out = new Float64Array(n);
-    for (const cl of validateSelection(compsL)) for (const X of parts(cl)) {
+    for (const cl of validateSelection(compsL, clData)) for (const X of parts(cl)) {
       const dx = getSpectrum(clData, X, bandL);
-      for (const cr of validateSelection(compsR)) for (const Y of parts(cr)) {
+      for (const cr of validateSelection(compsR, clData)) for (const Y of parts(cr)) {
         const dy = getSpectrum(clData, Y, bandR);
         if (!dx || !dy) continue;
         for (let i = 0; i < n; i++) C[i] += pairR(clData, crossData, X, bandL, Y, bandR, g.ell[i]) * Math.sqrt(Math.max(dx[i], 0) * Math.max(dy[i], 0));
@@ -779,7 +791,7 @@
   };
   /** Per-selection references: the same maxima over the bands of this selection only. */
   LevelModel.prototype.selectionRefs = function (comps) {
-    comps = validateSelection(comps);
+    comps = validateSelection(comps, this.cl);
     const k = 'sel:' + comps.slice().sort().join('+');
     if (!this._cache.has(k)) {
       const indep = comps.every(function (c) { return (this.cl.freq_indep || []).indexOf(c) >= 0; }, this);
@@ -1361,7 +1373,7 @@
     VERSION: VERSION,
     ELL_MIN: ELL_MIN, ELL_MAX: ELL_MAX, F_MIN: F_MIN, F_MAX: F_MAX, ALPHA: ALPHA, BETA: BETA,
     L_REF: L_REF, LOG_FLOOR_DB: LOG_FLOOR_DB, LN_ELL_RANGE: LN_ELL_RANGE, COMPONENTS: COMPONENTS,
-    VOICED: VOICED, T_TOT_PARTS: T_TOT_PARTS, SHORT: SHORT, LAYER_BANDS: LAYER_BANDS, MUSICAL: MUSICAL,
+    VOICED: VOICED, LEGACY_T_TOT_PARTS: LEGACY_T_TOT_PARTS, COMP_LABELS: COMP_LABELS, SHORT: SHORT, LAYER_BANDS: LAYER_BANDS, MUSICAL: MUSICAL,
     WINDOW_ORDER: WINDOW_ORDER, WINDOW_LEAK_DB: WINDOW_LEAK_DB, DUET_LADDER: DUET_LADDER, ISO226: ISO226,
     DUET: DUET, DUET_GAMMA: DUET_GAMMA, DUET_LEVELS: DUET_LEVELS, DUET_PITCH_OFFSETS: DUET_PITCH_OFFSETS,
     BUFFER_LOG2: BUFFER_LOG2, TSZ_NULL_GHZ: TSZ_NULL_GHZ, CIB_INTERBAND_R: CIB_INTERBAND_R, BAND_GROUPS: BAND_GROUPS,
@@ -1372,7 +1384,7 @@
     mulberry32: mulberry32, hashSeed: hashSeed, fnv1a32: fnv1a32, whiteNoise: whiteNoise,
     fft: fft, irfft: irfft, rfft: rfft,
     makeGrid: makeGrid, gridOf: gridOf, interpLn: interpLn, dlAt: dlAt, integrateLn: integrateLn, bandPower: bandPower,
-    isFreqIndep: isFreqIndep, getSpectrum: getSpectrum, bandsOf: bandsOf,
+    isFreqIndep: isFreqIndep, getSpectrum: getSpectrum, bandsOf: bandsOf, totalParts: totalParts, totalPartsLabel: totalPartsLabel,
     crossArray: crossArray, crossR: crossR, crossNModes: crossNModes, exactCross: exactCross,
     validateSelection: validateSelection, mixDl: mixDl, tszSign: tszSign, pairR: pairR, stereoCoherence: stereoCoherence,
     iso226At: iso226At, iso226Contour: iso226Contour, iso226SPL: iso226SPL, loudnessCompDb: loudnessCompDb,

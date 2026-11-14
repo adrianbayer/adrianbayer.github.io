@@ -520,9 +520,9 @@ function buildComponentButtons() {
     const w = document.createElement('span'); w.className = 'comp';
     const b = document.createElement('button');
     b.className = 'btn comp-btn'; b.dataset.comp = c; b.textContent = C.COMP_LABELS[c];
-    b.title = c === 'T_tot' ? 'Total = CMB + tSZ + CIB in the selected band (excludes them; kSZ not included)' : C.COMP_LABELS[c];
+    b.title = c === 'T_tot' ? C.totalTitle(V.meta) : C.COMP_LABELS[c];
     b.addEventListener('click', () => {
-      V.comps = C.toggleComponent(V.comps, c);
+      V.comps = C.toggleComponent(V.comps, c, V.meta);
       refreshComponents();
     });
     const m = document.createElement('button');

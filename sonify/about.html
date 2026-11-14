@@ -135,7 +135,7 @@ mjx-container{overflow-x:auto;overflow-y:hidden;max-width:100%;}
     <li><span class="tag tsz">tSZ</span> hot cluster gas scattering the CMB &mdash; a decrement below 217&nbsp;GHz, an increment above.</li>
     <li><span class="tag cib">CIB</span> dusty star-forming galaxies &mdash; rises steeply to high frequency and high \(\ell\).</li>
     <li><span class="tag ksz">kSZ</span> bulk motion of ionized gas &mdash; a faint, frequency-independent Doppler signal.</li>
-    <li><span class="tag tot">Total</span> \(T_{\rm tot}=\) CMB \(+\) tSZ \(+\) CIB in each band. <strong>kSZ is not part of the Total.</strong></li>
+    <li><span class="tag tot">Total</span> \(T_{\rm tot}=\) CMB \(+\) tSZ \(+\) CIB \(+\) kSZ in each band (without the kSZ in <a class="inline" href="#total">older data</a>).</li>
   </ul>
   <h3>The four pages</h3>
   <ul>
@@ -246,7 +246,7 @@ mjx-container{overflow-x:auto;overflow-y:hidden;max-width:100%;}
   <h3 id="levelmodes">Absolute and Equalized</h3>
   <ul>
     <li><strong>Absolute</strong> (default): the references above, the same for every selection. A faint component sounds faint (kSZ is about 40 dB below the CMB).</li>
-    <li><strong>Equalized</strong> (labelled in the interface): the same maxima taken only over the bands of the current selection (Play, sweeps) or of each voice (Instruments, and the Duet with Data levels). Levels are then <em>not</em> comparable between selections. Where a comparison is the point of the display, one reference is shared: Build-Up uses the Total's for all four stages, and the stereo modes use the whole selection's for both channels.</li>
+    <li><strong>Equalized</strong> (labelled in the interface): the same maxima taken only over the bands of the current selection (Play, sweeps) or of each voice (Instruments, and the Duet with Data levels). Levels are then <em>not</em> comparable between selections. Where a comparison is the point of the display, one reference is shared: Build-Up uses the Total's for all its stages, and the stereo modes use the whole selection's for both channels.</li>
     <li>The Duet uses neither by default: its voices play at one common level (<a class="inline" href="#duet-levels">Duet levels</a>). Absolute and Equalized apply to it only with <strong>Data levels</strong>.</li>
   </ul>
 
@@ -272,9 +272,8 @@ mjx-container{overflow-x:auto;overflow-y:hidden;max-width:100%;}
   \[ D^{\rm mix}_\ell=\sum_{X}D^{X}_\ell+2\sum_{X&lt;Y}r^{XY}_\ell\sqrt{D^{X}_\ell D^{Y}_\ell},\qquad r^{XY}_\ell=\frac{C^{XY}_\ell}{\sqrt{C^{XX}_\ell C^{YY}_\ell}} . \]
   <p>The correlation coefficients come from <code>cross_data.json</code> (71 bins in \(\ell\), per band for the frequency-dependent pairs), interpolated linearly in \(\ln\ell\) between bin centres at the current band and held constant beyond the ends. When <code>cl_data.json</code> carries the exact per-pair cross-spectra (<code>Dl_cross</code>, written by a full re-run of the pipeline), those are used instead. The plot draws the mix that is heard as a dashed white line labelled &ldquo;mix (heard)&rdquo;.</p>
   <ul>
-    <li><strong>Total and its parts are mutually exclusive.</strong> The Total already is CMB + tSZ + CIB, so selecting Total deselects them, and selecting any of them deselects Total (the sky views follow the same rule).</li>
-    <li><strong>kSZ</strong> is not in the Total. It mixes with anything through its own cross terms; Total + kSZ mixes through the Total's parts, \(D^{\rm Tot,kSZ}=\sum_{P\in\{\rm CMB,tSZ,CIB\}}D^{P,\rm kSZ}\).</li>
-    <li><strong>Accuracy.</strong> With the current data, CMB + tSZ + CIB reproduces the Total's band power to better than \(10^{-4}\). Point by point on the grid the deviation is at most 0.6% at 143&nbsp;GHz and up to 10% at 353&nbsp;GHz (at \(\ell\approx80\)); it is zero-mean scatter, within 2.8 times the chance correlation of a single grid bin, because the binned \(r\) cannot follow this one realization's chance correlations within each bin. Without cross terms the error would be up to 13% at 143&nbsp;GHz and 22% at 93&nbsp;GHz.</li>
+    <li><strong>Total and its parts are mutually exclusive.</strong> The Total already is the sum of its parts, so selecting Total deselects them, and selecting any of them deselects Total (the sky views follow the same rule). The parts are read from the data (<a class="inline" href="#total">Total</a>). With older data, whose Total has no kSZ, Total + kSZ mixes through the Total's parts, \(D^{\rm Tot,kSZ}=\sum_{P\in\{\rm CMB,tSZ,CIB\}}D^{P,\rm kSZ}\).</li>
+    <li><strong>Accuracy.</strong> With the current data, whose Total is CMB + tSZ + CIB, those three reproduce the Total's band power to better than \(10^{-4}\). Point by point on the grid the deviation is at most 0.6% at 143&nbsp;GHz and up to 10% at 353&nbsp;GHz (at \(\ell\approx80\)); it is zero-mean scatter, within 2.8 times the chance correlation of a single grid bin, because the binned \(r\) cannot follow this one realization's chance correlations within each bin. Without cross terms the error would be up to 13% at 143&nbsp;GHz and 22% at 93&nbsp;GHz.</li>
   </ul>
 
   <h2 class="sub" id="stereo">Stereo modes</h2>
@@ -348,12 +347,11 @@ mjx-container{overflow-x:auto;overflow-y:hidden;max-width:100%;}
 <section id="total" role="tabpanel" aria-labelledby="tab-total" tabindex="-1">
   <h2><span class="tag tot">Total</span> The combined sky</h2>
   <p>At a given band the Total is the sum</p>
-  \[ T_{\rm tot}(\nu)=\Delta T_{\rm CMB}+\Delta T_{\rm tSZ}(\nu)+\Delta T_{\rm CIB}(\nu)\qquad(\text{kSZ not included}). \]
-  <p>Because the spherical-harmonic transform is linear, the Total's coefficients are the sum of the components',</p>
-  \[ a_{\ell m}^{\rm tot}=a_{\ell m}^{\rm CMB}+a_{\ell m}^{\rm tSZ}+a_{\ell m}^{\rm CIB}, \]
-  <p>so its spectrum carries the cross terms:</p>
-  \[ C_\ell^{\rm tot}=C_\ell^{\rm CMB}+C_\ell^{\rm tSZ}+C_\ell^{\rm CIB}+2\bigl(C_\ell^{\rm CMB\times tSZ}+C_\ell^{\rm CMB\times CIB}+C_\ell^{\rm tSZ\times CIB}\bigr). \]
-  <p>The pipeline forms the Total by summing the \(a_{\ell m}\) per band and then computing \(C_\ell\), so the cross terms are exact. They are not small: tSZ and CIB trace the same halos and are strongly correlated (\(r\approx-0.29\) at \(\ell=500\) at 143&nbsp;GHz, \(+0.29\) at 353&nbsp;GHz, the sign following the tSZ), and the CMB&times;CIB term of this one realization is not zero either. Mixing CMB + tSZ + CIB in the Sonifier uses these correlations (<a class="inline" href="#mixing">Mixing</a>) and sounds like the Total.</p>
+  \[ T_{\rm tot}(\nu)=\Delta T_{\rm CMB}+\Delta T_{\rm tSZ}(\nu)+\Delta T_{\rm CIB}(\nu)+\Delta T_{\rm kSZ}. \]
+  <p>Because the spherical-harmonic transform is linear, the Total's coefficients are the sum of the components', \(a_{\ell m}^{\rm tot}=\sum_X a_{\ell m}^{X}\), so its spectrum carries the cross terms:</p>
+  \[ C_\ell^{\rm tot}=\sum_X C_\ell^{X}+2\sum_{X&lt;Y}C_\ell^{XY}. \]
+  <p>The pipeline forms the Total by summing the \(a_{\ell m}\) per band and then computing \(C_\ell\), so the cross terms are exact. They are not small: tSZ and CIB trace the same halos and are strongly correlated (\(r\approx-0.29\) at \(\ell=500\) at 143&nbsp;GHz, \(+0.29\) at 353&nbsp;GHz, the sign following the tSZ), and the CMB&times;CIB term of this one realization is not zero either. Mixing the Total's components in the Sonifier uses these correlations (<a class="inline" href="#mixing">Mixing</a>) and sounds like the Total.</p>
+  <p>The data record which components they summed (<code>T_tot_parts</code> in <code>cl_data.json</code> and <code>sky_img.json</code>), and the pages read it. Data written before 14 November 2026 have no such field and leave out the kSZ: \(T_{\rm tot}=\) CMB \(+\) tSZ \(+\) CIB.</p>
   <p>Listening across bands you hear the CMB-dominated sky give way to a CIB-dominated one at high frequency and small scales: the Total is &minus;4.6 dB re REF at 93&ndash;145&nbsp;GHz and 0.0 dB at 353&nbsp;GHz, where it defines REF.</p>
 </section>
 
@@ -397,7 +395,7 @@ mjx-container{overflow-x:auto;overflow-y:hidden;max-width:100%;}
 
   <h3 id="buildup">Build-Up and &nu;-Sweep</h3>
   <ul>
-    <li><strong>Build-Up</strong>: CMB &rarr; CMB + tSZ &rarr; CMB + tSZ + CIB &rarr; Total, at the current band, each stage for max(1.5 s, sweep speed/4) with 0.5 s of silence between stages, all on one reference (the Total's in Equalized mode), then it stops. The third and fourth stages should sound alike: that is the cross-term mixing at work.</li>
+    <li><strong>Build-Up</strong>: the Total's components added one at a time (CMB &rarr; + tSZ &rarr; + CIB &rarr; + kSZ; no kSZ stage with older data), then the Total, at the current band, each stage for max(1.5 s, sweep speed/4) with 0.5 s of silence between stages, all on one reference (the Total's in Equalized mode), then it stops. The last two stages should sound alike: that is the cross-term mixing at work.</li>
     <li><strong>&nu;-Sweep</strong>: the current selection steps through every band in <code>cl_data.json</code> (sweep speed / number of bands each), crossfaded, on one reference.</li>
   </ul>
   <p>Both use the current Play method (Shaped Noise when Instruments or Duet is selected).</p>
@@ -630,7 +628,7 @@ mjx-container{overflow-x:auto;overflow-y:hidden;max-width:100%;}
     <tr><td>power-spectrum plot</td><td>\(D_\ell\) of every component at the current band (active ones bold; Total dashed), the heard mix (&ldquo;mix (heard)&rdquo;) when two or more are active, the \(\ell\) range (shaded), and during sweeps the cursor and the window as applied. Bottom axis \(\ell\); top axis the audio frequency (analysis map), or the unsnapped pitch of the musical map in Instruments and of voice A on the duet map in Duet. The beam setting applies; log volume and loudness compensation change only the sound.</td></tr>
     <tr><td>level readout</td><td>what is playing, its level in dB re REF (or REF<sub>win</sub>, REF<sub>voice</sub>) and the REF value and its origin; per channel in the stereo modes.</td></tr>
     <tr class="group"><td colspan="2">Components</td></tr>
-    <tr><td>CMB, tSZ, CIB, kSZ, Total</td><td>toggle; the active set is mixed with its cross terms. <strong>CMB</strong> by default. Total excludes CMB, tSZ and CIB (and vice versa).</td></tr>
+    <tr><td>CMB, tSZ, CIB, kSZ, Total</td><td>toggle; the active set is mixed with its cross terms. <strong>CMB</strong> by default. Total excludes its components (and vice versa).</td></tr>
     <tr class="group"><td colspan="2">Observing frequency (GHz)</td></tr>
     <tr><td>band buttons</td><td>built from the band list in <code>cl_data.json</code>, grouped by experiment: SO MF (93, 145), SO HF (225, 280), Planck (<strong>143</strong>, 353). Sets the level of tSZ, CIB and Total, the starting note on the musical map (Instruments), and the Duet's \(r\) (not its pitch). CMB and kSZ do not depend on the band.</td></tr>
     <tr class="group"><td colspan="2">Synthesis method</td></tr>
@@ -661,10 +659,10 @@ mjx-container{overflow-x:auto;overflow-y:hidden;max-width:100%;}
     <tr class="group"><td colspan="2">Playback</td></tr>
     <tr><td>&#9654; Play</td><td>loops the current selection over the \(\ell\) range (in Instruments and Duet: sweeps \(\ell\)). Pressing again stops.</td></tr>
     <tr><td>&#8467;-Sweep</td><td>sweeps the window across the \(\ell\) range (<a class="inline" href="#sweep">details</a>).</td></tr>
-    <tr><td>Build-Up</td><td>CMB &rarr; +tSZ &rarr; +CIB &rarr; Total at the current band, then stops.</td></tr>
+    <tr><td>Build-Up</td><td>CMB &rarr; +tSZ &rarr; +CIB &rarr; +kSZ &rarr; Total (the Total's components; no +kSZ with older data) at the current band, then stops.</td></tr>
     <tr><td>&nu;-Sweep</td><td>steps the selection through the bands, crossfaded.</td></tr>
     <tr><td>&#9632; Stop</td><td>fades everything out (80 ms; the reverb tail over 0.25 s).</td></tr>
-    <tr><td>&#9654; Tour</td><td>a guided sequence (CMB, a sweep, tSZ, the tSZ null band, CIB at the lowest and highest bands, a &nu;-sweep of CMB + tSZ + CIB, Big Bang). Faint steps use Equalized levels and say so in the caption; band choices and dB figures in the captions come from the data. Your settings are restored at the end.</td></tr>
+    <tr><td>&#9654; Tour</td><td>a guided sequence (CMB, a sweep, tSZ, the tSZ null band, CIB at the lowest and highest bands, a &nu;-sweep of the Total's components, Big Bang). Faint steps use Equalized levels and say so in the caption; band choices and dB figures in the captions come from the data. Your settings are restored at the end.</td></tr>
     <tr><td>&#127775; Big Bang (artistic)</td><td>the CMB acoustic-peak chord (<a class="inline" href="#bigbang">details</a>).</td></tr>
     <tr><td>3D Spatial</td><td>HRTF placement of the Instruments and Duet voices (headphones).</td></tr>
     <tr><td>&#9210; Record</td><td>captures what you hear (after the limiter, including monitor gain) as a lossy webm/ogg file. Use Render WAV for lossless, reproducible audio.</td></tr>
@@ -686,7 +684,7 @@ mjx-container{overflow-x:auto;overflow-y:hidden;max-width:100%;}
   <h3 id="ctl-sky">Sky Explorer, 3D Globe and Lightcone</h3>
   <div class="tw"><table>
     <tr><th>control</th><th>where</th><th>what it does</th></tr>
-    <tr><td>Components (with M / S)</td><td>map, globe</td><td>toggle overlays and voices; M mutes, S solos a voice (audio only). Total is exclusive with CMB, tSZ, CIB; at least one stays on. The lightcone has the CMB voice only.</td></tr>
+    <tr><td>Components (with M / S)</td><td>map, globe</td><td>toggle overlays and voices; M mutes, S solos a voice (audio only). Total is exclusive with its components; at least one stays on. The lightcone has the CMB voice only.</td></tr>
     <tr><td>Band (GHz)</td><td>map, globe</td><td>from <code>sky_img.json</code>; switches the tSZ, CIB and Total maps (and the tSZ sign).</td></tr>
     <tr><td>Zoom &minus; / + / whole sky</td><td>map</td><td>zoom about the centre; the map opens on the whole sky. Wheel and pinch zoom too.</td></tr>
     <tr><td>Scan</td><td>map, globe</td><td>drag (or arrow keys) to move a continuous ear (<a class="inline" href="#scan">details</a>); on the map it replaces panning, on the globe rotation.</td></tr>
@@ -731,7 +729,7 @@ mjx-container{overflow-x:auto;overflow-y:hidden;max-width:100%;}
     <li><code>web/sonify_core.js</code> (<code>window.SonifyCore</code>; a small public surface as <code>window.SONIFY_API</code>: <code>ellToFreq</code>, <code>freqToEll</code>, <code>musicalFreq</code>, <code>duetFreq</code>, <code>buildTargetPSD</code>, <code>mixDl</code>, <code>duetInterval</code>, <code>duetGate</code>, <code>duetSigmaR</code>, <code>loudnessCompDb</code>, <code>iso226SPL</code>, <code>stereoCoherence</code>, the three synthesizers, <code>LevelModel</code>, <code>encodeWAV</code>, <code>mulberry32</code>);</li>
     <li><code>web/sky_core.js</code> (<code>window.SkyCore</code>: PNG decoding, the HEALPix pixel lookup, geometry, picking, the scan path and every sky-view mapping) with <code>web/sky_audio.js</code> (the sky views' audio engine).</li>
   </ul>
-  <p>The tests run with plain <code>node --test tests/*.test.js</code> (Node 18 or later) and check, among other things: the pitch maps and their inverses; the spectral-density convention (power per \(\ell\)-octave of the synthesized buffers against \(\int D_\ell\,d\ln\ell\)); seamless loops; mixing CMB + tSZ + CIB against the Total; the duet map's range and the monotonicity of the duet ladder for the duet tone at every quarter tone of its register (and for generic harmonic tones over 110&nbsp;Hz&ndash;7&nbsp;kHz), the significance gate and its noise cue; the sweep window's edges and leakage; the ISO 226 contour against its table; deterministic buffer and WAV hashes; the PNG decoder, the HEALPix pixel lookup (against healpy) and the sky orientation; and smoke tests that run the real page scripts against a simulated DOM and Web Audio API.</p>
+  <p>The tests run with plain <code>node --test tests/*.test.js</code> (Node 18 or later) and check, among other things: the pitch maps and their inverses; the spectral-density convention (power per \(\ell\)-octave of the synthesized buffers against \(\int D_\ell\,d\ln\ell\)); seamless loops; mixing the Total's components against the Total; the duet map's range and the monotonicity of the duet ladder for the duet tone at every quarter tone of its register (and for generic harmonic tones over 110&nbsp;Hz&ndash;7&nbsp;kHz), the significance gate and its noise cue; the sweep window's edges and leakage; the ISO 226 contour against its table; deterministic buffer and WAV hashes; the PNG decoder, the HEALPix pixel lookup (against healpy) and the sky orientation; and smoke tests that run the real page scripts against a simulated DOM and Web Audio API.</p>
 
   <h3 id="pipeline">Data pipeline</h3>
   <p>The web data are produced from the HalfDome \(a_{\ell m}\) by Python scripts in the repository, all reading the band list from one config file (<code>sonify_config.py</code>):</p>
@@ -739,7 +737,7 @@ mjx-container{overflow-x:auto;overflow-y:hidden;max-width:100%;}
     <tr><th>script</th><th>output</th></tr>
     <tr><td><code>precompute_cls.py</code></td><td><code>cls_cache.npz</code>: auto-spectra of every component and band; the Total from summed \(a_{\ell m}\)</td></tr>
     <tr><td><code>precompute_cross.py</code></td><td><code>cross_data.json</code> v2: \(r_\ell\) per pair and band, bin edges and \(N_{\rm modes}\) (and <code>cross_cache.npz</code>)</td></tr>
-    <tr><td><code>export_web_data.py</code></td><td><code>cl_data.json</code> v2: the 400-point grid, \(D_\ell\), \(B_\ell^2\), the mixing check</td></tr>
+    <tr><td><code>export_web_data.py</code></td><td><code>cl_data.json</code> v2: the 400-point grid, \(D_\ell\), \(B_\ell^2\), the Total's parts (from the cache), the mixing check</td></tr>
     <tr><td><code>export_sky_images.py</code></td><td><code>sky_img/*_val16_n512.png</code> HEALPix value maps, <code>sky_img.json</code> v3, display JPEGs</td></tr>
     <tr><td><code>extract_halos.py</code></td><td><code>halos.json</code> v2: the top 3000 clusters with mass definition, units and \(\chi\)</td></tr>
   </table></div>
@@ -753,7 +751,7 @@ mjx-container{overflow-x:auto;overflow-y:hidden;max-width:100%;}
   <ul>
     <li><strong>Maps.</strong> Lensed CMB temperature; tSZ from a halo-based Compton-\(y\) map (Battaglia et al. 2012 pressure profile) times \(g(x)\,T_{\rm CMB}\); CIB painted on the halos (Shang et al. 2012 model, XGPaint) per band and converted to thermodynamic \(\Delta T\); kSZ from the halos' optical depth and line-of-sight velocity. All in &mu;K (thermodynamic), HEALPix \(N_{\rm side}=8192\), transformed to \(a_{\ell m}\) up to \(\ell_{\max}=9000\) and <strong>convolved with a 2&prime; FWHM Gaussian beam</strong>. Bands are treated as single frequencies (no bandpass integration).</li>
     <li><strong>Bands.</strong> 93 and 145 GHz (Simons Observatory mid-frequency), 225 and 280 GHz (SO high-frequency), 143 and 353 GHz (Planck). The pages read the band list from the data files, so adding bands needs no code change.</li>
-    <li><strong>Total.</strong> \(T_{\rm tot}=\) CMB \(+\) tSZ \(+\) CIB, summed as \(a_{\ell m}\) per band. <strong>It excludes the kSZ.</strong></li>
+    <li><strong>Total.</strong> \(T_{\rm tot}=\) CMB \(+\) tSZ \(+\) CIB \(+\) kSZ, summed as \(a_{\ell m}\) per band (CMB \(+\) tSZ \(+\) CIB in data written before 14 November 2026).</li>
     <li><strong>Clusters.</strong> The 3000 most massive halos of the HalfDome lightcone halo catalogue by \(M_{200c}\) (in \(M_\odot/h\); a calibrated estimate from the friends-of-friends mass, not a measured spherical-overdensity mass), with the cosmological redshift (no peculiar-velocity term) and \(\chi\) computed in the HalfDome cosmology.</li>
     <li><strong>Raw data.</strong> The \(a_{\ell m}\) files (~810 MB each) are public at <a class="inline" href="https://users.flatironinstitute.org/~abayer/halfdome-b16/" target="_blank" rel="noopener">users.flatironinstitute.org/~abayer/halfdome-b16/</a>; everything the pages need is in the repository.</li>
   </ul>

@@ -225,8 +225,7 @@ details.help summary { cursor: pointer; color: #9aa3c4; }
       </div>
       <div class="note">Several components are mixed with their cross-spectra:
         D<sub>mix</sub> = &Sigma; D<sub>X</sub> + 2 &Sigma;<sub>X&lt;Y</sub> r<sub>XY</sub> &radic;(D<sub>X</sub>D<sub>Y</sub>),
-        so CMB + tSZ + CIB sounds like the Total. Total = CMB + tSZ + CIB, so it excludes its own components
-        (and vice versa); kSZ is not in the Total.</div>
+        <span id="totalNote">so the Total's components together sound like the Total, which excludes them (and vice versa).</span></div>
     </div>
 
     <div class="control-group">
@@ -415,7 +414,7 @@ details.help summary { cursor: pointer; color: #9aa3c4; }
       <div class="transport">
         <button class="transport-btn play-btn" id="playBtn">&#9654; Play</button>
         <button class="transport-btn action-btn" id="sweepBtn">&#8467;-Sweep</button>
-        <button class="transport-btn action-btn" id="buildupBtn" title="CMB, then +tSZ, then +CIB, then the Total">Build-Up</button>
+        <button class="transport-btn action-btn" id="buildupBtn" title="The Total's components one at a time, then the Total">Build-Up</button>
         <button class="transport-btn action-btn" id="freqSweepBtn" title="Step through the observing bands, crossfaded">&#957;-Sweep</button>
         <button class="transport-btn stop-btn" id="stopBtn">&#9632; Stop</button>
       </div>
@@ -565,6 +564,7 @@ async function loadData() {
     RT.cl = a.json; RT.hashes.cl_data = a.hash;
     RT.bands = Core.bandsOf(RT.cl);
     if (RT.bands.indexOf(S.band) < 0) S.band = RT.bands.indexOf(143) >= 0 ? 143 : RT.bands[0];
+    showTotalParts();
     try { const x = await fetchJSON('cross_data.json'); RT.cross = x.json; RT.hashes.cross_data = x.hash; } catch (e) { RT.cross = null; }
     buildBandButtons();
     setStatus('Ready');
@@ -574,6 +574,22 @@ async function loadData() {
     console.error('Data load failed:', err);
     showLoadError(err);
   }
+}
+// The Total's composition comes from cl_data.json (T_tot_parts; CMB + tSZ + CIB in older files):
+// the component note, the Build-Up tooltip and the current selection follow it.
+function showTotalParts() {
+  const parts = Core.totalParts(RT.cl), sum = Core.totalPartsLabel(RT.cl);
+  const out = Core.VOICED.filter(function (c) { return parts.indexOf(c) < 0; }).map(function (c) { return COMP_LABELS[c]; });
+  $('totalNote').textContent = 'so ' + sum + ' sounds like the Total. Total = ' + sum + ', so it excludes its own components ' +
+    '(and vice versa)' + (out.length ? '; ' + out.join(', ') + (out.length > 1 ? ' are' : ' is') + ' not in the Total.' : '.');
+  $('buildupBtn').title = parts.map(function (c, k) { return (k ? '+' : '') + COMP_LABELS[c]; }).join(', then ') + ', then the Total';
+  try { Core.validateSelection(S.comps, RT.cl); } catch (e) { S.comps = keepTotal(S.comps); }
+}
+// An invalid selection (the Total with some of its parts) keeps the Total and drops the parts: a link made
+// with older data for Total + kSZ means the Total once the kSZ is in it.
+function keepTotal(comps) {
+  const parts = Core.totalParts(RT.cl);
+  return comps.filter(function (c) { return parts.indexOf(c) < 0; });
 }
 // Full-screen message when the data cannot be fetched (most often: page opened via file://).
 function showLoadError(err) {
@@ -1348,11 +1364,14 @@ DuetPlayer.prototype.stop = function (fade, t0, r) {
 };
 
 // ---------------------------------------------------------------------------
-// Player: Build-Up (CMB, +tSZ, +CIB, then the Total; silences between) and nu-Sweep (the bands,
-// crossfaded). Build-Up stages share ONE level reference (Equalized: the Total's, the largest
-// selection); the nu-Sweep stages are one selection, so they share its reference anyway.
+// Player: Build-Up (the Total's parts added one at a time, then the Total; silences between) and
+// nu-Sweep (the bands, crossfaded). Build-Up stages share ONE level reference (Equalized: the Total's,
+// the largest selection); the nu-Sweep stages are one selection, so they share its reference anyway.
 // ---------------------------------------------------------------------------
-const BUILDUP_STAGES = [['dT_cmblens'], ['dT_cmblens', 'dT_tsz'], ['dT_cmblens', 'dT_tsz', 'dT_cib'], ['T_tot']];
+function buildupStages() {
+  const parts = Core.totalParts(RT.cl);
+  return parts.map(function (c, k) { return parts.slice(0, k + 1); }).concat([['T_tot']]);
+}
 const BUILDUP_REF = ['T_tot'];
 const BUILDUP_GAP = 0.5;
 function stageDur() { return Math.max(1.5, S.sweepSpeed / 4); }
@@ -1363,7 +1382,7 @@ function SequencePlayer(ctx, bus, o, kind) {
   const method = bufferMethod(), sr = ctx.sampleRate;
   if (kind === 'buildup') {
     const d = stageDur();
-    BUILDUP_STAGES.forEach(function (st, k) { this.items.push({ comps: st, band: S.band, t: k * (d + BUILDUP_GAP), dur: d, refComps: BUILDUP_REF }); }, this);
+    buildupStages().forEach(function (st, k) { this.items.push({ comps: st, band: S.band, t: k * (d + BUILDUP_GAP), dur: d, refComps: BUILDUP_REF }); }, this);
   } else {
     const d = S.sweepSpeed / RT.bands.length;
     RT.bands.forEach(function (b, k) { this.items.push({ comps: S.comps.slice(), band: b, t: k * d, dur: d, xfade: true, refComps: S.comps.slice() }); }, this);
@@ -1563,7 +1582,7 @@ function renderDuration(kind) {
   const sr = 44100;
   if (kind === 'play') return Core.bufferLength() / sr;
   if (usesClock(kind)) return sweepPeriod();
-  if (kind === 'buildup') return 4 * stageDur() + 3 * BUILDUP_GAP;
+  if (kind === 'buildup') { const n = buildupStages().length; return n * stageDur() + (n - 1) * BUILDUP_GAP; }
   if (kind === 'freqsweep') return S.sweepSpeed;
   return 12.5;
 }
@@ -1601,7 +1620,7 @@ async function renderWav() {
         build_up_reference: kind === 'buildup' ? BUILDUP_REF : null,
       },
       data: { cl_data_fnv1a32: RT.hashes.cl_data || null, cross_data_fnv1a32: RT.hashes.cross_data || null,
-        cl_data_version: RT.cl.version, bands: RT.bands },
+        cl_data_version: RT.cl.version, bands: RT.bands, T_tot_parts: Core.totalParts(RT.cl) },
       voice_calibration: (kind === 'instruments' || kind === 'duet') ? { freqs_hz: CAL_F,
         rms: voiceInstruments(kind).reduce(function (o, i) { o[i] = RT.cal[i + '@' + sr]; return o; }, {}) } : null,
       determinism: 'The same settings, data and browser give a byte-identical WAV. Noise, Additive and Layers ' +
@@ -1682,7 +1701,7 @@ function applySettings(obj) {
     } else if (typeof d === typeof v && (!ENUMS[k] || ENUMS[k].indexOf(v) >= 0)) S[k] = v;
   }
   if (ENUMS.method.indexOf(S.method) < 0) S.method = DEFAULTS.method;
-  try { S.comps = Core.validateSelection(S.comps); } catch (e) { S.comps = S.comps.filter(function (c) { return c !== 'T_tot'; }); }
+  try { S.comps = Core.validateSelection(S.comps, RT.cl); } catch (e) { S.comps = keepTotal(S.comps); }
   if (RT.bands.length && RT.bands.indexOf(S.band) < 0) S.band = RT.bands[0];
   S.ellMin = Math.max(2, Math.min(1000, Math.round(S.ellMin))); S.ellMax = Math.max(100, Math.min(6000, Math.round(S.ellMax)));
   if (S.ellMin >= S.ellMax) S.ellMin = Math.max(2, S.ellMax - 10);
@@ -2159,8 +2178,9 @@ function toggleComp(c) {
   if (set.has(c)) set.delete(c);
   else {
     set.add(c);
-    if (c === 'T_tot') Core.T_TOT_PARTS.forEach(function (x) { set.delete(x); });
-    else if (Core.T_TOT_PARTS.indexOf(c) >= 0) set.delete('T_tot');
+    const parts = Core.totalParts(RT.cl);
+    if (c === 'T_tot') parts.forEach(function (x) { set.delete(x); });
+    else if (parts.indexOf(c) >= 0) set.delete('T_tot');
   }
   S.comps = COMP_ORDER.filter(function (x) { return set.has(x); });
   settingsChanged('comps');
@@ -2350,7 +2370,7 @@ async function runTour() {
     { cap: '&hellip;and <b>' + Math.round(cibDb) + ' dB louder by ' + TB.hi + ' GHz</b>.' + eq,
       run: function () { tourSet({ band: TB.hi }); startAction('play'); }, dur: 5000 },
     { cap: 'All together, on one absolute scale: the <b>multi-probe sky</b> crossfading through the bands, from CMB-dominated to dust-dominated.',
-      run: function () { tourSet({ comps: ['dT_cmblens', 'dT_tsz', 'dT_cib'], level: 'absolute' }); startAction('freqsweep'); }, dur: 11000 },
+      run: function () { tourSet({ comps: Core.totalParts(RT.cl), level: 'absolute' }); startAction('freqsweep'); }, dur: 11000 },
     { cap: '&#127775; An <b>artistic</b> &ldquo;sound of the Big Bang&rdquo;: the CMB acoustic peaks found in the data, played as a slowly descending chord.',
       run: function () { startAction('bigbang'); }, dur: 12800 },
     { cap: 'That&rsquo;s the multi-probe sky. <b>Now explore it yourself</b>: mix components, sweep, or render a WAV.',

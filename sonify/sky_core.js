@@ -493,7 +493,7 @@
   const HALF_RANGE_ST = 5;
   const REGISTER_SLOT = { dT_cmblens: 0, T_tot: 0, dT_tsz: 1, dT_ksz: 2, dT_cib: 3 };
   const VOICE_ORDER = ['dT_cmblens', 'T_tot', 'dT_tsz', 'dT_ksz', 'dT_cib'];   // onset order too
-  const COMP_LABELS = { dT_cmblens: 'CMB', dT_tsz: 'tSZ', dT_cib: 'CIB', dT_ksz: 'kSZ', T_tot: 'Total' };
+  const COMP_LABELS = SonifyCore.COMP_LABELS;   // one table, shared with the sonifier
 
   function registerCentre(comp) {
     const k = REGISTER_SLOT[comp];
@@ -631,16 +631,23 @@
     return g < 0 ? 'decrement' : 'increment';
   }
 
-  /** Component toggling with the T_tot rule: T_tot = CMB + tSZ + CIB, so it is mutually exclusive
-   *  with those three (kSZ may accompany either). At least one component stays on. */
-  const TOTAL_PARTS = ['dT_cmblens', 'dT_tsz', 'dT_cib'];
-  function toggleComponent(active, comp) {
-    const s = new Set(active);
+  /** The Total's parts from sky_img.json T_tot_parts (CMB + tSZ + CIB when absent: older files). */
+  function totalParts(meta) { return SonifyCore.totalParts(meta); }
+  /** Component toggling with the T_tot rule: T_tot is mutually exclusive with its parts (totalParts(meta));
+   *  a non-part may accompany either. At least one component stays on. */
+  function toggleComponent(active, comp, meta) {
+    const s = new Set(active), parts = totalParts(meta);
     if (s.has(comp)) { if (s.size > 1) s.delete(comp); return Array.from(s); }
     s.add(comp);
-    if (comp === 'T_tot') for (const p of TOTAL_PARTS) s.delete(p);
-    else if (TOTAL_PARTS.indexOf(comp) >= 0) s.delete('T_tot');
+    if (comp === 'T_tot') for (const p of parts) s.delete(p);
+    else if (parts.indexOf(comp) >= 0) s.delete('T_tot');
     return Array.from(s);
+  }
+  /** Tooltip of the Total button, from the parts in the data. */
+  function totalTitle(meta) {
+    const parts = totalParts(meta), out = SonifyCore.VOICED.filter((c) => parts.indexOf(c) < 0);
+    return 'Total = ' + SonifyCore.totalPartsLabel(meta) + ' in the selected band (excludes them' +
+      out.map((c) => '; ' + COMP_LABELS[c] + ' not included').join('') + ')';
   }
 
   // ---------------------------------- equal loudness ----------------------------------
@@ -792,7 +799,7 @@
           ? 'scale: <b>physical per component</b> (one µK scale per component, set by its loudest band: weak bands are quiet and nearly flat)'
           : 'scale: <b>common µK</b> (physical: weak components are quiet and nearly flat)');
     }
-    const tsz = s.comps.indexOf('dT_tsz') >= 0, tot = s.comps.indexOf('T_tot') >= 0;
+    const tsz = s.comps.indexOf('dT_tsz') >= 0, tot = s.comps.indexOf('T_tot') >= 0 && totalParts(s.meta).indexOf('dT_tsz') >= 0;
     if (tsz || tot) {
       const pol = tszPolarity(s.meta, s.band);
       const said = pol === 'decrement' ? 'a <b>decrement</b>: clusters sound <b>lower</b>'
@@ -913,7 +920,7 @@
     REGISTER_BASE_HZ, REGISTER_STEP_ST, HALF_RANGE_ST, REGISTER_SLOT, VOICE_ORDER, COMP_LABELS, K_SIGMA,
     registerCentre, registerRange, pitchSemitones, voiceFreq, voiceAmp, TIMBRES, timbreRmsScale,
     SCALE_MODES, DEFAULT_SCALE_MODE, SCALE_LABELS, componentScales, voiceScales, scaleTable, voiceSample, valueStep,
-    isFreqIndep, findMap, bandList, bandGroup, tszPolarity, TOTAL_PARTS, toggleComponent,
+    isFreqIndep, findMap, bandList, bandGroup, tszPolarity, totalParts, toggleComponent, totalTitle,
     ISO226, iso226SPL, equalLoudnessGain, EQ_PHON, EQ_REF_HZ, EQ_CAP_DB,
     HALO_PITCH, massToFreq, HALO_EQ_REF_HZ, haloLoudnessGain, DIST_CUE, distanceCue, EARCON,
     // cosmology
