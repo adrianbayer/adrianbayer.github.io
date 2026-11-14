@@ -4,6 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sky Explorer &mdash; Multi-Probe Sky</title>
+<meta name="robots" content="noindex, nofollow">
+<script>
+/* Soft password gate until public release (a speed bump, not security; restored 2026-11-14 at the author's request). */
+(function(){
+  var k='sonify_auth', ok=false;
+  try { ok = sessionStorage.getItem(k)==='1'; } catch(e) {}
+  if (ok) return;
+  var p = prompt('Enter password:');
+  if (p === '4halfdomes') { try { sessionStorage.setItem(k,'1'); } catch(e) {} return; }
+  try { window.stop(); } catch(e) {}
+  document.documentElement.innerHTML = '<body style="background:#0a0e1a;color:#c8cde0;display:flex;justify-content:center;align-items:center;height:100vh;font-family:system-ui"><h2>Access denied</h2></body>';
+  throw 'blocked';
+})();
+</script>
 <style>
 :root{
   --bg:#0a0e1a; --panel:#131829; --border:#1e2744; --text:#c8cde0; --muted:#8a93b4; --accent:#4a9eff; --focus:#ffd58a;
