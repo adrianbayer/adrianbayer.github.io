@@ -793,8 +793,9 @@ function renderKey() {
 
 // ============================== the paper's cluster demo ==============================
 // sky.html#demo=cluster (the hub links it) sets up the paper's sky demo without playing it: tSZ on, CMB off, 143 GHz,
-// zoomed in (V.maxScale, as the contract test's click) and centred on the most massive cluster of halos.json (the one
-// the paper's demo clicks), whose ring is drawn at that zoom, with a note on the map. The view stays centred on the
+// zoomed in (V.maxScale, as the contract test's click) and centred on the paper's demo cluster (C.demoHaloIndex: the
+// most massive within 50 deg of the equator, where the flat map hardly stretches it), whose ring is drawn at that zoom,
+// with a note on the map. The view stays centred on the
 // cluster when the box changes size until the visitor moves it (viewMode 'demo'), and Enter on the focused map plays
 // it (V.target). Nothing plays until the visitor clicks. Without the hash, or with any other #demo value, the page
 // opens as always.
@@ -804,7 +805,6 @@ const DEMO = (() => {
   return v === 'cluster' ? v : null;
 })();
 const DEMO_NOTE = "The paper's cluster demo: click the ringed cluster, then try 225 and 353 GHz.";
-function heaviestHalo(H) { let k = 0; for (let i = 1; i < H.log_mass.length; i++) if (H.log_mass[i] > H.log_mass[k]) k = i; return k; }
 function demoView() {
   const H = V.halos, i = V.demoHalo;
   V.scale = V.maxScale;
@@ -894,7 +894,7 @@ async function init() {
     buildComponentButtons(); buildBandButtons();
     if (DEMO) {                               // the demo's first view is centred on a cluster: the catalogue first
       V.halos = await halosP;
-      if (V.halos && V.halos.log_mass && V.halos.log_mass.length) { V.demoHalo = heaviestHalo(V.halos); V.viewMode = 'demo'; }
+      if (V.halos && V.halos.log_mass && V.halos.log_mass.length) { V.demoHalo = C.demoHaloIndex(V.halos); V.viewMode = 'demo'; }
     }
     resize();
     // the map follows its box, not only the window: the toolbar and the audio note change height with the

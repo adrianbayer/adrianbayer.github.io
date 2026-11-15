@@ -698,6 +698,19 @@
       reverbSend: DIST_CUE.reverbSend,
     };
   }
+  /** The cluster of the paper's sky demo (sky.html#demo=cluster) and of its Sky Explorer screenshot: the most massive
+   *  halo with DEMO_HALO_THETA_DEG[0] < theta < [1], i.e. within 50 deg of the equator, where the flat map stretches it
+   *  sideways by at most 1/sin(40 deg) = 1.56. (The most massive of all lies near the north pole, stretched 3.8x.)
+   *  H: halos.json (theta [deg], log_mass); the most massive overall if no halo is in the band, -1 if H is empty. */
+  const DEMO_HALO_THETA_DEG = [40, 140];
+  function demoHaloIndex(H) {
+    let k = -1, all = -1;
+    for (let i = 0; i < H.log_mass.length; i++) {
+      if (all < 0 || H.log_mass[i] > H.log_mass[all]) all = i;
+      if (H.theta[i] > DEMO_HALO_THETA_DEG[0] && H.theta[i] < DEMO_HALO_THETA_DEG[1] && (k < 0 || H.log_mass[i] > H.log_mass[k])) k = i;
+    }
+    return k >= 0 ? k : all;
+  }
   /** Bell partials of the data halo sound, a parameterized auditory icon (free-free bar ratios), amplitudes and decay times [s]; the name EARCON predates the term. */
   const EARCON = { ratios: [1, 2.756, 5.404], amps: [1, 0.45, 0.2], decay: [0.22, 0.11, 0.06], attack: 0.004 };
 
@@ -1092,7 +1105,7 @@
     SCALE_MODES, DEFAULT_SCALE_MODE, SCALE_LABELS, componentScales, voiceScales, scaleTable, voiceSample, valueStep,
     isFreqIndep, findMap, bandList, bandGroup, tszPolarity, totalParts, toggleComponent, totalTitle,
     ISO226, iso226SPL, equalLoudnessGain, EQ_PHON, EQ_REF_HZ, EQ_CAP_DB,
-    HALO_PITCH, massToFreq, HALO_EQ_REF_HZ, haloLoudnessGain, DIST_CUE, distanceCue, EARCON,
+    HALO_PITCH, massToFreq, HALO_EQ_REF_HZ, haloLoudnessGain, DIST_CUE, distanceCue, EARCON, DEMO_HALO_THETA_DEG, demoHaloIndex,
     // cosmology
     C_OVER_H0, HALFDOME, omegaRadiation, comovingDistance,
     // misc

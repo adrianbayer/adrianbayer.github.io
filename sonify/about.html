@@ -206,7 +206,7 @@ mjx-container[display="true"]{overflow-x:auto;overflow-y:hidden;max-width:100%;p
   <h2 class="sub">The four pages</h2>
   <ul>
     <li><a class="inline" href="sonifier.html">Power Spectrum Sonifier</a>: hear \(D_\ell\) of any component or mix, in any band; sweep across scales and bands; play the spectra with instruments; hear two probes' cross-correlation as harmony (Duet); render reproducible WAV files. Its <strong>Start here</strong> row plays the paper's demonstrations in one click, and the <strong>Tour</strong> guides you through the sky step by step.</li>
-    <li><a class="inline" href="sky.html">Sky Explorer</a> (flat full-sky map), <a class="inline" href="globe.html">3D Globe</a> and <a class="inline" href="lightcone.html">Inside the Lightcone</a>: click or scan the sky to hear the temperature under the cursor, one voice per component, read from equal-area maps so that equal skies sound alike at every latitude; massive clusters ring with a halo sound that encodes their mass and distance.</li>
+    <li><a class="inline" href="sky.html">Sky Explorer</a> (flat full-sky map), <a class="inline" href="globe.html">3D Sky Globe</a> and <a class="inline" href="lightcone.html">Inside the Lightcone</a>: click or scan the sky to hear the temperature under the cursor, one voice per component, read from equal-area maps so that equal skies sound alike at every latitude; massive clusters ring with a halo sound that encodes their mass and distance.</li>
   </ul>
   <h2 class="sub">Design principles</h2>
   <div class="callout">
@@ -554,7 +554,7 @@ mjx-container[display="true"]{overflow-x:auto;overflow-y:hidden;max-width:100%;p
 <!-- ===================================================================== SKY VIEWS -->
 <section id="explorer" role="tabpanel" aria-labelledby="tab-explorer" tabindex="-1">
   <h2>The sky views</h2>
-  <p>Three pages show the sky maps and let you listen to them point by point: the <a class="inline" href="sky.html">Sky Explorer</a> (a flat full-sky map that pans and zooms, longitude wrapping), the <a class="inline" href="globe.html">3D Globe</a>, and <a class="inline" href="lightcone.html">Inside the Lightcone</a> (the observer's view from the centre, with the clusters in 3D). They share one audio engine and one set of mappings (<code>sky_core.js</code>, <code>sky_audio.js</code>).</p>
+  <p>Three pages show the sky maps and let you listen to them point by point: the <a class="inline" href="sky.html">Sky Explorer</a> (a flat full-sky map that pans and zooms, longitude wrapping), the <a class="inline" href="globe.html">3D Sky Globe</a>, and <a class="inline" href="lightcone.html">Inside the Lightcone</a> (the observer's view from the centre, with the clusters in 3D). They share one audio engine and one set of mappings (<code>sky_core.js</code>, <code>sky_audio.js</code>).</p>
 
   <h3 id="sky-layout">The page</h3>
   <p>On a desktop the page title and a short audio note share the top row, the toolbar follows (one row on a wide screen) and the map fills the rest of the window; in the Lightcone, whose toolbar holds only Sound key and Sound settings, the toolbar shares the title row (up to 1100 px wide the note then takes a row of its own, so it never squeezes into a narrow column). On phones and short screens the page scrolls: the map comes right after the title, then the toolbar, then the note. The toolbar holds the components, the bands, Scan, <strong>Sound key</strong> and <strong>Sound settings</strong>, a popover (a bottom sheet on phones) with the voices' Mute and Solo, the scale, the tones, the halo sound and the volume. Zoom and the view's other controls float at the bottom right of the map, the colour bar and the readout sit at its bottom left, and the status and the Sound key at its top right (the Lightcone's scale caption sits at its top left). With no component on, the Sky Explorer and the Globe say &ldquo;Turn on a component to see and hear it&rdquo; and offer <strong>Show CMB</strong> and <strong>Show tSZ</strong>; the clusters still ring. Every control is listed under <a class="inline" href="#ctl-sky">Controls</a>.</p>
@@ -780,7 +780,7 @@ mjx-container[display="true"]{overflow-x:auto;overflow-y:hidden;max-width:100%;p
     <tr><td>Big Bang <span class="badge badge--artistic">artistic</span></td><td>the CMB acoustic-peak chord (<a class="inline" href="#bigbang">details</a>). Pressed while it plays; pressing it again stops it. A running Tour ends first.</td></tr>
   </table></div>
 
-  <h3 id="ctl-sky">Sky Explorer, 3D Globe and Lightcone</h3>
+  <h3 id="ctl-sky">Sky Explorer, 3D Sky Globe and Lightcone</h3>
   <div class="tw"><table>
     <tr><th>control</th><th>where</th><th>what it does</th></tr>
     <tr class="rowhead"><td colspan="3">Toolbar</td></tr>
@@ -816,7 +816,7 @@ mjx-container[display="true"]{overflow-x:auto;overflow-y:hidden;max-width:100%;p
     <tr><td>keyboard</td><td>all</td><td>the view comes right after the site links in the tab order, then its controls on the view, then the toolbar. Keys: see <a class="inline" href="#a11y">Keyboard and screen readers</a>.</td></tr>
     <tr><td>Escape</td><td>all</td><td>closes Sound settings, then the Sound key.</td></tr>
     <tr class="rowhead"><td colspan="3">Demo link</td></tr>
-    <tr><td><code>sky.html#demo=cluster</code></td><td>map</td><td>the paper's cluster demo, ready: tSZ on, CMB off, 143 GHz, zoomed in and centred on the most massive cluster (the one the paper's demo clicks), its ring showing, and, at the top left of the map, the note &ldquo;The paper's cluster demo: click the ringed cluster, then try 225 and 353 GHz.&rdquo; (its &times; dismisses it). A light pulsing ring, not gold, so it is no cluster marker, marks the cluster to click; once you have heard it at 143 GHz the ring moves to the 225 button, then back to the cluster, then to 353 and back, and it goes when you have heard the cluster in all three bands or dismiss the note. Nothing plays until you click (or press Enter on the focused map). Without the hash the page opens as usual; other <code>#demo</code> values are ignored.</td></tr>
+    <tr><td><code>sky.html#demo=cluster</code></td><td>map</td><td>the paper's cluster demo, ready: tSZ on, CMB off, 143 GHz, zoomed in and centred on the most massive cluster within 50&deg; of the equator (the one the paper's demo clicks; the heaviest of all lies near the pole, where the flat map stretches it), its ring showing, and, at the top left of the map, the note &ldquo;The paper's cluster demo: click the ringed cluster, then try 225 and 353 GHz.&rdquo; (its &times; dismisses it). A light pulsing ring, not gold, so it is no cluster marker, marks the cluster to click; once you have heard it at 143 GHz the ring moves to the 225 button, then back to the cluster, then to 353 and back, and it goes when you have heard the cluster in all three bands or dismiss the note. Nothing plays until you click (or press Enter on the focused map). Without the hash the page opens as usual; other <code>#demo</code> values are ignored.</td></tr>
   </table></div>
 </section>
 
