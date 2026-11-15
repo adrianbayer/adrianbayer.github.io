@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Experiencing the Multi-Probe Sky</title>
+<title>Power Spectrum Sonifier &mdash; Multi-Probe Sky</title>
 <meta name="robots" content="noindex, nofollow">
 <script>
 /* Soft password gate until public release (a speed bump, not security; restored 2026-11-14 at the author's request). */
@@ -18,471 +18,909 @@
   throw 'blocked';
 })();
 </script>
+<link rel="stylesheet" href="site.css">
 <style>
-:root {
-  --bg: #0a0e1a;
-  --panel: #131829;
-  --border: #1e2744;
-  --text: #c8cde0;
-  --muted: #6b7394;
-  --accent: #4a9eff;
-  --cmb: #4a9eff;
-  --tsz: #ff9f43;
-  --cib: #2ed573;
-  --ksz: #b86bff;
-  --tot: #a8a8a8;
-  --warn: #ff9f43;
-}
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  overflow-x: hidden;
-}
-h1 { text-align: center; padding: 18px 0 4px; font-size: 1.6em; font-weight: 600; color: #e8ecf4; }
-.subtitle { text-align: center; font-size: 0.85em; color: var(--muted); margin-bottom: 12px; }
-.subtitle a { color: var(--accent); text-decoration: none; }
+/* Power Spectrum Sonifier: page layout and its own controls (tokens, base rules, .btn, .seg, .chip, .badge, .panel,
+   .note, details.help and the top bar: site.css). Colour means data: only the component chips, the duet swatches and
+   the plot curves carry hue. Solid white (--select-bg) marks Play (the page's primary action), the transport button
+   that is sounding and the selected segment of a setting; secondary selections (the band, a playing preset) are
+   surface-3 with a light outline.
+   Layout (website redesign phase 2): the plot card on top (plot panel with the component chips as its legend, the
+   transport bar, the readout strip). The transport sticks to the top of the viewport on desktop and is a bar fixed to
+   the bottom of the screen on phones (< 720 px); scroll-padding keeps a focused control out from under it (WCAG 2.2
+   SC 2.4.11). Share and Render WAV have copies in the top bar's page-actions slot. Below the card: the settings, in
+   two columns at >= 1100 px (each panel as tall as its content) ('Sound', 'Level & space'), then the closed panels in one column
+   ('Advanced', 'Sweep options', 'Render & export', 'Guided & artistic'), whose summaries list, as chips, every
+   setting inside them that differs from DEFAULTS. Caps labels only for the control-group labels and the duet
+   readout's field names. */
+html { scroll-padding-top: calc(var(--transport-h, 50px) + 8px); }   /* --transport-h: set by observeLayout() */
+body { overflow-x: hidden; }
+.container { max-width: var(--content-max); margin: 0 auto; padding: 0 16px 32px; }
+input[type="range"] { height: 24px; }
+/* 'Skip to Play': the first Tab stop, shown while focused (.skip-link: site.css) */
+/* the top bar's page actions: copies of Share and Render WAV (each clicks the original in 'Render & export'). Between
+   720 and 960 px the top bar has no room for them beside the site links, so placePageActions() moves them to the end of
+   the transport's second row. */
+.topbar__actions .btn { min-height: 28px; }
+#transportMore > #shareProxy, #transportMore > #renderProxy { order: 7; }
+#transportMore > #shareProxy { margin-left: auto; }
 
-.container {
-  max-width: 1200px; margin: 0 auto; padding: 0 16px 24px;
-  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+/* page head: the title and the 'Start here' presets (the paper's demonstrations, Tour, Big Bang). The row shares the
+   title's line when it fits and otherwise takes the next line whole (one line at 1440 px); on phones it scrolls
+   sideways. Presets are neutral pills: hue stays reserved for the components. */
+.page-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 0 10px; }
+/* the title: .page-title (site.css), the same on every app page */
+.start-here { display: flex; align-items: flex-start; gap: 6px 10px; min-width: 0; }
+.start-here__label { font-size: var(--fs-13); font-weight: 600; line-height: 28px; color: var(--muted); white-space: nowrap; }
+.start-here__chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.demo-chip { min-height: 28px; padding: 3px 12px; border-radius: var(--r-pill); }
+.demo-chip .badge { margin-left: 2px; }
+/* the preset a deep link opened (aria-current, until a setting changes): a light outline, before it plays */
+.demo-chip[aria-current="true"]:not([aria-pressed="true"]) { border-color: var(--text); color: var(--text); }
+/* a playing preset: a secondary selection (surface-3, light outline), not the solid white of the sounding button */
+.demo-chip.active, .demo-chip[aria-pressed="true"], .demo-chip.active:hover, .demo-chip[aria-pressed="true"]:hover {
+  background: var(--surface-3); color: var(--text); border-color: var(--text); box-shadow: inset 0 0 0 1px var(--text);
 }
-.panel {
-  background: var(--panel); border: 1px solid var(--border);
-  border-radius: 10px; padding: 14px; min-width: 0;
+.start-here__sep { width: 1px; height: 20px; margin: 0 4px; background: var(--border-strong); flex: none; }
+@media (min-width: 720px) and (max-width: 1179.98px) {
+  .start-here__chips { gap: 4px; }
+  .demo-chip { padding: 3px 9px; }
 }
-.panel h2 {
-  font-size: 0.85em; font-weight: 600; text-transform: uppercase;
-  letter-spacing: 1px; color: var(--muted); margin-bottom: 10px;
-}
-.full-width { grid-column: 1 / -1; }
-
-/* Spectrum canvas */
-#spectrumCanvas { width: 100%; height: 300px; border-radius: 6px; cursor: crosshair; display: block; }
-.readout { font-size: 0.78em; color: #9aa3c4; margin-top: 6px; line-height: 1.5; font-variant-numeric: tabular-nums; }
-.readout b { color: var(--text); font-weight: 600; }
-
-/* Controls */
-.controls-panel { display: flex; flex-direction: column; gap: 10px; }
-.control-group { display: flex; flex-direction: column; gap: 5px; }
-.control-group > label, .group-label {
-  font-size: 0.78em; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted);
-}
-.note { font-size: 0.72em; color: var(--muted); line-height: 1.5; }
-.note b { color: #9aa3c4; }
-.note code { font-size: 1em; color: #9aa3c4; }
-.tag { font-size: 0.68em; padding: 1px 6px; border-radius: 8px; border: 1px solid var(--warn); color: var(--warn); margin-left: 4px; text-transform: none; letter-spacing: 0; }
-
-/* Toggle buttons */
-.btn-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-.toggle-btn {
-  padding: 5px 12px; border: 2px solid; border-radius: 20px;
-  background: transparent; color: inherit; cursor: pointer;
-  font-size: 0.82em; font-weight: 500; transition: all 0.2s;
-}
-.toggle-btn.active { color: var(--bg); }
-.toggle-btn[data-comp="dT_cmblens"] { border-color: var(--cmb); }
-.toggle-btn[data-comp="dT_cmblens"].active { background: var(--cmb); }
-.toggle-btn[data-comp="dT_tsz"] { border-color: var(--tsz); }
-.toggle-btn[data-comp="dT_tsz"].active { background: var(--tsz); }
-.toggle-btn[data-comp="dT_cib"] { border-color: var(--cib); }
-.toggle-btn[data-comp="dT_cib"].active { background: var(--cib); }
-.toggle-btn[data-comp="dT_ksz"] { border-color: var(--ksz); }
-.toggle-btn[data-comp="dT_ksz"].active { background: var(--ksz); }
-.toggle-btn[data-comp="T_tot"] { border-color: var(--tot); }
-.toggle-btn[data-comp="T_tot"].active { background: var(--tot); }
-
-.sm-btn {
-  padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px;
-  background: transparent; color: var(--text); cursor: pointer;
-  font-size: 0.82em; transition: all 0.2s;
-}
-.sm-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
-.sm-btn:hover { background: #1e2744; }
-.sm-btn.active:hover { background: #6bb3ff; }
-button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-/* Frequency survey groups */
-.freq-groups { display: flex; gap: 8px; flex-wrap: wrap; }
-.freq-group { display: flex; align-items: center; gap: 4px; padding: 3px 6px;
-  border: 1px solid var(--border); border-radius: 6px; }
-.freq-group-label { font-size: 0.66em; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
-
-/* Sliders */
-.slider-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.slider-row input[type="range"] { flex: 1; min-width: 120px; accent-color: var(--accent); }
-.slider-val {
-  font-size: 0.82em; min-width: 55px; text-align: right;
-  color: var(--accent); font-variant-numeric: tabular-nums;
+/* below 1180 px 'Start here' never wraps: it scrolls sideways under the title when it must (soft edges show where more
+   presets are; no script) */
+@media (max-width: 1179.98px) {
+  .start-here {
+    flex: 1 1 100%; margin: 0 -16px; padding: 2px 16px 4px; overflow-x: auto; scrollbar-width: thin;
+    background:
+      linear-gradient(90deg, var(--bg) 40%, rgba(10, 14, 26, 0)) left center / 20px 100% no-repeat local,
+      linear-gradient(270deg, var(--bg) 40%, rgba(10, 14, 26, 0)) right center / 20px 100% no-repeat local,
+      radial-gradient(farthest-side at 0 50%, rgba(195, 201, 220, .35), rgba(195, 201, 220, 0)) left center / 8px 100% no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%, rgba(195, 201, 220, .35), rgba(195, 201, 220, 0)) right center / 8px 100% no-repeat scroll;
+  }
+  .start-here__chips { flex-wrap: nowrap; }
+  /* room for the ring of a chip that a deep link asks the visitor to press (.cue-ring), without moving the plot */
+  .start-here:has(.cue-ring) { padding-top: 7px; padding-bottom: 9px; margin-top: -5px; margin-bottom: -5px; }
 }
 
-/* Transport */
-.transport { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.transport-btn {
-  padding: 7px 16px; border: none; border-radius: 6px;
-  cursor: pointer; font-size: 0.85em; font-weight: 600; transition: all 0.15s;
+/* ------------------------------------------------------------------ the plot card */
+.plot-panel {
+  /* plot height: the transport stays in the first screen at 1280x720 and 1440x900 (with room for the 'Start here' row) */
+  --plot-h: clamp(300px, calc(100vh - 380px), 500px);
+  border-bottom: 0; border-radius: var(--r-md) var(--r-md) 0 0; padding: 10px 16px;
 }
-.play-btn { background: var(--accent); color: var(--bg); }
-.play-btn:hover { background: #6bb3ff; }
-.action-btn { background: #1e2744; color: var(--text); border: 1px solid var(--border); }
-.action-btn:hover { background: #2a3558; }
-.action-btn.active { background: #3a4568; border-color: var(--accent); }
-.stop-btn { background: #cc3333; color: white; }
-
-/* Selects and inputs */
-.inst-select, .num-input {
-  flex: 1; padding: 4px 8px; background: #1a2040; color: var(--text);
-  border: 1px solid var(--border); border-radius: 4px;
-  font-size: 0.82em; font-family: inherit; min-width: 0;
+@supports (height: 100svh) { .plot-panel { --plot-h: clamp(300px, calc(100svh - 380px), 500px); } }
+/* the head: title | legend | bands, a grid whose columns never trade places, so it does not reflow when the mix key or
+   the duet's A / B badges appear (the mix key keeps its width while hidden; the badges sit on the chips' corners) */
+.plot-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px 10px; margin-bottom: 8px; }
+.plot-title { font-size: var(--fs-14); font-weight: 600; color: var(--text-2); white-space: nowrap; }
+/* the component chips are the plot's legend: a line sample in the curve's colour (Total dashed) */
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; }
+.legend .toggle-btn { position: relative; gap: 5px; padding: 2px 9px 2px 7px; }
+.legend .toggle-btn::before { content: ''; flex: none; width: 12px; border-top: 2px solid var(--chip-c); }
+.legend .toggle-btn[data-comp="T_tot"]::before { border-top-style: dashed; }
+.legend .toggle-btn.active::before, .legend .toggle-btn[aria-pressed="true"]::before { border-top-color: var(--select-fg); }
+/* Duet: the plot draws voices A and B bold, so their chips are filled (data-voice, set with the plot) and carry an A / B
+   badge; the other chips are outlined. A check marks the selection (aria-pressed), which Build-Up and nu-Sweep play in
+   this mode (#legendNote, under the plot, says so). */
+.legend[data-mode="duet"] .toggle-btn, .legend[data-mode="duet"] .toggle-btn.active, .legend[data-mode="duet"] .toggle-btn[aria-pressed="true"] {
+  background: transparent; color: var(--text-2); filter: none;
 }
-.num-input { flex: 0 0 90px; }
-
-/* Meter */
-.meter-bar { flex: 1; height: 6px; background: #1a2040; border-radius: 3px; overflow: hidden; min-width: 80px; }
-.meter-fill {
-  height: 100%; width: 0%;
-  background: linear-gradient(90deg, var(--accent), #2ed573 60%, #ff9f43 85%, #cc3333);
-  border-radius: 3px; transition: width 0.05s;
+.legend[data-mode="duet"] .toggle-btn:hover { background: var(--surface-3); color: var(--text); }
+.legend[data-mode="duet"] .toggle-btn::before, .legend[data-mode="duet"] .toggle-btn[aria-pressed="true"]::before { border-top-color: var(--chip-c); }
+.legend[data-mode="duet"] .toggle-btn[data-voice="A"], .legend[data-mode="duet"] .toggle-btn[data-voice="B"] { background: var(--chip-c); color: var(--select-fg); }
+.legend[data-mode="duet"] .toggle-btn[data-voice="A"]::before, .legend[data-mode="duet"] .toggle-btn[data-voice="B"]::before { border-top-color: var(--select-fg); }
+.legend[data-mode="duet"] .toggle-btn[aria-pressed="true"]::before { content: '\2713'; content: '\2713' / ''; width: auto; border-top: 0; font-weight: 700; line-height: 1; }
+.legend .toggle-btn[data-voice="A"]::after, .legend .toggle-btn[data-voice="B"]::after {
+  content: attr(data-voice); content: attr(data-voice) / "";
+  position: absolute; top: -8px; right: -6px; min-width: 16px; padding: 0 3px; text-align: center;
+  font-size: var(--fs-12); font-weight: 700; line-height: 14px; border-radius: var(--r-pill);
+  background: var(--bg); color: var(--text); border: 1px solid var(--chip-c);
+}
+.mix-key { display: inline-flex; align-items: center; gap: 5px; padding: 0 2px 0 4px; font-size: var(--fs-13); color: var(--text-2); white-space: nowrap; }
+.mix-key[hidden] { visibility: hidden; }          /* keeps its width (desktop): the head does not reflow */
+.mix-swatch { width: 16px; border-top: 2px dashed #fff; }
+/* the band: the shared band component (site.css: 'Band (GHz)', a segmented pair per survey, the selected band a
+   secondary selection), as on the Sky Explorer and the Globe */
+.bands { display: flex; align-items: center; gap: 6px 8px; justify-self: end; min-width: 0; }
+.freq-groups { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+@media (max-width: 1023.98px) {
+  .plot-head { grid-template-columns: auto minmax(0, 1fr); }
+  .bands { grid-column: 1 / -1; justify-self: start; }
 }
 
-details.help { font-size: 0.75em; color: var(--muted); }
-details.help summary { cursor: pointer; color: #9aa3c4; }
-#isoCanvas { width: 100%; height: 130px; display: block; margin-top: 6px; border-radius: 6px; }
-.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+/* the plot and what sits under it (the duet strip and the Tour dock take height from the canvas, not the page) */
+.plot-body { display: flex; flex-direction: column; min-height: var(--plot-h); }
+.plot-wrap { position: relative; flex: 1 1 auto; min-height: 260px; }
+#spectrumCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: var(--r-sm); }
+/* Duet mode: the readout (pair, l, r +- sigma, interval, gate) and the r bar under the canvas. Neutral: the only hues
+   are the two voices' swatches. */
+.duet-strip { margin-top: 8px; }
+#duetReadout { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 18px; font-size: var(--fs-14); line-height: var(--lh-ui); }
+.df { white-space: nowrap; }
+.df__k { margin-right: 2px; font-size: var(--fs-12); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.df__sub { font-size: var(--fs-12); color: var(--muted); }
+.df--ell { min-width: 8.5em; } .df--r { min-width: 16.5em; } .df--iv { min-width: 10em; }
+.df--pair b { font-weight: 600; }
+.df-note { flex-basis: 100%; font-size: var(--fs-13); color: var(--muted); line-height: var(--lh-ui); }
+.df-note b { color: var(--text-2); font-weight: 600; }
+.sw { display: inline-block; width: 10px; height: 10px; margin: 0 5px 0 1px; border-radius: 2px; background: var(--sw-c, var(--muted)); }
+.sw[data-comp="dT_cmblens"] { --sw-c: var(--cmb); } .sw[data-comp="dT_tsz"] { --sw-c: var(--tsz); }
+.sw[data-comp="dT_cib"] { --sw-c: var(--cib); } .sw[data-comp="dT_ksz"] { --sw-c: var(--ksz); }
+/* the gate: outlined pills (sounding: a light double outline; fading in: the control outline; gated: dashed) */
+.gate { display: inline-block; padding: 0 8px; border: 1px solid var(--border-strong); border-radius: var(--r-pill); font-size: var(--fs-12); font-weight: 600; line-height: 18px; color: var(--text-2); }
+.gate--open { border-color: var(--text); color: var(--text); box-shadow: inset 0 0 0 1px var(--text); }
+.gate--closed { border-style: dashed; color: var(--muted); }
+/* the r bar: the ladder's four rungs in equal bins of r (from Core.DUET_LADDER), the rung being played lit, the
+   band |r| < 2 sigma (gate closed) hatched, and a marker at r. Layers: the fill, the hatch, the rung names, the marker. */
+.rbar { position: relative; height: 22px; margin: 8px 2px 0; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface-2); }
+.rbar__fill { position: absolute; top: 0; bottom: 0; width: 25%; display: none; background: rgba(232, 236, 244, .22); box-shadow: inset 0 0 0 1px var(--text-2); }
+.rbar__fill[data-idx="3"] { left: 0; border-radius: 5px 0 0 5px; } .rbar__fill[data-idx="2"] { left: 25%; }
+.rbar__fill[data-idx="1"] { left: 50%; } .rbar__fill[data-idx="0"] { left: 75%; border-radius: 0 5px 5px 0; }
+.rbar__zones { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.rbar__zone {
+  display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden;
+  font-size: var(--fs-12); color: var(--muted); white-space: nowrap; border-left: 1px solid var(--border);
+}
+.rbar__zone:first-child { border-left: 0; }
+.rbar__name { padding: 0 4px; border-radius: 3px; background: var(--surface-2); line-height: 16px; }   /* legible over the hatch */
+.rbar__zone.is-on { color: var(--text); font-weight: 600; }
+.rbar__zone.is-on .rbar__name { background: var(--surface-3); }
+.rbar__gate {
+  position: absolute; top: 0; bottom: 0; left: 50%; width: 0; display: none;
+  background: repeating-linear-gradient(135deg, rgba(138, 147, 180, .45) 0 2px, rgba(138, 147, 180, 0) 2px 6px);
+  border-left: 1px dashed var(--muted); border-right: 1px dashed var(--muted);
+}
+#duetMarker {
+  position: absolute; top: -5px; bottom: -5px; left: 50%; width: 3px; display: none;
+  background: #fff; border-radius: 2px; box-shadow: 0 0 0 1px var(--bg); transform: translateX(-50%); transition: left .08s;
+}
+.rbar-labels { display: flex; justify-content: space-between; gap: 8px; margin: 3px 2px 0; font-size: var(--fs-12); color: var(--muted); }
+/* Duet: what the legend's fill and checks mean (under the plot, so the head keeps its height) */
+.legend-note { margin-top: 6px; font-size: var(--fs-12); line-height: var(--lh-ui); color: var(--muted); }
+.legend-note[hidden] { display: none; }
 
-/* Status */
+/* the Tour dock: step n of N, a step strip, Back / Next / Close, and the caption (a polite live region) */
+.tour-dock {
+  margin-top: 8px; padding: 8px 10px 10px 14px; border: 1px solid var(--border-strong); border-radius: var(--r-sm);
+  background: var(--surface-2);
+}
+.tour-dock:focus { outline: none; }
+.tour-dock:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.tour-dock__head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.tour-step { font-size: var(--fs-13); font-weight: 600; color: var(--text-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tour-progress { display: flex; gap: 3px; flex: 1 1 60px; max-width: 260px; }
+.tour-progress > span { flex: 1 1 0; height: 4px; border-radius: 2px; background: var(--surface-3); }
+.tour-progress > span.is-done { background: var(--muted); }
+.tour-progress > span.is-on { background: var(--text); }
+.tour-nav { display: flex; gap: 6px; margin-left: auto; }
+.tour-nav .btn { min-height: 30px; }
+#tourCaption { margin-top: 6px; color: var(--text); font-size: var(--fs-14); line-height: var(--lh-prose); }
+.tour-flag { color: var(--warn); font-size: var(--fs-12); }
+/* while a 'Start here' demo plays: what to listen for (the chip's description, for touch screens too) */
+.demo-note { margin-top: 8px; font-size: var(--fs-13); line-height: var(--lh-ui); color: var(--text-2); }
+.demo-note__k { margin-right: 6px; font-weight: 600; color: var(--text); }
+/* opened by a deep link (the hub's demo chips): 'Ready: <demo>. Press <button> to listen.' beside the ringed button */
+.demo-note--ready { padding-left: 8px; border-left: 2px solid var(--text); scroll-margin-top: 12px; }
+/* sonifier.html#tour (the hub's 'Take the tour'): the Tour's start under its note, the primary action of the page until
+   the Tour starts (Play is outlined meanwhile; the Tour chip in 'Start here' is ringed too) */
+.arrival-act { margin-top: 8px; padding-left: 10px; }
+.arrival-act[hidden] { display: none; }
+.arrival-act .btn { min-height: 36px; padding: 6px 16px; font-size: var(--fs-14); }
+.arrival-act .ico { display: inline-block; width: 1em; text-align: center; }
+.transport.is-cue-tour .play-btn:not([aria-pressed="true"]) { background: transparent; color: var(--text-2); border-color: var(--border-strong); }
+.transport.is-cue-tour .play-btn:not([aria-pressed="true"]):hover { background: var(--surface-3); color: var(--text); }
+
+/* the transport: sticky on desktop (a direct child of the page container, so it sticks for the whole page) */
+.transport-sentinel { height: 0; }
+.transport {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  padding: 8px 16px; background: var(--surface-1); border: 1px solid var(--border);
+  transition: box-shadow .15s;
+}
+.transport.is-stuck { border-color: var(--border-strong); box-shadow: 0 8px 20px rgba(0, 0, 0, .55); }
+.transport__keys { order: 1; display: flex; flex-wrap: wrap; gap: 6px; }
+.transport .tbtn { min-height: 32px; padding: 4px 10px; font-weight: 600; }
+.play-btn { min-width: 84px; }
+.play-btn .ico { display: inline-block; width: 1em; text-align: center; }
+/* While anything sounds, solid white marks only the button that is sounding (aria-pressed), with a moving three-bar
+   level icon in place of its padding (or of Play's triangle), so the bar does not reflow; an idle Play is then
+   outlined. With nothing playing, Play is the solid primary action. */
+.transport .tbtn--sweep { padding: 4px 14px; }
+.transport .tbtn--sweep[aria-pressed="true"] { padding: 4px 6px 4px 5px; }
+.transport.is-playing .play-btn:not([aria-pressed="true"]) { background: transparent; color: var(--text-2); border-color: var(--border-strong); }
+.transport.is-playing .play-btn:not([aria-pressed="true"]):hover { background: var(--surface-3); color: var(--text); border-color: var(--border-strong); }
+.transport .tbtn[aria-pressed="true"]::before {
+  content: ''; flex: none; width: 13px; height: 12px;
+  background:
+    linear-gradient(currentColor, currentColor) 0 100% / 3px 45% no-repeat,
+    linear-gradient(currentColor, currentColor) 50% 100% / 3px 100% no-repeat,
+    linear-gradient(currentColor, currentColor) 100% 100% / 3px 65% no-repeat;
+  animation: eq .9s ease-in-out infinite alternate;
+}
+.transport .play-btn[aria-pressed="true"] .ico { display: none; }
+@keyframes eq {
+  0% { background-size: 3px 45%, 3px 100%, 3px 65%; }
+  50% { background-size: 3px 100%, 3px 40%, 3px 85%; }
+  100% { background-size: 3px 60%, 3px 75%, 3px 30%; }
+}
+.transport__more, .transport__meta { display: contents; }
+/* the status: a dot (pulsing while playing) and the mode; one width (room for 'Big Bang (artistic)'), so the bar
+   does not reflow when it changes */
 .status {
-  font-size: 0.75em; padding: 3px 8px; border-radius: 10px;
-  background: #1a2040; color: var(--muted);
+  order: 2; display: inline-flex; align-items: center; gap: 6px; min-width: 128px; padding: 3px 0;
+  font-size: var(--fs-12); white-space: nowrap; color: var(--muted);
 }
-.status.playing { background: rgba(74,158,255,0.15); color: var(--accent); }
+.status::before { content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+.status.playing { color: var(--text); }
+.status.playing::before { background: var(--text); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
 .stereo-indicator {
-  display: inline-flex; gap: 4px; align-items: center;
-  font-size: 0.75em; padding: 3px 8px; border-radius: 10px;
-  background: rgba(46,213,115,0.15); color: #2ed573;
+  display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; vertical-align: 1px; margin-right: 6px;
+  font-size: var(--fs-12); padding: 1px 8px; border-radius: var(--r-pill); border: 1px solid var(--border-strong); color: var(--text-2);
 }
-
-/* Info */
-.info-panel { font-size: 0.8em; color: var(--muted); line-height: 1.6; }
-.info-panel strong { color: var(--text); }
-.info-panel a { color: var(--accent); }
-
-@media (max-width: 800px) {
-  .container { grid-template-columns: 1fr; }
-  .full-width { grid-column: 1; }
+/* (no explicit min-width on the groups: they never shrink below their content, the bar wraps instead) */
+.scrub { order: 4; display: flex; align-items: center; gap: 6px; flex: 1 1 120px; }
+.scrub input[type="range"] { flex: 1 1 56px; width: 56px; min-width: 56px; }
+.ico-svg { width: 16px; height: 16px; flex: none; vertical-align: -3px; }
+/* desktop: a speaker icon names the gain slider; phones show the word */
+.gain .tlabel-text { display: none; }
+.gain { order: 5; display: flex; align-items: center; gap: 6px; }
+.gain .tlabel { display: inline-flex; align-items: center; gap: 4px; }
+.gain__slider { display: flex; flex-direction: column; gap: 1px; width: 76px; }
+.gain__slider input { width: 100%; }
+.meter { order: 6; display: flex; align-items: center; gap: 4px; position: relative; }
+/* the output figure and its (i) only while something plays (the space stays, so the bar does not reflow) */
+.transport:not(.is-playing) .meter:not(:focus-within) { visibility: hidden; }
+.more-btn { order: 9; display: none; }
+/* narrower desktops: the scrubber is named by its l value (its word label shows from 1280 px); below 1100 px the bar
+   has two rows by design (the keys, the status and the meter; then the scrubber and the gain), never an orphan */
+@media (min-width: 720px) and (max-width: 1279.98px) { .scrub .tlabel { display: none; } }
+@media (min-width: 720px) and (max-width: 1099.98px) {
+  .transport::after { content: ''; order: 3; flex-basis: 100%; height: 0; }
+  .status { min-width: 0; }
+  .meter { order: 2; margin-left: auto; }
+  .transport .tbtn { padding: 4px 8px; }
+  .transport .tbtn--sweep { padding: 4px 12px; }
+  .transport .tbtn--sweep[aria-pressed="true"] { padding: 4px 4px 4px 3px; }
 }
-#tourCaption {
-  position: fixed; left: 50%; transform: translateX(-50%); top: 54px; z-index: 50;
-  max-width: 680px; width: calc(100% - 32px);
-  background: rgba(19,24,41,0.96); border: 1px solid var(--accent);
-  border-radius: 10px; padding: 12px 18px; font-size: 1.0em; line-height: 1.5;
-  color: #e8ecf4; box-shadow: 0 8px 28px rgba(0,0,0,0.55); display: none; text-align: center;
+.tlabel { font-size: var(--fs-13); color: var(--muted); white-space: nowrap; }
+.slider-val { font-size: var(--fs-13); min-width: 46px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* the output meter (neutral: colour means data): a thin bar under the gain slider and a short dBFS figure; the full
+   per-channel reading is behind the (i) toggle (Esc, a click or focus elsewhere close it) */
+.meter-bar { height: 3px; background: var(--surface-3); border-radius: 2px; overflow: hidden; }
+.meter-fill { height: 100%; width: 0%; background: var(--text-2); border-radius: 2px; transition: width .05s; }
+.meter-db { min-width: 64px; text-align: right; font-size: var(--fs-12); color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+details.popover > summary {
+  list-style: none; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px;
+  border: 1px solid var(--border-strong); border-radius: 50%; font-size: var(--fs-12); font-weight: 600; font-style: italic;
+  color: var(--text-2);
+}
+details.popover > summary::-webkit-details-marker { display: none; }
+details.popover[open] > summary { margin-bottom: 0; background: var(--select-bg); color: var(--select-fg); border-color: var(--select-bg); }
+.popover__body {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; width: min(340px, calc(100vw - 32px));
+  padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--r-sm);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .5); color: var(--text-2);
+}
+.popover__body .readout { font-size: var(--fs-13); }
+
+/* the readout strip closes the card */
+.readout-strip {
+  display: flex; flex-direction: column; gap: 4px; padding: 8px 16px 12px;
+  background: var(--surface-1); border: 1px solid var(--border); border-top: 0; border-radius: 0 0 var(--r-md) var(--r-md);
+}
+.readout { font-size: var(--fs-14); color: var(--text-2); line-height: var(--lh-prose); }
+.readout b { color: var(--text); font-weight: 600; }
+.readout-notes { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; }
+.readout-notes[hidden] { display: none; }        /* (#mixNote: only while the dashed mix is drawn) */
+.readout-notes details[open] { flex-basis: 100%; }
+
+/* ------------------------------------------------------------------ settings */
+.settings { margin-top: 24px; }
+.settings-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin-bottom: 10px; }
+.section-title { font-size: var(--fs-20); font-weight: 600; color: var(--text); }
+.panel-title { font-size: var(--fs-16); font-weight: 600; color: var(--text); }
+.settings-grid { display: grid; align-items: start; gap: 12px; }
+/* two columns, each panel as tall as its content (no blank half-panel beside a long one) */
+@media (min-width: 1100px) { .settings-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.controls-panel { display: flex; flex-direction: column; gap: 16px; }
+.control-group, .sub-group { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+#instrumentControls, #duetControls { gap: 14px; }
+.group-label .note { font-size: var(--fs-12); font-weight: 400; text-transform: none; letter-spacing: 0; }
+.note b { color: var(--text-2); }
+.note code { font-size: 1em; color: var(--text-2); }
+.lead { color: var(--text-2); }
+details.help:not(.popover) > summary { min-height: 24px; padding: 2px 0; }
+.warn, .note b.warn, .lead b.warn { color: var(--warn); }
+.btn-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+/* settings buttons may wrap their text (long caution tags) instead of widening the page */
+.settings .btn { white-space: normal; text-align: center; }
+/* a caution beside a control (decorative timbres, a voice that may be inaudible) */
+.tag {
+  display: inline-block; font-size: var(--fs-12); font-weight: 500; line-height: var(--lh-ui);
+  padding: 0 6px; margin-left: 4px; border: 1px solid currentColor; border-radius: var(--r-pill);
+  color: var(--warn); text-transform: none; letter-spacing: 0; vertical-align: 1px;
+}
+.btn.active .tag, .btn[aria-pressed="true"] .tag { color: #6b4a00; }
+.btn.active .badge--artistic, .btn[aria-pressed="true"] .badge--artistic { color: #6b4a00; border-color: #6b4a00; }
+.demo-chip.active .badge--artistic, .demo-chip[aria-pressed="true"] .badge--artistic { color: var(--artistic); border-color: var(--artistic-line); }   /* (a dark chip) */
+/* the duet's timbre and level buttons: the caution on a second line, so both rows read alike */
+.duet-timbre-btn, .duet-level-btn { flex-direction: column; gap: 2px; }
+.duet-timbre-btn .tag, .duet-level-btn .tag { margin-left: 0; }
+/* Record: a monochrome dot; while recording, red (the one place besides warnings where the UI is not neutral) */
+.rec-btn::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.btn.is-recording, .btn.is-recording:hover { background: var(--danger); color: var(--select-fg); border-color: var(--danger); }
+.slider-row { display: flex; align-items: center; gap: 8px; }
+.slider-row input[type="range"] { flex: 1; min-width: 100px; }
+.slider-row .tlabel { min-width: 2.2em; }
+.inst-select, .num-input {
+  padding: 4px 8px; background: var(--surface-2); color: var(--text-2);
+  border: 1px solid var(--border-strong); border-radius: var(--r-sm); font-size: var(--fs-13); min-width: 0; max-width: 100%;
+}
+.num-input { width: 110px; }
+.inst-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.inst-cell { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.comp-name { font-size: var(--fs-12); font-weight: 600; }
+.comp-name--cmb { color: var(--cmb); } .comp-name--tsz { color: var(--tsz); }
+.comp-name--cib { color: var(--cib); } .comp-name--ksz { color: var(--ksz); }
+.duet-pair { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.duet-voice { display: flex; align-items: center; gap: 6px; font-size: var(--fs-13); font-weight: 600; color: var(--text); }
+.duet-voice select { width: 150px; }
+.check { display: flex; align-items: center; gap: 8px; font-size: var(--fs-13); color: var(--text-2); cursor: pointer; }
+.check input { width: 16px; height: 16px; flex: none; }
+#isoCanvas { width: 100%; height: 130px; display: block; margin-top: 6px; border-radius: var(--r-sm); }
+
+/* closed panels, in one column: the summary names the panel and lists every setting inside it that differs from
+   DEFAULTS; an open panel lays its groups out in columns */
+.drawers { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin-top: 12px; }
+details.drawer { padding: 0; }
+details.drawer > summary {
+  list-style: none; cursor: pointer; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+  min-height: 48px; padding: 10px 16px; border-radius: var(--r-md);
+}
+details.drawer > summary::-webkit-details-marker { display: none; }
+details.drawer > summary::before {
+  content: ''; width: 7px; height: 7px; margin: 0 2px; border: solid var(--text-2); border-width: 0 2px 2px 0;
+  transform: rotate(-45deg); transition: transform .15s;
+}
+details.drawer[open] > summary::before { transform: rotate(45deg); }
+details.drawer > summary:hover { background: var(--surface-2); }
+details.drawer[open] > summary { border-bottom: 1px solid var(--border); border-radius: var(--r-md) var(--r-md) 0 0; }
+.drawer-title { font-size: var(--fs-16); font-weight: 600; color: var(--text); }
+.drawer-hint { font-size: var(--fs-13); color: var(--muted); }
+.sum-chips { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.sum-chips:empty { display: none; }
+.sum-chips:not(:empty) + .drawer-hint { display: none; }
+.sum-chip {
+  font-size: var(--fs-12); line-height: 18px; padding: 0 8px; border-radius: var(--r-pill);
+  background: var(--surface-3); border: 1px solid var(--border-strong); color: var(--text); white-space: nowrap;
+}
+.drawer-body {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); align-items: start;
+  gap: 16px 28px; padding: 12px 16px 16px;
+}
+.page-foot { margin-top: 20px; text-align: center; }
+
+/* ------------------------------------------------------------------ phones: the transport is a bar at the bottom */
+@media (max-width: 719.98px) {
+  html { scroll-padding-top: 0; scroll-padding-bottom: calc(var(--transport-h, 112px) + 8px); }
+  .container { padding-bottom: calc(var(--transport-h, 112px) + 24px); }
+  .page-head { padding: 10px 0 8px; }
+  .plot-panel { --plot-h: 280px; padding: 10px 12px; }
+  .plot-wrap { min-height: 220px; }
+  /* the head in three short rows: title, chips (one row of five), bands (one row; the labels stay for screen readers) */
+  .plot-head { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .bands { grid-column: auto; justify-self: start; align-items: flex-start; max-width: 100%; }
+  .bands > .band-unit { margin-top: 5px; }
+  .freq-groups { flex-wrap: nowrap; align-items: flex-start; overflow-x: auto; scrollbar-width: none; padding: 1px; }
+  .legend { gap: 4px; }
+  .legend .toggle-btn { gap: 5px; padding: 2px 8px 2px 7px; }
+  .legend .toggle-btn::before { width: 10px; }
+  .mix-key[hidden] { display: none; }
+  .start-here__label { line-height: 32px; }
+  .demo-chip { min-height: 32px; }
+  /* the band row in one line, each survey's name under its pair (six buttons, three captions and 'GHz' fit in 288 px) */
+  .freq-groups { gap: 4px 8px; }
+  .freq-group .freq-btn { min-width: 36px; padding: 3px 6px; }
+  .df { white-space: normal; }
+  .df--ell, .df--r, .df--iv { min-width: 0; }
+  .df__sub { display: none; }
+  .df-note, .legend-note { font-size: var(--fs-12); }
+  .rbar-labels .rl-x { display: none; }
+  /* the Tour dock flows under the plot (and the duet strip); it is scrolled into view when the Tour starts and on
+     Back / Next, so it never covers the plot or the r bar */
+  #tourCaption { font-size: var(--fs-13); }
+  .tour-nav { width: 100%; margin-left: 0; }
+  .tour-nav .btn { flex: 1 1 0; min-height: 36px; }
+  .readout-strip { padding: 8px 12px 12px; }
+  .inst-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .transport {
+    position: fixed; top: auto; left: 0; right: 0; bottom: 0; z-index: 40;
+    flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 6px;
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+    border-width: 1px 0 0; border-color: var(--border-strong); box-shadow: 0 -8px 20px rgba(0, 0, 0, .5);
+  }
+  /* five 44 px keys, labels on one line (never broken at their hyphens), the icon above the label */
+  .transport__keys { order: 3; display: grid; grid-template-columns: 1.25fr repeat(4, minmax(0, 1fr)); gap: 4px; }
+  .transport .tbtn, .transport .tbtn--sweep, .transport .tbtn--sweep[aria-pressed="true"] {
+    flex-direction: column; gap: 2px; min-width: 0; min-height: 44px; padding: 2px;
+    font-size: var(--fs-12); font-weight: 500; letter-spacing: -.01em; line-height: 1.15;
+    white-space: nowrap; hyphens: manual; overflow: hidden;
+  }
+  .transport .tbtn[aria-pressed="true"]::before { width: 11px; height: 10px; }
+  .transport__meta { order: 2; display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .status { min-width: 0; }
+  .meter { margin-left: auto; }
+  .more-btn { display: inline-flex; min-height: 32px; }
+  .more-btn::after { content: ''; width: 6px; height: 6px; margin-left: 4px; border: solid currentColor; border-width: 2px 2px 0 0; transform: rotate(-45deg) translateY(2px); }
+  .transport.is-open .more-btn::after { transform: rotate(135deg) translate(-1px, 2px); }
+  .transport__more { order: 1; display: none; flex-direction: column; gap: 6px; }
+  .transport.is-open .transport__more, .transport.is-sweeping .transport__more { display: flex; }
+  .transport.is-sweeping:not(.is-open) .transport__more > :not(.scrub) { display: none; }
+  .scrub { flex: none; }
+  .gain .tlabel-text { display: inline; }
+  .gain .ico-svg { display: none; }
+  .gain__slider { flex: 1 1 auto; width: auto; }
+  .popover__body { position: fixed; left: 8px; right: 8px; top: auto; width: auto; bottom: calc(var(--transport-h, 112px) + 8px); }
+}
+/* the smallest phones: Stop shows its icon (its name stays for screen readers); 'Render WAV' in the top bar reads 'WAV' */
+@media (max-width: 380px) {
+  .topbar__actions .btn { padding: 3px 8px; }
+  .topbar__actions .hide-xs, .stop-btn .stop-txt {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+    clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+  .transport__keys { grid-template-columns: 1.25fr repeat(3, minmax(0, 1fr)) 40px; }
+}
+/* the band row in one line at 320 px: three pairs, their captions and 'GHz' */
+@media (max-width: 360px) {
+  .freq-groups { gap: 4px 5px; }
+  .freq-group .freq-btn { min-width: 35px; padding: 3px 4px; }
+}
+@media print {
+  .transport { position: static; }
 }
 </style>
 </head>
 <body>
+<a class="skip-link" id="skipToPlay" href="#playBtn">Skip to Play</a>
+<header class="topbar">
+  <a class="topbar__brand" href="index.html"><span class="topbar__brand-pre">Experiencing the </span>Multi-Probe Sky</a>
+  <nav class="topbar__nav" aria-label="Site">
+    <a href="sonifier.html" aria-current="page">Sonifier</a>
+    <a href="sky.html">Sky Explorer</a>
+    <a href="globe.html">Globe</a>
+    <a href="lightcone.html">Lightcone</a>
+    <a href="about.html">How it works</a>
+  </nav>
+  <div class="topbar__actions">
+    <!-- page actions: copies of Share and Render WAV (under 'Render & export'); each clicks the original -->
+    <button class="btn" id="shareProxy" title="Copy a link that restores all settings (Share, under Render &amp; export)">Share</button>
+    <button class="btn" id="renderProxy" title="Render the current mode to a lossless WAV plus a JSON settings sidecar (Render WAV, under Render &amp; export)"><span class="hide-xs">Render </span>WAV</button>
+  </div>
+</header>
 
-<h1>Power Spectrum Sonifier</h1>
-<p class="subtitle">
-  <a href="index.html">&#127759; All toys</a> &nbsp;&middot;&nbsp;
-  <a href="sky.html">Sky Explorer</a> &nbsp;&middot;&nbsp;
-  <a href="globe.html">3D Globe</a> &nbsp;&middot;&nbsp;
-  <a href="lightcone.html">Inside the Lightcone</a> &nbsp;&middot;&nbsp;
-  <a href="about.html">How it works</a>
-</p>
+<main class="container" id="main">
 
-<div id="tourCaption" role="status" aria-live="polite"></div>
-
-<div class="container">
-
-  <!-- Power Spectrum -->
-  <div class="panel full-width">
-    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-      <h2>Power Spectrum D<sub>&#8467;</sub></h2>
-      <div style="display:flex; gap:6px; align-items:center;">
-        <span class="stereo-indicator" id="stereoIndicator" style="display:none;">&#127911; Stereo</span>
-        <span class="status" id="statusBadge" role="status" aria-live="polite">Ready</span>
+  <div class="page-head">
+    <h1 class="page-title">Power Spectrum Sonifier</h1>
+    <!-- 'Start here' (#startHere): the paper's demonstrations, one chip per row of its Table 2 (sections/
+         demonstrations.tex), then Tour and Big Bang. A demo chip applies DEFAULTS + the row's Share fragment through the
+         share-link path, writes the fragment to the address (history.replaceState) and starts the button the table
+         names (DEMOS and startDemo() in the script); pressed while its demo plays, pressing it again stops it. Tour and
+         Big Bang press #tourBtn and #bigBangBtn, which stay in 'Guided & artistic'. Each title is one sentence on what to
+         listen for, from the paper's text (no other numbers). A toolbar: one Tab stop (the last chip used), the arrow keys,
+         Home and End move between the chips. The plot height (--plot-h on .plot-panel) leaves room for this row with the
+         transport in the first screen at 1280x720. -->
+    <div class="start-here" id="startHere" role="toolbar" aria-orientation="horizontal" aria-labelledby="startHereLabel">
+      <span class="start-here__label" id="startHereLabel">Start here</span>
+      <div class="start-here__chips">
+        <button class="btn demo-chip" id="demoBuildup" data-demo="buildup" aria-pressed="false" tabindex="0"
+                title="The CMB alone, then the tSZ, CIB and kSZ added in turn, then the Total: the overall level barely changes, but the highest audio frequencies fill in, and the last stage should sound like the fourth.">Build up the sky</button>
+        <button class="btn demo-chip" id="demoTszNull" data-demo="tsznull" aria-pressed="false" tabindex="-1"
+                title="The tSZ alone through the six bands on one reference: it keeps its spectral shape and only its level changes, nearly vanishing at 225 GHz, near its null at 217 GHz, and loudest at 353 GHz.">The tSZ null</button>
+        <button class="btn demo-chip" id="demoCib353" data-demo="cib353" aria-pressed="false" tabindex="-1"
+                title="The whole sky through the bands on one reference: the CIB takes over the top of the audio range, over a range that widens downwards from band to band, so the 353 GHz sky should sound brighter.">The CIB at 353 GHz</button>
+        <button class="btn demo-chip" id="demoDuet143" data-demo="duet143" aria-pressed="false" tabindex="-1"
+                title="The tSZ (voice A) and the CIB (voice B) while &#8467; sweeps: below the tSZ null they are anti-correlated, so the duet plays the tritone over most of the sweep and the minor second at the largest scales.">Duet at 143 GHz</button>
+        <button class="btn demo-chip" id="demoDuet353" data-demo="duet353" aria-pressed="false" tabindex="-1"
+                title="Above the tSZ null the sign of the correlation is reversed: voice A plays the same line as at 143 GHz, but the duet now plays the fifth, with the octave at the largest scales, so the dissonant duet becomes a consonant one.">Duet at 353 GHz</button>
+        <span class="start-here__sep" aria-hidden="true"></span>
+        <button class="btn demo-chip" id="demoTour" data-demo="tour" aria-pressed="false" tabindex="-1"
+                title="A guided tour, step by step under the plot: the CMB, an &#8467;-sweep, the tSZ and its null, the CIB, the whole sky, the tSZ&times;CIB duet and Big Bang (Back, Next; Esc closes).">Tour</button>
+        <button class="btn demo-chip" id="demoBigBang" data-demo="bigbang" aria-pressed="false" tabindex="-1"
+                title="Artistic, not an analysis mode: the CMB acoustic peaks found in the data, played as a slowly descending chord (after Cramer 2003).">Big Bang <span class="badge badge--artistic">artistic</span></button>
       </div>
     </div>
-    <canvas id="spectrumCanvas" aria-label="Power spectra D_l of the active components versus multipole l, with the audio frequency of each l"></canvas>
-    <div class="readout" id="levelReadout"></div>
-    <div id="srLive" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
   </div>
 
-  <!-- Controls -->
-  <div class="panel controls-panel full-width">
-    <h2>Controls</h2>
-
-    <div class="control-group">
-      <label>Components (click to toggle)</label>
-      <div class="btn-row">
-        <button class="toggle-btn active" data-comp="dT_cmblens">CMB</button>
-        <button class="toggle-btn" data-comp="dT_tsz">tSZ</button>
-        <button class="toggle-btn" data-comp="dT_cib">CIB</button>
-        <button class="toggle-btn" data-comp="dT_ksz">kSZ</button>
-        <button class="toggle-btn" data-comp="T_tot">Total</button>
+  <!-- the plot card: plot panel, transport, readout strip -->
+  <section class="panel plot-panel" id="plotPanel" aria-labelledby="plotTitle">
+    <div class="plot-head">
+      <h2 class="plot-title" id="plotTitle">Power spectrum D<sub>&#8467;</sub></h2>
+      <div class="legend" id="legend" role="group" aria-label="Components (click to toggle; the plot's legend)">
+        <button class="toggle-btn chip active" data-comp="dT_cmblens" aria-pressed="true">CMB</button>
+        <button class="toggle-btn chip" data-comp="dT_tsz" aria-pressed="false">tSZ</button>
+        <button class="toggle-btn chip" data-comp="dT_cib" aria-pressed="false">CIB</button>
+        <button class="toggle-btn chip" data-comp="dT_ksz" aria-pressed="false">kSZ</button>
+        <button class="toggle-btn chip" data-comp="T_tot" aria-pressed="false">Total</button>
+        <span class="mix-key" id="mixKey" hidden><span class="mix-swatch" aria-hidden="true"></span>mix (heard)</span>
       </div>
-      <div class="note">Several components are mixed with their cross-spectra:
-        D<sub>mix</sub> = &Sigma; D<sub>X</sub> + 2 &Sigma;<sub>X&lt;Y</sub> r<sub>XY</sub> &radic;(D<sub>X</sub>D<sub>Y</sub>),
-        <span id="totalNote">so the Total's components together sound like the Total, which excludes them (and vice versa).</span></div>
-    </div>
-
-    <div class="control-group">
-      <label>Observing Frequency (GHz)</label>
-      <div class="freq-groups" id="bandGroups"></div>
-    </div>
-
-    <div class="control-group">
-      <label>Synthesis Method</label>
-      <div class="btn-row">
-        <button class="sm-btn method-btn active" data-method="noise">Shaped Noise</button>
-        <button class="sm-btn method-btn" data-method="additive">Additive</button>
-        <button class="sm-btn method-btn" data-method="layers">Scale Layers</button>
-        <button class="sm-btn method-btn" data-method="instruments">Instruments</button>
-        <button class="sm-btn method-btn" data-method="duet">Duet &#9839;</button>
-      </div>
-      <div class="slider-row" id="additiveControls" style="display:none;">
-        <span class="note">Partials:</span>
-        <select id="additiveSpacing" class="inst-select" style="flex:0 1 auto;" aria-label="additive partial spacing">
-          <option value="semitone">one per 1/12 octave (92, tonal)</option>
-          <option value="grid">one per &#8467;-grid point (400, as the offline script)</option>
-        </select>
-      </div>
-      <div class="note" id="methodNote"></div>
-    </div>
-
-    <div class="control-group" id="instrumentControls" style="display:none;">
-      <label>Voice preset</label>
-      <div class="btn-row">
-        <button class="sm-btn voice-preset-btn active" data-vpreset="analysis" title="Sustained voices: no re-striking, vibrato, auto-wah or reverb; the data gain comes after any distortion">Analysis</button>
-        <button class="sm-btn voice-preset-btn" data-vpreset="musical" title="The v1 behaviour: struck/bowed articulation, vibrato, auto-wah, reverb (decorative)">Musical <span class="tag">decorative</span></button>
-      </div>
-      <label style="margin-top:6px;">Instrument palette</label>
-      <div class="btn-row">
-        <button class="sm-btn preset-btn" data-preset="classical">Classical</button>
-        <button class="sm-btn preset-btn" data-preset="ambient">Ambient</button>
-        <button class="sm-btn preset-btn" data-preset="cosmic">Cosmic</button>
-        <button class="sm-btn preset-btn" data-preset="rock">Rock</button>
-        <button class="sm-btn preset-btn" data-preset="jazz">Jazz</button>
-      </div>
-      <label style="margin-top:6px;">Instruments (per component)</label>
-      <div class="slider-row">
-        <span style="color:var(--cmb);font-size:0.8em;min-width:40px;">CMB</span>
-        <select id="instCmb" class="inst-select" data-comp="dT_cmblens" aria-label="CMB instrument"></select>
-      </div>
-      <div class="slider-row">
-        <span style="color:var(--tsz);font-size:0.8em;min-width:40px;">tSZ</span>
-        <select id="instTsz" class="inst-select" data-comp="dT_tsz" aria-label="tSZ instrument"></select>
-      </div>
-      <div class="slider-row">
-        <span style="color:var(--cib);font-size:0.8em;min-width:40px;">CIB</span>
-        <select id="instCib" class="inst-select" data-comp="dT_cib" aria-label="CIB instrument"></select>
-      </div>
-      <div class="slider-row">
-        <span style="color:var(--ksz);font-size:0.8em;min-width:40px;">kSZ</span>
-        <select id="instKsz" class="inst-select" data-comp="dT_ksz" aria-label="kSZ instrument"></select>
-      </div>
-      <div class="slider-row" style="margin-top:8px;">
-        <label style="font-size:0.8em;display:flex;align-items:center;gap:6px;cursor:pointer;">
-          <input type="checkbox" id="snapScale" checked> Snap notes to the A-minor pentatonic scale (less gliding)
-        </label>
-      </div>
-      <div class="note" id="musicalNote"></div>
-    </div>
-
-    <div class="control-group" id="duetControls" style="display:none;">
-      <label>Duet &mdash; cross-correlation of two probes</label>
-      <div class="slider-row">
-        <span style="font-size:0.8em;min-width:14px;">A</span>
-        <select id="duetA" class="inst-select" aria-label="duet voice A">
-          <option value="dT_cmblens">CMB lensing</option>
-          <option value="dT_tsz">tSZ</option>
-          <option value="dT_cib">CIB</option>
-          <option value="dT_ksz">kSZ</option>
-        </select>
-        <span style="font-size:0.8em;min-width:14px;text-align:right;">B</span>
-        <select id="duetB" class="inst-select" aria-label="duet voice B">
-          <option value="dT_cmblens">CMB lensing</option>
-          <option value="dT_tsz" selected>tSZ</option>
-          <option value="dT_cib">CIB</option>
-          <option value="dT_ksz">kSZ</option>
-        </select>
-      </div>
-      <div style="position:relative;height:9px;margin:10px 2px 2px;border-radius:5px;
-           background:linear-gradient(90deg,#ff5b5b 0%,#2b3350 50%,#2ed573 100%);">
-        <div id="duetMarker" style="position:absolute;top:-3px;left:50%;width:3px;height:15px;
-             background:#fff;border-radius:2px;transform:translateX(-50%);transition:left .08s;"></div>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:0.65em;color:var(--muted);margin:2px 2px 0;">
-        <span>anti-correlated (r = &minus;1)</span><span>independent</span><span>correlated (r = +1)</span>
-      </div>
-      <div id="duetReadout" class="readout">press &#9654; to sweep &#8467;</div>
-      <label style="margin-top:6px;">Duet timbre</label>
-      <div class="btn-row">
-        <button class="sm-btn duet-timbre-btn active" data-dtimbre="tone" title="Both voices play one harmonic complex tone with no body filters, RMS-calibrated: the timbre the interval ladder was checked for">Harmonic tone</button>
-        <button class="sm-btn duet-timbre-btn" data-dtimbre="instruments" title="Musical preset: the two components' instruments from the Instruments panel, with articulation, vibrato and reverb. Decorative: the ladder's dissonance order was not checked for these timbres">Instrument voices <span class="tag">Musical, not calibrated for dissonance</span></button>
-      </div>
-      <label style="margin-top:6px;">Duet levels</label>
-      <div class="btn-row">
-        <button class="sm-btn duet-level-btn active" data-dlevel="common" title="Both voices, and the noise cue that replaces voice B, at one constant level: the duet carries r by the interval and the stereo spread only, and both voices stay audible">Common level</button>
-        <button class="sm-btn duet-level-btn" data-dlevel="data" title="Each voice at its data level (Absolute or Equalized, under Level &amp; display). One component can be 20-60 dB weaker than the other, so voice B or its noise cue may be inaudible">Data levels <span class="tag">B may be inaudible where one component is much weaker</span></button>
-      </div>
-      <!-- the same setting (S.snap) as the Instruments panel's checkbox, which Duet mode hides; Share links unchanged -->
-      <div class="slider-row" style="margin-top:8px;">
-        <label id="duetSnapLabel" style="font-size:0.8em;display:flex;align-items:center;gap:6px;cursor:pointer;"
-               title="Snapping keeps the interval ladder exact: voice A steps along the A-minor pentatonic scale and voice B sits exactly the rung's interval above it, so both voices hold equal-tempered notes. Off plays the continuous duet map: voice A glides with the multipole and voice B keeps the same interval above it. On by default; the same setting as 'Snap notes' in the Instruments panel.">
-          <input type="checkbox" id="duetSnap" checked> Snap voice A to the A-minor pentatonic scale
-        </label>
-      </div>
-      <div class="note">
-        Two voices, one per probe; voice B sits an interval above voice A. The interval follows the
-        cross-correlation r<sub>&#8467;</sub> (interpolated in ln&nbsp;&#8467;), ordered by sensory dissonance:
-        <span id="duetLadderText"></span>. The stereo spread grows as (1&minus;r)/2.
-        Where |r| &lt; 2&sigma;<sub>r</sub>, with &sigma;<sub>r</sub> = (1&minus;r&sup2;)/&radic;N<sub>modes</sub>,
-        the correlation is <b>not significant</b>: voice B is replaced by a band-pass noise cue at voice A&rsquo;s pitch,
-        with B&rsquo;s level and no stereo spread, so you hear one tone and noise. Between 2&sigma; and 3&sigma; the
-        interval fades in as the noise fades out (equal power at 2.5&sigma;). Switch bands to hear tSZ flip sign at 217&nbsp;GHz.
-        <b>Common level</b> (default): both voices and the cue play at one constant level, so loudness carries no data and
-        both voices stay audible; <b>Data levels</b> make each voice follow its own band power instead.
-      </div>
-      <div class="note" id="duetNote"></div>
-    </div>
-
-    <div class="control-group">
-      <label>Level &amp; display</label>
-      <div class="btn-row">
-        <button class="sm-btn level-btn active" data-level="absolute" title="One reference for every component, band and selection">Absolute</button>
-        <button class="sm-btn level-btn" data-level="equalized" title="Each selection (Play) or voice (Instruments, Duet with Data levels) scaled to its own maximum over the bands">Equalized</button>
-        <span class="note" style="margin:0 4px;">|</span>
-        <button class="sm-btn option-btn" id="logVolBtn" title="dB-linear volume with a -60 dB floor">log volume</button>
-        <button class="sm-btn option-btn" id="loudCompBtn" title="Inverse ISO 226:2003 equal-loudness contour at 60 phon">loudness comp.</button>
-        <span class="note" style="margin:0 4px;">|</span>
-        <button class="sm-btn beam-btn active" data-beam="observed" title="Spectra as observed with the 2' Gaussian beam">beam: observed (2&prime;)</button>
-        <button class="sm-btn beam-btn" data-beam="deconvolved" title="D_l divided by the beam window B_l^2">deconvolved</button>
-      </div>
-      <div class="note" id="levelNote"></div>
-      <details class="help" id="isoHelp">
-        <summary>About loudness compensation (ISO 226:2003)</summary>
-        <div style="margin-top:4px;">The gain applied per audio frequency is the 60-phon equal-loudness contour relative to
-          its value at 1&nbsp;kHz, capped at +30&nbsp;dB: it boosts the low &#8467; (low pitch), where the ear is less
-          sensitive, and slightly cuts 2&ndash;5&nbsp;kHz. It equalizes perceived loudness only approximately: the
-          contours are averages over listeners, and the result depends on your playback level and device.</div>
-        <canvas id="isoCanvas" aria-label="Loudness compensation gain versus audio frequency"></canvas>
-      </details>
-    </div>
-
-    <div class="control-group">
-      <label>Stereo Mode <span class="note" style="text-transform:none;letter-spacing:0;">(Play with Shaped Noise, Additive or Layers)</span></label>
-      <div class="btn-row">
-        <button class="sm-btn stereo-btn active" data-stereo="mono">Mono</button>
-        <button class="sm-btn stereo-btn" data-stereo="comp" title="Active components split left/right">Components L/R</button>
-        <button class="sm-btn stereo-btn" data-stereo="freq" id="stereoFreqBtn" title="Lowest band left, highest band right">lowest|highest band</button>
+      <div class="bands" role="group" aria-labelledby="bandsLabel">
+        <span class="bands-label band-label" id="bandsLabel" title="Observing frequency">Band (GHz)</span><span class="band-unit" aria-hidden="true">GHz</span>
+        <div class="freq-groups" id="bandGroups"></div>
       </div>
     </div>
-
-    <div class="control-group">
-      <label>&#8467; range</label>
-      <div class="slider-row">
-        <span style="font-size:0.75em;color:var(--muted);">min</span>
-        <input type="range" id="ellMinSlider" min="2" max="1000" value="2" step="1" aria-label="minimum multipole">
-        <span class="slider-val" id="ellMinVal">2</span>
+    <div class="plot-body">
+      <div class="plot-wrap" id="plotWrap">
+        <canvas id="spectrumCanvas" role="img" aria-label="Power spectra D_l of the active components versus multipole l, with the audio frequency of each l"></canvas>
       </div>
-      <div class="slider-row">
-        <span style="font-size:0.75em;color:var(--muted);">max</span>
-        <input type="range" id="ellMaxSlider" min="100" max="6000" value="6000" step="10" aria-label="maximum multipole">
-        <span class="slider-val" id="ellMaxVal">6000</span>
+      <!-- Duet readout (#duetStrip): shown in Duet mode only, directly under the canvas. #duetReadout (duetReadout() and
+           duetIdle() in the script) gives the pair with its data-colour swatches, l, r +- sigma_r at the cursor, the
+           interval being played and the significance gate (gated / fading in / sounding), with the numbers the duet
+           player computes (DuetPlayer.values). Under it the r bar: the ladder's rungs in equal bins of r, the rung being
+           played filled, the band |r| < 2 sigma_r hatched, a marker at r (#duetMarker). Not a live region (it changes
+           every frame); #srLive announces the mode. The strip takes its height from the canvas, not from the page. -->
+      <div class="duet-strip" id="duetStrip" style="display:none;">
+        <div id="duetReadout" class="readout">press &#9654; Play to sweep &#8467;</div>
+        <div class="rbar" aria-hidden="true">
+          <div class="rbar__fill" id="rbarFill"></div>
+          <div class="rbar__gate" id="rbarGate"></div>
+          <div class="rbar__zones" id="rbarZones"></div>
+          <div id="duetMarker"></div>
+        </div>
+        <div class="rbar-labels" aria-hidden="true"><span>anti-correlated<span class="rl-x"> (r = &minus;1)</span></span><span>independent</span><span>correlated<span class="rl-x"> (r = +1)</span></span></div>
+        <p class="legend-note" id="legendNote" hidden>Legend: voices A and B are filled (drawn bold); a &#10003; marks the components Build-Up and &nu;-Sweep play in this mode.</p>
       </div>
-      <div class="note">Play sounds only this range (quieter when narrower: it holds less of the sky's variance);
-        sweeps run across it.</div>
+      <!-- Tour dock (#tourDock): the guided tour under the plot, step n of N with Back, Next and Close (Esc also closes;
+           the arrow keys step while focus is in the dock). The caption (#tourCaption) is a polite live region. Focus
+           moves here when the Tour starts and back to the button that started it when it ends. Like the duet strip,
+           it takes its height from the canvas. -->
+      <div class="tour-dock" id="tourDock" role="region" aria-label="Tour" tabindex="-1" style="display:none;">
+        <div class="tour-dock__head">
+          <span class="tour-step" id="tourStep">Tour</span>
+          <span class="tour-progress" id="tourProgress" aria-hidden="true"></span>
+          <div class="tour-nav">
+            <button class="btn" id="tourBack" aria-keyshortcuts="ArrowLeft" title="The previous step (Left arrow)">&#9664; Back</button>
+            <button class="btn" id="tourNext" aria-keyshortcuts="ArrowRight" title="The next step (Right arrow)">Next &#9654;</button>
+            <button class="btn" id="tourClose" aria-keyshortcuts="Escape" title="End the tour and restore your settings (Esc)">&#10005; Close</button>
+          </div>
+        </div>
+        <div id="tourCaption" role="status" aria-live="polite"></div>
+      </div>
+      <!-- while a 'Start here' demo plays: its name and what to listen for (the chip's title) -->
+      <p class="demo-note" id="demoNote" style="display:none;"></p>
+      <!-- sonifier.html#tour: the Tour's start under its note (it presses the ringed Tour chip) -->
+      <div class="arrival-act" id="arrivalAct" hidden><button class="btn btn--primary" id="arrivalTourBtn"><span class="ico" aria-hidden="true">&#9654;</span> Start the tour</button></div>
     </div>
+    <div id="srLive" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+  </section>
 
-    <div class="control-group">
-      <label>Monitor gain</label>
-      <div class="slider-row">
-        <input type="range" id="volumeSlider" min="-40" max="12" value="0" step="1" aria-label="monitor gain in dB">
-        <span class="slider-val" id="volumeVal">0 dB</span>
-      </div>
-      <div class="slider-row" style="height:16px;">
-        <div class="meter-bar" title="Output level after the safety limiter, -60 to 0 dBFS"><div class="meter-fill" id="meterFill"></div></div>
-      </div>
-      <div class="readout" id="meterReadout"></div>
+  <div class="transport-sentinel" id="transportSentinel" aria-hidden="true"></div>
+  <div class="transport" id="transport" role="group" aria-label="Playback">
+    <div class="transport__keys">
+      <button class="btn btn--primary tbtn play-btn" id="playBtn" aria-pressed="false" title="Play the selection over the &#8467; range (Instruments and Duet: sweep &#8467;); press again to stop"><span class="ico" aria-hidden="true">&#9654;</span> Play</button>
+      <button class="btn tbtn tbtn--sweep" id="sweepBtn" aria-pressed="false" title="Sweep a window across the &#8467; range">&#8467;-Sweep</button>
+      <button class="btn tbtn tbtn--sweep" id="buildupBtn" aria-pressed="false" title="The Total's components one at a time, then the Total">Build-Up</button>
+      <button class="btn tbtn tbtn--sweep" id="freqSweepBtn" aria-pressed="false" title="Step through the observing bands, crossfaded">&#957;-Sweep</button>
+      <button class="btn tbtn stop-btn" id="stopBtn" title="Stop all sound (also ends the Tour)"><span class="ico" aria-hidden="true">&#9632;</span> <span class="stop-txt">Stop</span></button>
     </div>
-
-    <div class="control-group">
-      <label>Playback</label>
-      <div class="transport">
-        <button class="transport-btn play-btn" id="playBtn">&#9654; Play</button>
-        <button class="transport-btn action-btn" id="sweepBtn">&#8467;-Sweep</button>
-        <button class="transport-btn action-btn" id="buildupBtn" title="The Total's components one at a time, then the Total">Build-Up</button>
-        <button class="transport-btn action-btn" id="freqSweepBtn" title="Step through the observing bands, crossfaded">&#957;-Sweep</button>
-        <button class="transport-btn stop-btn" id="stopBtn">&#9632; Stop</button>
-      </div>
-      <div class="transport" style="margin-top:6px;">
-        <button class="transport-btn action-btn" id="tourBtn" title="Auto-play a guided journey through the sky" style="background:linear-gradient(90deg,#4a9eff,#2ed573);color:#06101f;font-weight:700;">&#9654; Tour</button>
-        <button class="transport-btn action-btn" id="bigBangBtn" title="Artistic: the CMB acoustic peaks as a chord, after Cramer (2003)" style="background:linear-gradient(90deg,#ff9f43,#cc3333);color:white;">&#127775; Big Bang <span style="font-weight:400;font-size:0.85em;">(artistic)</span></button>
-        <button class="transport-btn action-btn" id="spatialBtn" title="HRTF 3D placement of the Instruments and Duet voices (use headphones)">3D Spatial</button>
-        <button class="transport-btn action-btn" id="recBtn" title="Record what you hear (lossy webm/ogg). Use Render WAV for lossless, reproducible audio">&#9210; Record</button>
-        <button class="transport-btn action-btn" id="shareBtn" title="Copy a link that restores all settings">&#128279; Share</button>
-      </div>
-    </div>
-
-    <div class="control-group">
-      <label>Reproducible render</label>
-      <div class="slider-row">
-        <span style="font-size:0.8em;">seed</span>
-        <input type="number" id="seedInput" class="num-input" value="42" min="0" max="4294967295" step="1" aria-label="random seed">
-        <select id="bitDepth" class="inst-select" style="flex:0 1 auto;" aria-label="WAV bit depth">
-          <option value="16">16-bit WAV</option>
-          <option value="24">24-bit WAV</option>
-        </select>
-        <button class="transport-btn action-btn" id="renderBtn" title="Render the current mode offline to a lossless WAV plus a JSON settings sidecar">&#11015; Render WAV</button>
-        <button class="sm-btn" id="loadSettingsBtn" title="Load the settings from a JSON sidecar">load settings</button>
-        <input type="file" id="loadSettings" class="sr-only" tabindex="-1" aria-hidden="true" accept=".json,application/json">
-      </div>
-      <div class="note" id="renderNote"></div>
-    </div>
-
-    <div class="control-group">
-      <label>Sweep speed (one pass)</label>
-      <div class="slider-row">
-        <input type="range" id="sweepSpeedSlider" min="2" max="30" value="10" aria-label="sweep duration in seconds">
-        <span class="slider-val" id="sweepSpeedVal">10 s</span>
-      </div>
-    </div>
-
-    <div class="control-group">
-      <label>Sweep position (drag to scrub)</label>
-      <div class="slider-row">
-        <input type="range" id="sweepPosSlider" min="0" max="1000" value="0" aria-label="sweep position">
+    <div class="transport__more" id="transportMore">
+      <div class="scrub">
+        <label class="tlabel" for="sweepPosSlider">Sweep</label>
+        <input type="range" id="sweepPosSlider" min="0" max="1000" value="0" aria-label="sweep position" title="Drag to scrub the sweep (starts an &#8467;-sweep if nothing sweeps)">
         <span class="slider-val" id="sweepPosVal">&#8467;=2</span>
       </div>
-    </div>
-
-    <div class="control-group">
-      <label>Sweep options</label>
-      <div class="btn-row">
-        <span class="note">window</span>
-        <select id="windowOct" class="inst-select" style="flex:0 1 auto;" aria-label="l-sweep window width" title="-3 dB width of the l-sweep window (Butterworth band-pass)">
-          <option value="0.25">0.25 &#8467;-octave</option>
-          <option value="0.5" selected>0.5 &#8467;-octave</option>
-          <option value="1">1 &#8467;-octave</option>
-        </select>
-        <button class="sm-btn option-btn" id="linearSweepBtn" title="Linear l sweep (vs log)">linear &#8467;-sweep</button>
-        <button class="sm-btn option-btn" id="pingPongBtn" title="Bounce back and forth">ping-pong</button>
-        <button class="sm-btn option-btn" id="fixedPitchBtn" title="A 440 Hz tone whose level follows the windowed band power">fixed pitch</button>
+      <div class="gain">
+        <label class="tlabel" for="volumeSlider"><svg class="ico-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 6h3l4-3v10l-4-3H2z" fill="currentColor"/><path d="M11.5 5.5a3.5 3.5 0 0 1 0 5M13 3.5a6.5 6.5 0 0 1 0 9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span class="tlabel-text">Gain</span></label>
+        <div class="gain__slider">
+          <input type="range" id="volumeSlider" min="-40" max="12" value="0" step="1" aria-label="monitor gain in dB" title="Monitor gain: listening level only, not part of renders">
+          <div class="meter-bar" title="Output level after the safety limiter, -60 to 0 dBFS"><div class="meter-fill" id="meterFill"></div></div>
+        </div>
+        <span class="slider-val" id="volumeVal">0 dB</span>
       </div>
-      <div class="note" id="sweepNote">The &#8467;-sweep passes a D<sub>&#8467;</sub>-shaped carrier through a Butterworth
-        band-pass window that moves across [&#8467;<sub>min</sub>, &#8467;<sub>max</sub>]; its level is the band power in the
-        window (one gain path). The shaded curve on the plot is the window as applied.</div>
+    </div>
+    <div class="transport__meta">
+      <span class="status" id="statusBadge" role="status" aria-live="polite">Ready</span>
+      <div class="meter">
+        <span class="meter-db" id="meterDb" title="Output level after the safety limiter (RMS of the louder channel)">&ndash; dBFS</span>
+        <details class="help popover" id="meterHelp">
+          <summary title="Output meter details" aria-label="Output meter details">i</summary>
+          <div class="popover__body"><div class="readout" id="meterReadout"></div></div>
+        </details>
+      </div>
+      <button class="btn more-btn" id="moreBtn" aria-expanded="false" aria-controls="transportMore">More</button>
     </div>
   </div>
 
-  <!-- Info -->
-  <div class="panel info-panel full-width" style="text-align:center;">
-    <p style="margin:0;">New here, or want the details? &nbsp;<a href="about.html">How it works &amp; what every control does &rarr;</a></p>
+  <div class="readout-strip">
+    <div class="readout"><span class="stereo-indicator" id="stereoIndicator" style="display:none;">Stereo</span><span id="levelReadout"></span></div>
+    <!-- #mixNote: shown only while the dashed mix is drawn (with #mixKey: two or more components, played as one mix) -->
+    <div class="readout-notes" id="mixNote" hidden>
+      <p class="note">The selected components play as one mix, cross-spectra included: the dashed white curve is what you hear.</p>
+      <details class="help">
+        <summary>How it is computed</summary>
+        <div class="note">D<sub>mix</sub> = &Sigma; D<sub>X</sub> + 2 &Sigma;<sub>X&lt;Y</sub> r<sub>XY</sub> &radic;(D<sub>X</sub>D<sub>Y</sub>),
+          <span id="totalNote">so the Total's components together sound like the Total, which excludes them (and vice versa).</span></div>
+      </details>
+    </div>
   </div>
-</div>
+
+  <!-- Settings -->
+  <section class="settings" aria-labelledby="settingsTitle">
+    <div class="settings-head">
+      <h2 class="section-title" id="settingsTitle">Settings</h2>
+      <button class="btn" id="resetBtn" title="Every setting back to its default (what a #s={} link opens)">Reset to defaults</button>
+    </div>
+
+    <div class="settings-grid">
+      <section class="panel controls-panel" aria-labelledby="soundTitle">
+        <h3 class="panel-title" id="soundTitle">Sound</h3>
+
+        <div class="control-group" role="group" aria-labelledby="g-method">
+          <span class="group-label" id="g-method">Synthesis Method</span>
+          <div class="btn-row">
+            <button class="btn method-btn active" data-method="noise">Shaped Noise</button>
+            <button class="btn method-btn" data-method="additive">Additive</button>
+            <button class="btn method-btn" data-method="layers">Scale Layers</button>
+            <button class="btn method-btn" data-method="instruments">Instruments</button>
+            <button class="btn method-btn" data-method="duet">Duet</button>
+          </div>
+          <p class="note lead" id="methodLead"></p>
+          <details class="help"><summary>How it is computed</summary><div class="note" id="methodNote"></div></details>
+        </div>
+
+        <div class="control-group" id="instrumentControls" style="display:none;">
+          <div class="sub-group" role="group" aria-labelledby="g-vpreset">
+            <span class="group-label" id="g-vpreset">Voice preset</span>
+            <div class="seg">
+              <button class="btn voice-preset-btn active" data-vpreset="analysis" title="Sustained voices: no re-striking, vibrato, auto-wah or reverb; the data gain comes after any distortion">Analysis</button>
+              <button class="btn voice-preset-btn" data-vpreset="musical" title="The v1 behaviour: struck/bowed articulation, vibrato, auto-wah, reverb (decorative)">Musical <span class="tag">decorative</span></button>
+            </div>
+          </div>
+          <div class="sub-group" role="group" aria-labelledby="g-palette">
+            <span class="group-label" id="g-palette">Instrument palette</span>
+            <div class="btn-row">
+              <button class="btn preset-btn" data-preset="classical">Classical</button>
+              <button class="btn preset-btn" data-preset="ambient">Ambient</button>
+              <button class="btn preset-btn" data-preset="cosmic">Cosmic</button>
+              <button class="btn preset-btn" data-preset="rock">Rock</button>
+              <button class="btn preset-btn" data-preset="jazz">Jazz</button>
+            </div>
+          </div>
+          <div class="sub-group" role="group" aria-labelledby="g-inst">
+            <span class="group-label" id="g-inst">Instruments (per component)</span>
+            <div class="inst-grid">
+              <label class="inst-cell"><span class="comp-name comp-name--cmb">CMB</span><select id="instCmb" class="inst-select" data-comp="dT_cmblens" aria-label="CMB instrument"></select></label>
+              <label class="inst-cell"><span class="comp-name comp-name--tsz">tSZ</span><select id="instTsz" class="inst-select" data-comp="dT_tsz" aria-label="tSZ instrument"></select></label>
+              <label class="inst-cell"><span class="comp-name comp-name--cib">CIB</span><select id="instCib" class="inst-select" data-comp="dT_cib" aria-label="CIB instrument"></select></label>
+              <label class="inst-cell"><span class="comp-name comp-name--ksz">kSZ</span><select id="instKsz" class="inst-select" data-comp="dT_ksz" aria-label="kSZ instrument"></select></label>
+            </div>
+          </div>
+          <label class="check"><input type="checkbox" id="snapScale" checked> Snap notes to the A-minor pentatonic scale (less gliding)</label>
+          <p class="note lead" id="musicalLead"></p>
+          <details class="help"><summary>How it is computed</summary><div class="note" id="musicalNote"></div></details>
+        </div>
+
+        <div class="control-group" id="duetControls" style="display:none;">
+          <div class="sub-group" role="group" aria-labelledby="g-duet">
+            <span class="group-label" id="g-duet">Duet &mdash; cross-correlation of two probes</span>
+            <div class="duet-pair">
+              <label class="duet-voice">A
+                <select id="duetA" class="inst-select" aria-label="duet voice A">
+                  <option value="dT_cmblens">CMB lensing</option>
+                  <option value="dT_tsz">tSZ</option>
+                  <option value="dT_cib">CIB</option>
+                  <option value="dT_ksz">kSZ</option>
+                </select></label>
+              <label class="duet-voice">B
+                <select id="duetB" class="inst-select" aria-label="duet voice B">
+                  <option value="dT_cmblens">CMB lensing</option>
+                  <option value="dT_tsz" selected>tSZ</option>
+                  <option value="dT_cib">CIB</option>
+                  <option value="dT_ksz">kSZ</option>
+                </select></label>
+            </div>
+          </div>
+          <div class="sub-group" role="group" aria-labelledby="g-dtimbre">
+            <span class="group-label" id="g-dtimbre">Duet timbre</span>
+            <div class="btn-row">
+              <button class="btn duet-timbre-btn active" data-dtimbre="tone" title="Both voices play one harmonic complex tone with no body filters, RMS-calibrated: the timbre the interval ladder was checked for">Harmonic tone</button>
+              <button class="btn duet-timbre-btn" data-dtimbre="instruments" title="Musical preset: the two components' instruments from the Instruments panel, with articulation, vibrato and reverb. Decorative: the ladder's dissonance order was not checked for these timbres">Instrument voices <span class="tag">Musical, not calibrated for dissonance</span></button>
+            </div>
+          </div>
+          <div class="sub-group" role="group" aria-labelledby="g-dlevel">
+            <span class="group-label" id="g-dlevel">Duet levels</span>
+            <div class="btn-row">
+              <button class="btn duet-level-btn active" data-dlevel="common" title="Both voices, and the noise cue that replaces voice B, at one constant level: the duet carries r by the interval and the stereo spread only, and both voices stay audible">Common level</button>
+              <button class="btn duet-level-btn" data-dlevel="data" title="Each voice at its data level (Absolute or Equalized, under Level &amp; space). One component can be 20-60 dB weaker than the other, so voice B or its noise cue may be inaudible">Data levels <span class="tag">B may be inaudible where one component is much weaker</span></button>
+            </div>
+          </div>
+          <!-- the same setting (S.snap) as the Instruments panel's checkbox, which Duet mode hides; Share links unchanged -->
+          <label class="check" id="duetSnapLabel"
+                 title="Snapping keeps the interval ladder exact: voice A steps along the A-minor pentatonic scale and voice B sits exactly the rung's interval above it, so both voices hold equal-tempered notes. Off plays the continuous duet map: voice A glides with the multipole and voice B keeps the same interval above it. On by default; the same setting as 'Snap notes' in the Instruments panel.">
+            <input type="checkbox" id="duetSnap" checked> Snap voice A to the A-minor pentatonic scale
+          </label>
+          <p class="note lead" id="duetLead"></p>
+          <details class="help">
+            <summary>How it is computed</summary>
+            <div class="note">
+              Two voices, one per probe; voice B sits an interval above voice A. The interval follows the
+              cross-correlation r<sub>&#8467;</sub> (interpolated in ln&nbsp;&#8467;), ordered by sensory dissonance:
+              <span id="duetLadderText"></span>. The stereo spread grows as (1&minus;r)/2.
+              Where |r| &lt; 2&sigma;<sub>r</sub>, with &sigma;<sub>r</sub> = (1&minus;r&sup2;)/&radic;N<sub>modes</sub>,
+              the correlation is <b>not significant</b>: voice B is replaced by a band-pass noise cue at voice A&rsquo;s pitch,
+              with B&rsquo;s level and no stereo spread, so you hear one tone and noise. Between 2&sigma; and 3&sigma; the
+              interval fades in as the noise fades out (equal power at 2.5&sigma;). Switch bands to hear tSZ flip sign at 217&nbsp;GHz.
+              <b>Common level</b> (default): both voices and the cue play at one constant level, so loudness carries no data and
+              both voices stay audible; <b>Data levels</b> make each voice follow its own band power instead.
+            </div>
+            <div class="note" id="duetNote"></div>
+          </details>
+        </div>
+      </section>
+
+      <section class="panel controls-panel" aria-labelledby="levelTitle">
+        <h3 class="panel-title" id="levelTitle">Level &amp; space</h3>
+        <div class="control-group" role="group" aria-labelledby="g-level">
+          <span class="group-label" id="g-level">Level</span>
+          <div class="seg">
+            <button class="btn level-btn active" data-level="absolute" title="One reference for every component, band and selection">Absolute</button>
+            <button class="btn level-btn" data-level="equalized" title="Each selection (Play) or voice (Instruments, Duet with Data levels) scaled to its own maximum over the bands">Equalized</button>
+          </div>
+          <p class="note lead" id="levelLead"></p>
+          <details class="help"><summary>How it is computed</summary><div class="note" id="levelNote"></div></details>
+        </div>
+        <div class="control-group" role="group" aria-labelledby="g-stereo">
+          <span class="group-label" id="g-stereo">Stereo Mode <span class="note">(Play with Shaped Noise, Additive or Layers)</span></span>
+          <div class="btn-row">
+            <button class="btn stereo-btn active" data-stereo="mono">Mono</button>
+            <button class="btn stereo-btn" data-stereo="comp" title="Active components split left/right">Components L/R</button>
+            <button class="btn stereo-btn" data-stereo="freq" id="stereoFreqBtn" title="Lowest band left, highest band right">lowest|highest band</button>
+          </div>
+        </div>
+        <div class="control-group" role="group" aria-labelledby="g-space">
+          <span class="group-label" id="g-space">Space</span>
+          <div class="btn-row">
+            <button class="btn option-btn" id="spatialBtn" title="HRTF 3D placement of the Instruments and Duet voices (use headphones)">3D Spatial</button>
+            <span class="note">places the Instruments and Duet voices around you (headphones)</span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="drawers">
+      <details class="panel drawer" id="advancedPanel">
+        <summary><span class="drawer-title">Advanced</span><span class="sum-chips" id="advancedChips"></span><span class="drawer-hint">volume law, loudness comp., beam, &#8467; range, additive partials</span></summary>
+        <div class="drawer-body">
+          <div class="control-group" role="group" aria-labelledby="g-vol">
+            <span class="group-label" id="g-vol">Volume law and loudness</span>
+            <div class="btn-row">
+              <button class="btn option-btn" id="logVolBtn" title="dB-linear volume with a -60 dB floor">Log volume</button>
+              <button class="btn option-btn" id="loudCompBtn" title="Inverse ISO 226:2003 equal-loudness contour at 60 phon">Loudness comp.</button>
+            </div>
+            <details class="help" id="isoHelp">
+              <summary>About loudness compensation (ISO 226:2003)</summary>
+              <div>The gain applied per audio frequency is the 60-phon equal-loudness contour relative to
+                its value at 1&nbsp;kHz, capped at +30&nbsp;dB: it boosts the low &#8467; (low pitch), where the ear is less
+                sensitive, and slightly cuts 2&ndash;5&nbsp;kHz. It equalizes perceived loudness only approximately: the
+                contours are averages over listeners, and the result depends on your playback level and device.</div>
+              <canvas id="isoCanvas" aria-label="Loudness compensation gain versus audio frequency"></canvas>
+            </details>
+          </div>
+          <div class="control-group" role="group" aria-labelledby="g-beam">
+            <span class="group-label" id="g-beam">Beam</span>
+            <div class="seg">
+              <button class="btn beam-btn active" data-beam="observed" title="Spectra as observed with the 2' Gaussian beam">Observed (2&prime;)</button>
+              <button class="btn beam-btn" data-beam="deconvolved" title="D_l divided by the beam window B_l^2">Deconvolved</button>
+            </div>
+          </div>
+          <div class="control-group" role="group" aria-labelledby="g-range">
+            <span class="group-label" id="g-range">&#8467; range</span>
+            <div class="slider-row">
+              <span class="tlabel">Min</span>
+              <input type="range" id="ellMinSlider" min="2" max="1000" value="2" step="1" aria-label="minimum multipole">
+              <span class="slider-val" id="ellMinVal">2</span>
+            </div>
+            <div class="slider-row">
+              <span class="tlabel">Max</span>
+              <input type="range" id="ellMaxSlider" min="100" max="6000" value="6000" step="10" aria-label="maximum multipole">
+              <span class="slider-val" id="ellMaxVal">6000</span>
+            </div>
+            <p class="note">Play sounds only this range (quieter when narrower: it holds less of the sky's variance);
+              sweeps run across it.</p>
+          </div>
+          <div class="control-group" id="additiveControls" role="group" aria-labelledby="g-partials">
+            <span class="group-label" id="g-partials">Additive partials <span class="note">(the Additive method)</span></span>
+            <div class="btn-row">
+              <select id="additiveSpacing" class="inst-select" aria-label="additive partial spacing">
+                <option value="semitone">one per 1/12 octave (92, tonal)</option>
+                <option value="grid">one per &#8467;-grid point (400, as the offline script)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="panel drawer" id="sweepPanel">
+        <summary><span class="drawer-title">Sweep options</span><span class="sum-chips" id="sweepChips"></span><span class="drawer-hint">speed, window, linear, ping-pong, fixed pitch</span></summary>
+        <div class="drawer-body">
+          <div class="control-group" role="group" aria-labelledby="g-speed">
+            <span class="group-label" id="g-speed">Sweep speed (one pass)</span>
+            <div class="slider-row">
+              <input type="range" id="sweepSpeedSlider" min="2" max="30" value="10" aria-label="sweep duration in seconds">
+              <span class="slider-val" id="sweepSpeedVal">10 s</span>
+            </div>
+            <p class="note">One pass of the &#8467;-sweep, Instruments and the Duet; it also sets the Build-Up stage length and the &nu;-Sweep duration.</p>
+          </div>
+          <div class="control-group" role="group" aria-labelledby="g-window">
+            <span class="group-label" id="g-window">&#8467;-sweep window</span>
+            <div class="btn-row">
+              <select id="windowOct" class="inst-select" aria-label="l-sweep window width" title="-3 dB width of the l-sweep window (Butterworth band-pass)">
+                <option value="0.25">0.25 &#8467;-octave</option>
+                <option value="0.5" selected>0.5 &#8467;-octave</option>
+                <option value="1">1 &#8467;-octave</option>
+              </select>
+              <button class="btn option-btn" id="linearSweepBtn" title="Linear l sweep (vs log)">Linear &#8467;-sweep</button>
+              <button class="btn option-btn" id="pingPongBtn" title="Bounce back and forth">Ping-pong</button>
+              <button class="btn option-btn" id="fixedPitchBtn" title="A 440 Hz tone whose level follows the windowed band power">Fixed pitch</button>
+            </div>
+            <p class="note lead">The &#8467;-sweep plays the band power in a window that moves across the &#8467; range; the shaded curve on the plot is the window as applied.</p>
+            <details class="help">
+              <summary>How it is computed</summary>
+              <div class="note" id="sweepNote">The &#8467;-sweep passes a D<sub>&#8467;</sub>-shaped carrier through a Butterworth
+                band-pass window that moves across [&#8467;<sub>min</sub>, &#8467;<sub>max</sub>]; its level is the band power in the
+                window (one gain path). The shaded curve on the plot is the window as applied.</div>
+            </details>
+          </div>
+        </div>
+      </details>
+
+      <details class="panel drawer" id="renderPanel">
+        <summary><span class="drawer-title">Render &amp; export</span><span class="sum-chips" id="renderChips"></span><span class="drawer-hint">Render WAV, seed, bit depth, Share, Record</span></summary>
+        <div class="drawer-body">
+          <div class="control-group" role="group" aria-labelledby="g-render">
+            <span class="group-label" id="g-render">Reproducible render</span>
+            <div class="btn-row">
+              <label class="tlabel" for="seedInput">Seed</label>
+              <input type="number" id="seedInput" class="num-input" value="42" min="0" max="4294967295" step="1" aria-label="random seed">
+              <select id="bitDepth" class="inst-select" aria-label="WAV bit depth">
+                <option value="16">16-bit WAV</option>
+                <option value="24">24-bit WAV</option>
+              </select>
+              <button class="btn" id="renderBtn" title="Render the current mode offline to a lossless WAV plus a JSON settings sidecar">Render WAV</button>
+              <button class="btn" id="loadSettingsBtn" title="Load the settings from a JSON sidecar">Load settings</button>
+              <input type="file" id="loadSettings" class="sr-only" tabindex="-1" aria-hidden="true" accept=".json,application/json">
+            </div>
+            <div class="note" id="renderNote"></div>
+          </div>
+          <div class="control-group" role="group" aria-labelledby="g-share">
+            <span class="group-label" id="g-share">Share and record</span>
+            <div class="btn-row">
+              <button class="btn" id="shareBtn" title="Copy a link that restores all settings">Share</button>
+              <button class="btn rec-btn" id="recBtn" aria-pressed="false" title="Record what you hear (lossy webm/ogg). Use Render WAV for lossless, reproducible audio">Record</button>
+            </div>
+            <p class="note">Share copies a link that restores every setting. Record captures what you hear (lossy); Render WAV is lossless and reproducible.</p>
+          </div>
+        </div>
+      </details>
+
+      <details class="panel drawer" id="guidedPanel">
+        <summary><span class="drawer-title">Guided &amp; artistic</span><span class="drawer-hint">Tour, Big Bang</span></summary>
+        <div class="drawer-body">
+          <div class="btn-row">
+            <button class="btn" id="tourBtn" aria-pressed="false" title="Auto-play a guided journey through the sky">&#9654; Tour</button>
+            <button class="btn" id="bigBangBtn" aria-pressed="false" title="Artistic: the CMB acoustic peaks as a chord, after Cramer (2003); press again to stop">Big Bang <span class="badge badge--artistic">artistic</span></button>
+          </div>
+          <p class="note">The Tour (about <span id="tourLen">90</span>&nbsp;s) runs step by step under the plot; Close, Esc or Stop end it and restore your settings. Big Bang is an artistic piece, not an analysis mode.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <p class="page-foot note">New here, or want the details? <a href="about.html">How it works &amp; what every control does &rarr;</a></p>
+</main>
 
 <script src="sonify_core.js"></script>
 <script>
@@ -498,7 +936,10 @@ const CTRL_DT = 0.02;                // step of the scheduled control automation
 const LOOKAHEAD = 0.15;              // scheduling horizon on the audio clock (s)
 const LOOKAHEAD_HIDDEN = 10;         // longer when the tab is hidden (timers are throttled to ~1 Hz)
 const COMP_ORDER = ['dT_cmblens', 'dT_tsz', 'dT_cib', 'dT_ksz', 'T_tot'];
-const COLORS = { dT_cmblens: '#4a9eff', dT_tsz: '#ff9f43', dT_cib: '#2ed573', dT_ksz: '#b86bff', T_tot: '#a8a8a8' };
+// the component colours (web/site.css --cmb, --tsz, --cib, --ksz, --tot); the Total is dashed in the plot
+const COLORS = { dT_cmblens: '#4a9eff', dT_tsz: '#ff9f43', dT_cib: '#2ed573', dT_ksz: '#ff6fb7', T_tot: '#c9ced9' };
+// plot chrome: neutral, so that every hue on the plot names a component (axis text >= 4.5:1 on #0d1220)
+const PLOT_INK = { tick: '#8a93b4', cursor: 'rgba(255,255,255,0.85)', window: 'rgba(255,255,255,0.12)', range: 'rgba(255,255,255,0.04)', label: '#eef1f8' };
 const COMP_LABELS = { dT_cmblens: 'CMB', dT_tsz: 'tSZ', dT_cib: 'CIB', dT_ksz: 'kSZ', T_tot: 'Total' };
 const INSTRUMENTS = [['piano', 'piano'], ['violin', 'violin'], ['guitar', 'electric guitar'], ['flute', 'flute'], ['bass', 'bass'], ['synth', 'synth pad']];
 // Every palette gives the four voiced components four different instruments: all voices share one
@@ -569,6 +1010,7 @@ async function loadData() {
     buildBandButtons();
     setStatus('Ready');
     syncUI();
+    try { setTourLength(); } catch (e) { console.error(e); }
     setTimeout(function () { try { model(); } catch (e) { console.error(e); } }, 0);   // warm the level model
   } catch (err) {
     console.error('Data load failed:', err);
@@ -601,7 +1043,7 @@ function showLoadError(err) {
     'background:rgba(10,14,26,0.96);z-index:9999;padding:24px;';
   const box = document.createElement('div');
   box.style.cssText = 'max-width:540px;text-align:center;color:#c8cde0;font-family:system-ui;line-height:1.6;';
-  box.innerHTML = '<h2 style="color:#ff9f43;margin-bottom:12px;">Could not load data files</h2>' +
+  box.innerHTML = '<h2 style="color:#ffc857;margin-bottom:12px;">Could not load data files</h2>' +
     '<p style="margin-bottom:10px;"></p>' +
     (isFile
       ? '<p>This page is open via <code>file://</code>. Browsers block <code>fetch()</code> of local files, ' +
@@ -1557,7 +1999,8 @@ const RESTART_ON = {
   freqsweep: ['spectrum', 'comps', 'range', 'method', 'seed'],
 };
 function settingsChanged(what) {
-  if (what === 'sweepopt' && RT.clock && RT.ctx) {
+  // what: the kind of change ('all': any setting may have changed, e.g. Reset to defaults; it restarts every mode)
+  if ((what === 'sweepopt' || what === 'all') && RT.clock && RT.ctx) {
     // a new sweep speed applies from the first step the scheduler has not written yet
     const p = RT.player, tc = (p && p.next != null) ? Math.max(p.next, RT.ctx.currentTime) : RT.ctx.currentTime;
     clockSetPeriod(RT.clock, S.sweepSpeed, tc);
@@ -1569,7 +2012,7 @@ function settingsChanged(what) {
   // and not inside the audio scheduler, where it would stall the automation
   if (RT.cl) { try { model(); } catch (e) { console.error(e); } }
   const rules = RESTART_ON[RT.kind];
-  if (!rules || rules.indexOf(what) < 0) return;
+  if (!rules || (what !== 'all' && rules.indexOf(what) < 0)) return;
   if (RT.restartTimer) clearTimeout(RT.restartTimer);
   RT.restartTimer = setTimeout(function () { RT.restartTimer = null; if (RT.player && RT.action) startAction(RT.action, true); }, 120);
 }
@@ -1715,9 +2158,18 @@ function shareParams() {
   for (const k of Object.keys(DEFAULTS)) if (JSON.stringify(S[k]) !== JSON.stringify(DEFAULTS[k])) diff[k] = S[k];
   return 's=' + encodeURIComponent(JSON.stringify(diff));
 }
+/** Show html on a button for ms, then its own label again (repeated clicks keep the original label). */
+function flashLabel(b, html, ms) {
+  if (!b) return;
+  if (b._label == null) b._label = b.innerHTML;
+  b.innerHTML = html;
+  clearTimeout(b._flash);
+  b._flash = setTimeout(function () { b.innerHTML = b._label; b._label = null; }, ms);
+}
 function shareLink() {
-  const url = location.origin + location.pathname + '#' + shareParams(), btn = $('shareBtn');
-  const done = function () { const t = btn.innerHTML; btn.innerHTML = '&#10003; Copied'; setTimeout(function () { btn.innerHTML = t; }, 1400); };
+  const url = location.origin + location.pathname + '#' + shareParams();
+  // feedback on Share (Render & export) and on its copy in the transport
+  const done = function () { flashLabel($('shareBtn'), '&#10003; Copied', 1400); flashLabel($('shareProxy'), '&#10003; Copied', 1400); announce('Link copied'); };
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, function () { prompt('Copy this link:', url); });
   else prompt('Copy this link:', url);
 }
@@ -1736,6 +2188,190 @@ function applyShareParams() {
   if (p.get('lo')) S.ellMin = parseInt(p.get('lo'), 10);
   if (p.get('hi')) S.ellMax = parseInt(p.get('hi'), 10);
   if (p.get('c') != null || p.get('f') || v1Stereo || p.get('m') || p.get('lo') || p.get('hi')) applySettings({});
+}
+/**
+ * Reset to defaults: DEFAULTS through the same path as a loaded sidecar (applySettings, then settingsChanged, which
+ * restarts whatever is playing). A running Tour ends first (it would restore its saved settings at its end). The
+ * address loses its #s= fragment, so a reload also opens at the defaults.
+ */
+function resetToDefaults() {
+  stopTour();
+  applySettings(clone(DEFAULTS));
+  settingsChanged('all');
+  try { if (typeof history !== 'undefined' && history.replaceState && location.hash) history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* ignore */ }
+  announce('Settings reset to the defaults');
+}
+
+// ---------------------------------------------------------------------------
+// 'Start here': the paper's demonstrations, one per row of its Table 2 (sections/demonstrations.tex): the Share
+// fragment, verbatim, and the button the table says to press. A demo applies DEFAULTS + the fragment through the
+// share-link path (applySettings, then applyShareParams on the fragment written to the address with
+// history.replaceState: no reload, no new history entry), so S is exactly what the paper's URL gives, except the
+// monitor gain: that is the listener's listening level, not a setting of the demo, so a preset keeps it (a listener
+// who turned it down is not surprised by up to +40 dB). Then it starts that button's action, crossfading from whatever
+// played. Its chip is pressed while the demo plays (the action runs with these settings); pressing it again stops.
+// The Tour and Big Bang chips press #tourBtn and #bigBangBtn.
+// ---------------------------------------------------------------------------
+const DEMOS = {
+  buildup: { name: 'Build up the sky', frag: '#s={}', press: 'buildupBtn', action: 'buildup' },
+  tsznull: { name: 'The tSZ null', frag: '#s={"comps":["dT_tsz"],"level":"equalized"}', press: 'freqSweepBtn', action: 'freqsweep' },
+  cib353: { name: 'The CIB at 353 GHz', frag: '#s={"comps":["T_tot"]}', press: 'freqSweepBtn', action: 'freqsweep' },
+  duet143: { name: 'Duet at 143 GHz', frag: '#s={"method":"duet","duetA":"dT_tsz","duetB":"dT_cib"}', press: 'playBtn', action: 'play' },
+  duet353: { name: 'Duet at 353 GHz', frag: '#s={"band":353,"method":"duet","duetA":"dT_tsz","duetB":"dT_cib"}', press: 'playBtn', action: 'play' },
+};
+/** The settings of obj that differ from DEFAULTS, in DEFAULTS order, as JSON; the monitor gain (listening level) aside. */
+function settingsSig(obj) {
+  const d = {};
+  for (const k of Object.keys(DEFAULTS)) if (k !== 'monitorDb' && k in obj && JSON.stringify(obj[k]) !== JSON.stringify(DEFAULTS[k])) d[k] = obj[k];
+  return JSON.stringify(d);
+}
+function demoSig(d) { if (d.sig == null) d.sig = settingsSig(JSON.parse(d.frag.slice(3))); return d.sig; }
+/** The demo is playing: its button's action runs, with its settings. */
+function demoPlaying(id) {
+  const d = DEMOS[id];
+  return !!(d && RT.player && RT.action === d.action && settingsSig(S) === demoSig(d));
+}
+/** DEFAULTS + the demo's fragment, through the share-link path; the address then shows the fragment. */
+function applyDemoSettings(d) {
+  const keepDb = S.monitorDb;                         // the listener's monitor gain stays (see above)
+  applySettings(clone(DEFAULTS));
+  let viaLink = false;
+  try {
+    if (typeof history !== 'undefined' && history.replaceState) {
+      history.replaceState(history.state, '', location.pathname + location.search + d.frag);
+      viaLink = true;
+    }
+  } catch (e) { /* no history (e.g. a sandboxed frame): the same settings, without the address */ }
+  if (viaLink) applyShareParams();
+  else applySettings(JSON.parse(d.frag.slice(3)));
+  applySettings({ monitorDb: keepDb });
+}
+/** Roving tabindex of the 'Start here' toolbar: the chip last focused or used is its one Tab stop. */
+function rovingTab(chips, on) {
+  Array.prototype.forEach.call(chips, function (b) { const t = b === on ? '0' : '-1'; if (b.getAttribute('tabindex') !== t) b.setAttribute('tabindex', t); });
+}
+let tourOpenerNext = null;           // the chip that starts the Tour (focus returns to it when the Tour ends)
+function startDemo(id, chip) {
+  if (id === 'tour') { tourOpenerNext = chip || null; $('tourBtn').click(); tourOpenerNext = null; return; }
+  if (id === 'bigbang') {
+    if (RT.kind === 'bigbang') { stopAll(); return; }
+    stopTour(); $('bigBangBtn').click(); return;
+  }
+  const d = DEMOS[id];
+  if (!d || !RT.cl) return;
+  if (demoPlaying(id)) { stopAll(); return; }
+  stopTour();                                          // a running Tour ends (and restores its settings) first
+  applyDemoSettings(d);
+  if (RT.restartTimer) { clearTimeout(RT.restartTimer); RT.restartTimer = null; }
+  syncUI();
+  startAction(d.action);                              // = pressing d.press (Table 2's 'Then press')
+}
+/** Chips: pressed while their demo plays; the note under the plot names the demo and what to listen for. */
+function syncDemoChips() {
+  let playing = null;
+  document.querySelectorAll('.demo-chip').forEach(function (b) {
+    const id = b.dataset.demo;
+    const on = id === 'tour' ? TOUR.on : id === 'bigbang' ? RT.kind === 'bigbang' : demoPlaying(id);
+    if (on && DEMOS[id]) playing = b;
+    if (b.getAttribute('aria-pressed') !== (on ? 'true' : 'false')) setPressed(b, on);
+  });
+  // a deep link's 'Ready' note and ring last until something plays or a setting changes (see detectArrival); the
+  // demo's chip stays marked as the one the link opened (aria-current) until a setting changes
+  if (ARRIVAL.id && (RT.player || TOUR.on || settingsSig(S) !== ARRIVAL.sig)) clearArrival();
+  if (LOADED.chip && settingsSig(S) !== LOADED.sig) { LOADED.chip.removeAttribute('aria-current'); LOADED.chip = null; LOADED.sig = null; }
+  const tourCue = ARRIVAL.id === 'tour', act = $('arrivalAct'), tr = $('transport');
+  if (act && !!act.hidden !== !tourCue) act.hidden = !tourCue;
+  if (tr) tr.classList.toggle('is-cue-tour', tourCue);
+  const note = $('demoNote');
+  if (!note) return;
+  const html = playing && !TOUR.on ? '<span class="demo-note__k">Now playing: ' + escapeHTML(DEMOS[playing.dataset.demo].name) + '</span>' +
+    escapeHTML(playing.getAttribute('title') || '') : ARRIVAL.id ? arrivalHTML() : '';
+  if (note.innerHTML !== html) note.innerHTML = html;
+  note.classList.toggle('demo-note--ready', !!ARRIVAL.id && !playing);
+  const disp = html ? 'block' : 'none';
+  if (note.style.display !== disp) note.style.display = disp;      // (syncUI redraws the plot after this)
+}
+function escapeHTML(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+// ---------------------------------------------------------------------------
+// Arriving by a deep link (the hub's demo chips, or a pasted link). A page opened with a #s= fragment whose settings
+// are those of a 'Start here' demo (settingsSig: the monitor gain aside) shows, in the note under the plot,
+// 'Ready: <demo name>. Press <button> to listen.' with the demo's listening hint (its chip's title), and rings the
+// button Table 2 says to press (.cue-ring: Build-Up, nu-Sweep or Play). sonifier.html#tour rings the Tour chip with
+// 'Press Tour to start the guided tour.' Nothing plays on load (browsers allow sound only after a gesture), and the
+// demo's chip is pressed only once its demo plays, as always. The ring and the note go when the ringed button is
+// pressed, when anything else starts to play, or when a setting changes (syncDemoChips checks on every change). Any
+// other fragment (a non-demo #s=, an old v1 link, an unparsable one) opens with no note.
+// ---------------------------------------------------------------------------
+const PRESS_LABEL = { playBtn: 'Play', buildupBtn: 'Build-Up', freqSweepBtn: 'ν-Sweep' };   // their labels, as on the buttons
+const ARRIVAL = { id: null, btn: null, sig: null };
+const LOADED = { chip: null, sig: null };     // the demo chip of the link the page opened with (aria-current)
+/** At load, after the share link is applied: is this a demo's link (or #tour)? */
+function detectArrival() {
+  const h = String(location.hash || '').slice(1);
+  if (h === 'tour') { setArrival('tour'); return; }
+  let sv = null;
+  try { sv = h ? new URLSearchParams(h).get('s') : null; } catch (e) { sv = null; }
+  if (!sv || ENUMS.stereo.indexOf(sv) >= 0) return;            // no v2 settings (none, or a v1 link: s = stereo mode)
+  try { JSON.parse(sv); } catch (e) { return; }                 // a broken link opens at the defaults, not as a demo
+  const sig = settingsSig(S);
+  for (const id of Object.keys(DEMOS)) if (demoSig(DEMOS[id]) === sig) { setArrival(id); return; }
+}
+function setArrival(id) {
+  const b = id === 'tour' ? $('demoTour') : $(DEMOS[id].press);
+  if (!b) return;
+  ARRIVAL.id = id; ARRIVAL.btn = b; ARRIVAL.sig = settingsSig(S);
+  b.classList.add('cue-ring');
+  b.setAttribute('aria-describedby', 'demoNote');              // the note is the ringed button's description
+  b.addEventListener('click', function () { if (ARRIVAL.btn === b) { clearArrival(); syncUI(); } });
+  const chips = document.querySelectorAll('.demo-chip');
+  // a ringed chip (the Tour) is the 'Start here' toolbar's Tab stop, so Tab reaches it
+  if (b.classList.contains('demo-chip')) rovingTab(chips, b);
+  // the demo's own chip: marked as the one the link opened (not pressed: it is pressed while its demo plays)
+  const own = Array.prototype.filter.call(chips, function (c) { return c.dataset.demo === id; })[0];
+  if (own && id !== 'tour') { own.setAttribute('aria-current', 'true'); LOADED.chip = own; LOADED.sig = ARRIVAL.sig; }
+  revealCue(b);
+  announce(arrivalText());
+  setTimeout(revealNote, 60);                                   // after syncUI has shown the note
+}
+/** After the note is shown: #tour focuses the Tour's start under it (one key press away; the focus does not scroll).
+ *  On a small phone the note (and the Tour's start) may open below the first screen: bring it into view, clear of
+ *  the transport bar fixed at the bottom (html's scroll-padding-bottom). The ringed button is in that bar or in view. */
+function revealNote() {
+  const act = $('arrivalAct'), n = act && !act.hidden ? act : $('demoNote');
+  if (ARRIVAL.id === 'tour' && act && !act.hidden && document.activeElement === document.body) {
+    try { $('arrivalTourBtn').focus({ preventScroll: true }); } catch (e) { /* (no focus options) */ }
+  }
+  if (!ARRIVAL.id || !n || !n.getBoundingClientRect || !n.scrollIntoView || typeof window.innerHeight !== 'number') return;
+  const r = n.getBoundingClientRect(), bar = $('transport'), fixedBar = window.innerWidth < 720 && bar && bar.getBoundingClientRect;
+  if (typeof r.bottom !== 'number') return;
+  const limit = window.innerHeight - (fixedBar ? bar.getBoundingClientRect().height : 0);
+  if (r.bottom > limit) n.scrollIntoView({ block: 'nearest' });
+}
+function clearArrival() {
+  const b = ARRIVAL.btn;
+  if (!b) return;
+  b.classList.remove('cue-ring');
+  if (b.getAttribute('aria-describedby') === 'demoNote') b.removeAttribute('aria-describedby');
+  ARRIVAL.id = null; ARRIVAL.btn = null; ARRIVAL.sig = null;
+}
+function arrivalText() {
+  if (ARRIVAL.id === 'tour') return 'Press Tour to start the guided tour.';
+  const d = DEMOS[ARRIVAL.id];
+  return 'Ready: ' + d.name + '. Press ' + PRESS_LABEL[d.press] + ' to listen.';
+}
+function arrivalHTML() {
+  if (ARRIVAL.id === 'tour') return '<span class="demo-note__k">' + escapeHTML(arrivalText()) + '</span>';
+  const chip = Array.prototype.filter.call(document.querySelectorAll('.demo-chip'), function (c) { return c.dataset.demo === ARRIVAL.id; })[0];
+  return '<span class="demo-note__k">' + escapeHTML(arrivalText()) + '</span>' + escapeHTML((chip && chip.getAttribute('title')) || '');
+}
+/** The Tour chip may be scrolled out of the 'Start here' row (it scrolls sideways below 1180 px): bring it in. */
+function revealCue(b) {
+  const row = $('startHere');
+  if (!row || !row.contains || !row.contains(b) || !b.getBoundingClientRect || !row.getBoundingClientRect) return;
+  const r = b.getBoundingClientRect(), rr = row.getBoundingClientRect();
+  if (typeof r.left !== 'number' || typeof rr.left !== 'number') return;
+  if (r.left < rr.left + 16 || r.right > rr.right - 16) row.scrollLeft += (r.left + r.right) / 2 - (rr.left + rr.right) / 2;
 }
 
 // ---------------------------------------------------------------------------
@@ -1768,14 +2404,14 @@ function drawSpectrum() {
   const W = rect.width, H = rect.height;
   ctx.fillStyle = '#0d1220'; ctx.fillRect(0, 0, W, H);
   if (!RT.cl) return;
-  const pad = { left: 58, right: 16, top: 30, bottom: 36 }, pW = W - pad.left - pad.right, pH = H - pad.top - pad.bottom;
+  const pad = { left: 58, right: 16, top: 40, bottom: 36 }, pW = W - pad.left - pad.right, pH = H - pad.top - pad.bottom;
   const eMin = Core.ELL_MIN, eMax = Core.ELL_MAX, dMin = 1e-4, dMax = plotYMax();
   const xOf = function (e) { return pad.left + Math.log(e / eMin) / Math.log(eMax / eMin) * pW; };
   const yOf = function (d) { return d <= dMin ? pad.top + pH : pad.top + (1 - Math.log(d / dMin) / Math.log(dMax / dMin)) * pH; };
   ctx.strokeStyle = '#1a2040'; ctx.lineWidth = 0.5;
   for (const e of [10, 100, 1000]) { const x = xOf(e); ctx.beginPath(); ctx.moveTo(x, pad.top); ctx.lineTo(x, pad.top + pH); ctx.stroke(); }
   for (let p = -4; p <= Math.log10(dMax); p++) { const y = yOf(Math.pow(10, p)); ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + pW, y); ctx.stroke(); }
-  ctx.fillStyle = '#6b7394'; ctx.font = '10px system-ui'; ctx.textAlign = 'center';
+  ctx.fillStyle = PLOT_INK.tick; ctx.font = '11px system-ui'; ctx.textAlign = 'center';
   for (const e of [2, 10, 100, 1000, 6000]) ctx.fillText(String(e), xOf(e), pad.top + pH + 15);
   ctx.fillText('ℓ', pad.left + pW / 2, H - 4);
   ctx.textAlign = 'right';
@@ -1784,19 +2420,35 @@ function drawSpectrum() {
   ctx.fillText('Dℓ [μK²]' + (S.beam === 'deconvolved' ? ' (beam-deconvolved)' : ' (2′ beam)'), 0, 0); ctx.restore();
   // audio frequency of each l (analysis map, the musical map in Instruments, the duet map in Duet)
   const musical = S.method === 'instruments', duet = S.method === 'duet';
-  ctx.fillStyle = '#3a4a70'; ctx.font = '9px system-ui'; ctx.textAlign = 'center';
-  for (const e of [2, 10, 100, 220, 1000, 3000, 6000]) {
+  ctx.fillStyle = PLOT_INK.tick; ctx.font = '11px system-ui'; ctx.textAlign = 'left';
+  // Every label lies inside the canvas. The first and the last (the two ends of the map, 40 and 8000 Hz on the
+  // analysis map) are always drawn, aligned to the ends of the axis (so the first clears the top y label); on a narrow
+  // plot (phones) a label in between that would overlap a neighbour is dropped. The axis title has its own line above.
+  const hz = [2, 10, 100, 220, 1000, 3000, 6000].map(function (e, i, all) {
     const f = duet ? Core.duetFreq(e, false) : musical ? Core.musicalFreq(e, activeBand(), RT.bands, false) : Core.ellToFreq(e);
-    ctx.fillText(Math.round(f) + ' Hz', xOf(e), pad.top - 6);
+    const t = Math.round(f) + ' Hz', w = ctx.measureText(t).width;
+    const x0 = i === 0 ? pad.left : i === all.length - 1 ? pad.left + pW - w : Math.max(2, Math.min(xOf(e) - w / 2, W - w - 2));
+    return { t: t, x0: x0, x1: x0 + w };
+  });
+  const hzLast = hz[hz.length - 1], hzKept = [hz[0]];
+  for (let i = 1; i < hz.length - 1; i++) {
+    const a = hzKept[hzKept.length - 1], b = hz[i];
+    if (b.x0 >= a.x1 + 6 && b.x1 + 6 <= hzLast.x0) hzKept.push(b);
   }
-  ctx.fillText(duet ? 'pitch of voice A (duet map, unsnapped)' : musical ? 'pitch (musical map, unsnapped)' : 'audio frequency (analysis map)', pad.left + pW / 2, pad.top - 18);
+  hzKept.push(hzLast);
+  for (const k of hzKept) ctx.fillText(k.t, k.x0, pad.top - 8);
+  ctx.fillText(duet ? 'pitch of voice A (duet map, unsnapped)' : musical ? 'pitch (musical map, unsnapped)' : 'audio frequency (analysis map)', pad.left, 14);
+  ctx.textAlign = 'center';
   // l range
-  ctx.fillStyle = 'rgba(74,158,255,0.05)';
+  ctx.fillStyle = PLOT_INK.range;
   ctx.fillRect(xOf(S.ellMin), pad.top, xOf(S.ellMax) - xOf(S.ellMin), pH);
   // Duet (idle or playing): show the two probes the duet compares, which are what is heard, not the component
   // selection; Build-Up and nu-Sweep play Shaped Noise of the selection in this mode, so they keep showing it.
   const pl = RT.player, duetPlot = duet && (!pl || pl.kind === 'duet');
+  // Instruments (idle or playing) sound each component as its own voice, so no mix is heard either
+  const voicesPlot = musical && (!pl || pl.kind === 'instruments');
   const comps = duetPlot ? (S.duetA === S.duetB ? [S.duetA] : [S.duetA, S.duetB]) : activeComps();
+  const mixHeard = comps.length > 1 && !duetPlot && !voicesPlot;
   const band = activeBand(), ell = RT.cl.ell;
   function line(D, color, width, alpha, dash) {
     ctx.globalAlpha = alpha; ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash || []);
@@ -1815,14 +2467,14 @@ function drawSpectrum() {
     const on = comps.indexOf(c) >= 0;
     line(D, COLORS[c], on ? 2 : 0.8, on ? 1 : 0.15, c === 'T_tot' ? [6, 4] : null);
   }
-  // the mix as heard; the duet does not mix its probes, so it has none
-  if (comps.length > 1 && !duetPlot) { const Dm = plotSpectrum(comps, band); if (Dm) line(Dm, '#ffffff', 1.4, 0.85, [3, 3]); }
+  // the mix as heard; the duet does not mix its probes and Instruments voice them apart, so they have none
+  if (mixHeard) { const Dm = plotSpectrum(comps, band); if (Dm) line(Dm, '#ffffff', 1.4, 0.85, [3, 3]); }
   // sweep cursor and the applied window (the duet reads r_l at the cursor: no window)
   const p = RT.player;
   if (p && p.ellAt && RT.ctx) {
     const se = p.ellAt(RT.ctx.currentTime), xs = xOf(se);
     if (p.kind !== 'duet') {
-    ctx.fillStyle = 'rgba(74,158,255,0.22)';
+    ctx.fillStyle = PLOT_INK.window;
     ctx.beginPath(); ctx.moveTo(pad.left, pad.top + pH);
     const fc = Core.ellToFreq(se), useDigital = p.kind === 'sweep' && !S.fixedPitch;
     // the digital cascade as applied (designed once per frame), or the analog window the voices use
@@ -1834,7 +2486,7 @@ function drawSpectrum() {
     }
     ctx.lineTo(pad.left + pW, pad.top + pH); ctx.closePath(); ctx.fill();
     }
-    ctx.strokeStyle = 'rgba(74,158,255,0.9)'; ctx.lineWidth = 2;
+    ctx.strokeStyle = PLOT_INK.cursor; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(xs, pad.top); ctx.lineTo(xs, pad.top + pH); ctx.stroke();
     for (const c of comps) {
       const D = plotSpectrum([c], band);
@@ -1842,19 +2494,34 @@ function drawSpectrum() {
       const d = Core.dlAt(Core.gridOf(RT.cl), D, se);
       if (d > 0) { ctx.fillStyle = COLORS[c]; ctx.beginPath(); ctx.arc(xs, yOf(d), 5, 0, 2 * Math.PI); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke(); }
     }
-    ctx.fillStyle = '#4a9eff'; ctx.font = 'bold 11px system-ui'; ctx.textAlign = 'center';
-    ctx.fillText('ℓ=' + Math.round(se), xs, pad.top + pH + 30);
+    ctx.fillStyle = PLOT_INK.label; ctx.font = 'bold 11px system-ui'; ctx.textAlign = 'center';
+    const lt = 'ℓ=' + Math.round(se), lhw = ctx.measureText(lt).width / 2;
+    ctx.fillText(lt, Math.max(lhw + 2, Math.min(xs, W - lhw - 2)), pad.top + pH + 30);
   }
-  // legend
-  let ly = pad.top + 12;
-  ctx.font = '10px system-ui'; ctx.textAlign = 'left';
-  for (const c of COMP_ORDER) {
-    const on = comps.indexOf(c) >= 0;
-    ctx.globalAlpha = on ? 1 : 0.3; ctx.fillStyle = COLORS[c]; ctx.fillRect(W - 120, ly - 7, 12, 3);
-    ctx.fillStyle = on ? '#c8cde0' : '#4a5580'; ctx.fillText(COMP_LABELS[c], W - 104, ly); ly += 15;
-  }
-  if (comps.length > 1 && !duetPlot) { ctx.globalAlpha = 1; ctx.fillStyle = '#ffffff'; ctx.fillRect(W - 120, ly - 7, 12, 2); ctx.fillText('mix (heard)', W - 104, ly); }
   ctx.globalAlpha = 1;
+  // the legend is the component chips above the plot (it used to be drawn here, over the CMB curve on phones)
+  syncLegend(comps, mixHeard, duetPlot);
+}
+/**
+ * The component chips are the plot's legend. data-plot = 'on' marks the curves drawn bold: the selection, or in the
+ * Duet the pair A and B (what is heard), which also carry data-voice = 'A' / 'B'. In the Duet (#legend data-mode =
+ * 'duet') the fill follows the voices and a check marks the pressed state, which stays the selection (what Build-Up and
+ * nu-Sweep play); #legendNote, under the plot, says so. #mixKey and the sentence under the transport (#mixNote) show
+ * when the dashed mix is drawn. Writes only on change (this runs every frame during playback).
+ */
+function syncLegend(comps, mix, duetPlot) {
+  document.querySelectorAll('.toggle-btn').forEach(function (b) {
+    const c = b.dataset.comp, plot = comps.indexOf(c) >= 0 ? 'on' : 'off';
+    const voice = duetPlot ? (c === S.duetA ? 'A' : c === S.duetB ? 'B' : '') : '';
+    if (b.dataset.plot !== plot) b.dataset.plot = plot;
+    if ((b.dataset.voice || '') !== voice) b.dataset.voice = voice;
+  });
+  const lg = $('legend'), mode = duetPlot ? 'duet' : '';
+  if (lg && (lg.dataset.mode || '') !== mode) lg.dataset.mode = mode;
+  const mk = $('mixKey'), note = $('legendNote'), mn = $('mixNote');
+  if (mk.hidden !== !mix) mk.hidden = !mix;
+  if (mn && mn.hidden !== !mix) mn.hidden = !mix;
+  if (note.hidden !== !duetPlot) note.hidden = !duetPlot;
 }
 function drawIsoHelp() {
   const canvas = $('isoCanvas'), ctx = canvas.getContext('2d');
@@ -1866,7 +2533,7 @@ function drawIsoHelp() {
   ctx.fillStyle = '#0d1220'; ctx.fillRect(0, 0, W, H);
   const fx = function (f) { return pad.l + Math.log(f / 40) / Math.log(200) * (W - pad.l - pad.r); };
   const gy = function (g) { return pad.t + (30 - g) / 40 * (H - pad.t - pad.b); };
-  ctx.strokeStyle = '#1a2040'; ctx.fillStyle = '#6b7394'; ctx.font = '9px system-ui'; ctx.textAlign = 'right';
+  ctx.strokeStyle = '#1a2040'; ctx.fillStyle = PLOT_INK.tick; ctx.font = '10px system-ui'; ctx.textAlign = 'right';
   for (const g of [-10, 0, 10, 20, 30]) { ctx.beginPath(); ctx.moveTo(pad.l, gy(g)); ctx.lineTo(W - pad.r, gy(g)); ctx.stroke(); ctx.fillText(g + ' dB', pad.l - 4, gy(g) + 3); }
   ctx.textAlign = 'center';
   for (const f of [40, 100, 300, 1000, 3000, 8000]) ctx.fillText(f >= 1000 ? (f / 1000) + 'k' : String(f), fx(f), H - 8);
@@ -1885,12 +2552,13 @@ function buildBandButtons() {
   const groups = {};
   for (const b of RT.bands) { const g = Core.BAND_GROUPS[b] || 'Other'; (groups[g] = groups[g] || []).push(b); }   // labels shared with the sky views
   for (const g of Object.keys(groups)) {
-    const d = document.createElement('div'); d.className = 'freq-group';
-    const l = document.createElement('span'); l.className = 'freq-group-label'; l.textContent = g;
+    // (each group is named for screen readers, so phones can hide the visible group label)
+    const d = document.createElement('div'); d.className = 'freq-group'; d.setAttribute('role', 'group'); d.setAttribute('aria-label', g);
+    const l = document.createElement('span'); l.className = 'freq-group-label'; l.textContent = g; l.setAttribute('aria-hidden', 'true');
     d.appendChild(l);
     for (const b of groups[g]) {
       const btn = document.createElement('button');
-      btn.className = 'sm-btn freq-btn'; btn.dataset.freq = String(b); btn.textContent = String(b);
+      btn.className = 'btn freq-btn'; btn.dataset.freq = String(b); btn.textContent = String(b);
       btn.addEventListener('click', function () { S.band = b; settingsChanged('band'); });
       d.appendChild(btn);
     }
@@ -1923,7 +2591,8 @@ function syncUI() {
   setPressed($('spatialBtn'), S.spatial);
   $('instrumentControls').style.display = S.method === 'instruments' ? 'flex' : 'none';
   $('duetControls').style.display = S.method === 'duet' ? 'flex' : 'none';
-  $('additiveControls').style.display = S.method === 'additive' ? 'flex' : 'none';
+  $('duetStrip').style.display = S.method === 'duet' ? 'block' : 'none';        // the correlation bar under the plot
+  // (#additiveControls sits in 'Advanced', always shown there: its chip names it whatever the method)
   $('additiveSpacing').value = S.additiveSpacing;
   for (const id of ['instCmb', 'instTsz', 'instCib', 'instKsz']) { const el = $(id); el.value = S.instruments[el.dataset.comp]; }
   $('snapScale').checked = S.snap; $('duetSnap').checked = S.snap;    // one setting, shown in both panels
@@ -1941,9 +2610,106 @@ function syncUI() {
   $('duetNote').innerHTML = duetMapText();
   $('levelNote').innerHTML = levelNote();
   $('sweepNote').innerHTML = sweepNote();
+  setHTML('methodLead', methodLead());
+  setHTML('levelLead', levelLead());
+  setHTML('musicalLead', musicalLead());
+  setHTML('duetLead', duetLead());
   $('renderNote').textContent = $('renderNote').dataset.locked ? $('renderNote').textContent :
     'Render WAV renders: ' + renderKind() + ' (' + renderDuration(renderKind()).toFixed(2) + ' s at 44.1 kHz), plus a JSON sidecar with every setting, the seed and the code version.';
+  updatePanelChips();
+  syncDemoChips();
+  if (S.method === 'duet' && RT.kind !== 'duet') duetIdle();     // (while the duet plays, the readouts loop writes it)
   drawSpectrum();
+}
+function setHTML(id, html) { const el = $(id); if (el && el.innerHTML !== html) el.innerHTML = html; }
+
+// ---------------------------------------------------------------------------
+// Closed panels: each <summary> lists, as chips, every setting inside the panel that differs from DEFAULTS, so a
+// closed panel never hides a changed setting. syncUI() calls updatePanelChips() after every change: a control, a
+// Share link or sidecar, a Tour step, a preset, Reset. Each chip names its settings (data-keys).
+// ---------------------------------------------------------------------------
+const PANEL_CHIPS = {
+  advanced: [['logVolume'], ['loudComp'], ['beam'], ['ellMin', 'ellMax'], ['additiveSpacing']],
+  sweep: [['sweepSpeed'], ['windowOct'], ['linearSweep'], ['pingPong'], ['fixedPitch']],
+  render: [['seed'], ['bitDepth']],
+};
+function isDefault(k) { return JSON.stringify(S[k]) === JSON.stringify(DEFAULTS[k]); }
+function chipText(keys) {
+  switch (keys[0]) {
+    case 'logVolume': return 'log volume';
+    case 'loudComp': return 'loudness comp.';
+    case 'beam': return S.beam === 'deconvolved' ? 'deconvolved' : 'beam ' + S.beam;
+    case 'ellMin': return 'ℓ ' + S.ellMin + '–' + S.ellMax;
+    case 'additiveSpacing': return S.additiveSpacing === 'grid' ? 'partials: ℓ grid' : 'partials: ' + S.additiveSpacing;
+    case 'sweepSpeed': return S.sweepSpeed + ' s';
+    case 'windowOct': return S.windowOct + ' ℓ-octave window';
+    case 'linearSweep': return 'linear';
+    case 'pingPong': return 'ping-pong';
+    case 'fixedPitch': return 'fixed pitch';
+    case 'seed': return 'seed ' + S.seed;
+    case 'bitDepth': return S.bitDepth + '-bit';
+    default: return keys.join(', ');
+  }
+}
+function updatePanelChips() {
+  for (const panel of Object.keys(PANEL_CHIPS)) {
+    const box = $(panel + 'Chips');
+    if (!box) continue;
+    const changed = PANEL_CHIPS[panel].filter(function (keys) { return keys.some(function (k) { return !isDefault(k); }); });
+    const sig = changed.map(chipText).join('|');
+    if (box.dataset.sig === sig) continue;
+    box.dataset.sig = sig; box.innerHTML = '';
+    if (changed.length) {
+      const pre = document.createElement('span'); pre.className = 'sr-only'; pre.textContent = 'changed from the defaults: ';
+      box.appendChild(pre);
+    }
+    for (const keys of changed) {
+      const c = document.createElement('span');
+      c.className = 'sum-chip'; c.dataset.keys = keys.join(' '); c.textContent = chipText(keys);
+      box.appendChild(c);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Notes: one plain-language line per control group stays visible (the leads below); the formulas and details are
+// in the 'How it is computed' toggles (methodNote(), levelNote(), musicalNote(), duetMapText(), sweepNote()). The
+// 'decorative' / 'Musical' labels and the warnings (duet timbre and levels, duplicate instruments) are in the leads,
+// so they stay visible.
+// ---------------------------------------------------------------------------
+function methodLead() {
+  switch (S.method) {
+    case 'noise': return 'Low &#8467; plays as low pitch, and the loudness at each pitch follows D<sub>&#8467;</sub>.';
+    case 'additive': return 'A sum of sine tones: low &#8467; at low pitch, the loudness at each pitch following D<sub>&#8467;</sub>.';
+    case 'layers': return 'Three layers, each as loud as its band power: a low tone, tones at the CMB acoustic peaks, and noise for the small scales. The timbres are decorative.';
+    case 'instruments': return 'Play sweeps &#8467;: each active component is an instrument whose loudness follows its band power.';
+    case 'duet': return 'Play sweeps &#8467;: two probes as two voices, the interval between them set by their correlation (below).';
+    default: return '';
+  }
+}
+function levelLead() {
+  if (!RT.cl) return '';
+  let s = S.level === 'absolute'
+    ? '<b>Absolute</b>: one reference for every component, band and selection, so levels compare.'
+    : '<b>Equalized</b>: each selection at its own maximum over the bands; levels do not compare between selections.';
+  if (S.method === 'duet' && S.duetLevel !== 'data') s += ' In the Duet these apply only with <b>Data levels</b>.';
+  if (!RT.cross) s += ' <b class="warn">cross_data.json missing: mixes have no cross terms, the Duet has no r.</b>';
+  return s;
+}
+function musicalLead() {
+  const dup = S.method === 'instruments' ? duplicateVoices() : [];
+  return 'All voices share one pitch, which follows &#8467;; the instrument tells them apart. ' +
+    (S.voicePreset === 'musical' ? '<b class="warn">Musical preset: decorative; levels approximate.</b>' : 'Analysis preset: each voice as loud as its data level.') +
+    dup.map(function (d) {
+      return ' <b class="warn">' + d.comps.map(function (c) { return COMP_LABELS[c]; }).join(' and ') + ' both use the ' + d.instrument +
+        ', so they fuse into one voice.</b>';
+    }).join('');
+}
+function duetLead() {
+  const ladder = Core.DUET_LADDER.map(function (r) { return r.name; }).join(' &rarr; ');
+  return 'Voice B plays an interval above voice A: ' + ladder + ' as r goes from +1 to &minus;1. Where r is not significant you hear one tone and a noise cue.' +
+    (duetVoices().timbre === 'tone' ? '' : ' <b class="warn">Instrument voices: decorative, not calibrated for dissonance.</b>') +
+    (S.duetLevel === 'data' ? ' <b class="warn">Data levels: voice B or its cue may be inaudible where one component is much weaker.</b>' : '');
 }
 function methodNote() {
   const pm = 'Pitch: f = 40 Hz &middot; (&#8467;/2)<sup>' + Core.ALPHA.toFixed(3) + '</sup> (&#8467; 2&ndash;6000 &rarr; 40&ndash;8000 Hz). ';
@@ -2032,10 +2798,20 @@ function updateUI() {
   const label = { play: 'Playing', sweep: 'ℓ-Sweeping', instruments: 'Instruments', duet: 'Duet', buildup: 'Build-Up', freqsweep: 'ν-Sweeping', bigbang: 'Big Bang (artistic)' };
   if (k) setStatus(label[k] || 'Playing', true); else setStatus(RT.cl ? 'Ready' : 'Loading…');
   $('stereoIndicator').style.display = (k === 'play' && S.stereo !== 'mono') ? 'inline-flex' : 'none';
-  $('playBtn').textContent = (RT.action === 'play' && k) ? '⏸ Stop' : '▶ Play';
-  $('sweepBtn').classList.toggle('active', RT.action === 'sweep');
-  $('buildupBtn').classList.toggle('active', k === 'buildup');
-  $('freqSweepBtn').classList.toggle('active', k === 'freqsweep');
+  // One Stop (#stopBtn). Play and the sweeps keep their labels and show the running one as pressed; pressing it
+  // again still stops it.
+  setPressed($('playBtn'), RT.action === 'play' && !!k);
+  setPressed($('sweepBtn'), RT.action === 'sweep');
+  setPressed($('buildupBtn'), k === 'buildup');
+  setPressed($('freqSweepBtn'), k === 'freqsweep');
+  setPressed($('bigBangBtn'), k === 'bigbang');
+  // something sounds: solid white marks only the pressed (sounding) button, an idle Play is outlined; the output
+  // figure and its (i) show (an open (i) closes when the sound stops, unless focus is in it)
+  $('transport').classList.toggle('is-playing', !!RT.player);
+  const mh = $('meterHelp');
+  if (!RT.player && mh.open && !(mh.contains && mh.contains(document.activeElement))) mh.open = false;
+  // a clocked mode (l-sweep, Instruments, Duet) is running: the scrubber is live (on phones it then shows in the bar)
+  $('transport').classList.toggle('is-sweeping', !!(RT.player && RT.player.ellAt));
   syncUI();
 }
 
@@ -2049,6 +2825,11 @@ function refName() {
   if (k === 'instruments' || k === 'duet') return 'REF_voice';
   if (k === 'bigbang') return null;
   return 'REF';
+}
+/** A reference's 'comp@band' label for display: the component's name ('T_tot@353' -> 'Total at 353'). */
+function refLabel(lab) {
+  const p = String(lab).split('@');
+  return p[0].split('+').map(function (c) { return COMP_LABELS[c] || c; }).join(' + ') + (p.length > 1 ? ' at ' + p[1] : '');
 }
 function playLevelText(comps, band, refComps) {
   const M = model(), db = M.playLevelDb(comps, band, S.level, S.ellMin, S.ellMax, refComps);
@@ -2064,7 +2845,7 @@ function updateReadouts() {
     const refComps = (p && p.kind === 'buildup') ? BUILDUP_REF : S.comps.length ? S.comps : comps;
     if (comps.length) {
       const ref = S.level === 'absolute' ? M.REF_PLAY : M.selectionRefs(refComps).refPlay;
-      const refTxt = ' (REF = ' + ref.toFixed(1) + ' &mu;K' + (S.level === 'absolute' ? ', ' + M.refLabels.play.replace('@', ' at ') + ' GHz'
+      const refTxt = ' (REF = ' + ref.toFixed(1) + ' &mu;K' + (S.level === 'absolute' ? ', ' + refLabel(M.refLabels.play) + ' GHz'
         : ', ' + (p && p.kind === 'buildup' ? 'the Total&rsquo;s, shared by all Build-Up stages' : 'this selection')) + ').';
       const stereo = (!p || p.kind === 'play') && S.stereo !== 'mono' ? playChannels() : null;
       if (stereo && stereo.length === 2) {
@@ -2073,7 +2854,10 @@ function updateReadouts() {
           ' The two channels carry the data&rsquo;s correlation between them' + (S.stereo === 'freq' ? ' (CIB across bands assumed fully correlated)' : '') + '.';
       } else {
         const db = M.playLevelDb(comps, band, S.level, S.ellMin, S.ellMax, refComps);
-        txt = '<b>' + sel + '</b> at ' + band + ' GHz, &#8467; ' + S.ellMin + '&ndash;' + S.ellMax + ': level <b>' + fmtDb(db) + ' dB re REF</b>' + refTxt;
+        // Instruments and Duet: Play plays the voices (their own readouts); this line is the selection, which Build-Up
+        // and nu-Sweep play, so it says so while nothing plays
+        const pre = !p && (S.method === 'duet' || S.method === 'instruments') ? 'Build-Up &amp; &nu;-Sweep selection: ' : '';
+        txt = pre + '<b>' + sel + '</b> at ' + band + ' GHz, &#8467; ' + S.ellMin + '&ndash;' + S.ellMax + ': level <b>' + fmtDb(db) + ' dB re REF</b>' + refTxt;
       }
     } else txt = 'Select a component.';
   } else if (p.kind === 'sweep') {
@@ -2091,10 +2875,11 @@ function updateReadouts() {
       Core.VOICED.map(function (c) { return '<span style="color:' + COLORS[c] + '">' + COMP_LABELS[c] + '</span> ' +
         (v[c].on ? fmtDb(v[c].level.db) + ' dB' : 'off'); }).join(', ') + ' re REF<sub>voice</sub>' + (S.level === 'equalized' ? ' (equalized per voice)' : '');
   } else if (p.kind === 'duet') {
+    // (l is in the duet readout under the plot, written every frame with the cursor: not repeated here)
     const ell = p.ellAt(now), v = p.values(ell);
-    duetReadout(v);
+    duetReadout(v, p);
     const common = v.lA.mode === 'common';
-    txt = '&#8467; = <b>' + Math.round(ell) + '</b>: ' + COMP_LABELS[p.A] + ' ' + fmtDb(v.lA.db) + ' dB, ' + COMP_LABELS[p.B] + ' ' +
+    txt = COMP_LABELS[p.A] + ' ' + fmtDb(v.lA.db) + ' dB, ' + COMP_LABELS[p.B] + ' ' +
       fmtDb(v.lB.db) + ' dB re REF<sub>voice</sub>' + (common ? ' (common level: loudness carries no data)'
         : S.level === 'equalized' ? ' (data levels, equalized per voice)' : ' (data levels)') + '.' +
       (!common && Math.abs(v.lA.db - v.lB.db) > 20 ? ' The voices differ by ' + Math.abs(v.lA.db - v.lB.db).toFixed(0) +
@@ -2106,18 +2891,71 @@ function updateReadouts() {
   }
   if (el.innerHTML !== txt) el.innerHTML = txt;
 }
-function duetReadout(v) {
-  const mk = $('duetMarker');
-  if (mk) mk.style.left = (((v.r + 1) / 2) * 100).toFixed(1) + '%';
-  const sig = isFinite(v.sig) ? v.sig : null, signif = v.s >= 0.5;
-  const col = !signif ? '#9aa3c4' : v.r > 0 ? '#2ed573' : '#ff5b5b';
-  const state = v.s <= 0 ? '<b>not significant</b> (' + (sig ? '|r| &lt; 2&sigma;' : 'no data') + '): one tone + noise cue (voice B replaced)'
-    : v.s < 1 ? 'interval: <b>' + v.iv.name + '</b>, fading in over the noise cue (' + (2 + v.s).toFixed(1) + '&sigma;; full at 3&sigma;)'
-      : 'interval: <b>' + v.iv.name + '</b>';
-  const html = '&#8467; &asymp; <b>' + Math.round(v.ell) + '</b> &nbsp; r = <b style="color:' + col + '">' +
-    (v.r >= 0 ? '+' : '') + v.r.toFixed(2) + '</b>' + (sig ? ' &plusmn; ' + sig.toFixed(3) + ' (N<sub>modes</sub> &asymp; ' + Math.round(v.n) + ')' : '') +
-    ' &nbsp; ' + state;
+// ---------------------------------------------------------------------------
+// Duet readout under the plot (#duetReadout) and the r bar: what DuetPlayer.values() computes for the cursor's l
+// (r and sigma_r, the gate weight s, the ladder's interval), shown as it is; nothing is recomputed here.
+// ---------------------------------------------------------------------------
+/** The pair as played: each voice with its data-colour swatch, and the band. */
+function duetPairHTML(A, B) {
+  const v = function (c) { return '<span class="sw" data-comp="' + c + '" aria-hidden="true"></span><b>' + COMP_LABELS[c] + '</b>'; };
+  return '<span class="df df--pair">' + v(A) + ' &times; ' + v(B) + ' <span class="df__sub">at ' + S.band + '&nbsp;GHz</span></span>';
+}
+/** The r bar's rungs, left (r = -1) to right (r = +1), from Core.DUET_LADDER (idx 0 = the top rung, r > 0.5). */
+function buildRbar() {
+  const box = $('rbarZones');
+  if (!box || box.children.length) return;
+  for (let idx = Core.DUET_LADDER.length - 1; idx >= 0; idx--) {
+    const z = document.createElement('span'), name = document.createElement('span');
+    z.className = 'rbar__zone'; z.dataset.idx = String(idx);
+    name.className = 'rbar__name'; name.textContent = Core.DUET_LADDER[idx].name;
+    z.appendChild(name); box.appendChild(z);
+  }
+}
+/** Marker at r, the rung being played filled (none while the gate is closed), |r| < 2 sigma hatched; idle: all off. */
+function setRbar(r, sig, s, idx) {
+  const mk = $('duetMarker'), gate = $('rbarGate'), on = r != null;
+  if (mk) { mk.style.display = on ? 'block' : 'none'; if (on) mk.style.left = (((Core.clamp(r, -1, 1) + 1) / 2) * 100).toFixed(1) + '%'; }
+  if (gate) {
+    const w = on && sig ? Math.min(1, 2 * sig) : 0;          // r in [-2 sigma, +2 sigma] is the fraction 2 sigma of the bar
+    gate.style.display = w > 0 ? 'block' : 'none';
+    if (w > 0) { gate.style.left = ((1 - w) / 2 * 100).toFixed(2) + '%'; gate.style.width = (w * 100).toFixed(2) + '%'; }
+  }
+  const lit = on && s > 0 ? String(idx) : '', fill = $('rbarFill'), box = $('rbarZones');
+  if (fill) { if ((fill.dataset.idx || '') !== lit) fill.dataset.idx = lit; fill.style.display = lit ? 'block' : 'none'; }
+  if (box) Array.prototype.forEach.call(box.children, function (z) {
+    const isOn = lit !== '' && lit === z.dataset.idx;
+    if (z.classList.contains('is-on') !== isOn) z.classList.toggle('is-on', isOn);
+  });
+}
+function duetReadout(v, p) {
+  const sig = isFinite(v.sig) ? v.sig : null;
+  const fmtR = (v.r >= 0 ? '+' : '&minus;') + Math.abs(v.r).toFixed(2);
+  const gate = v.s <= 0 ? '<span class="gate gate--closed">gated</span>'
+    : v.s < 1 ? '<span class="gate gate--fading">fading in</span>' : '<span class="gate gate--open">sounding</span>';
+  const note = v.s <= 0 ? 'r is <b>not significant</b> (' + (sig ? '|r| &lt; 2&sigma;' : 'no data') + '): one tone + noise cue (voice B replaced)'
+    : v.s < 1 ? 'Voice B&rsquo;s ' + v.iv.name + ' fades in over the noise cue (' + (2 + v.s).toFixed(1) + '&sigma;; full at 3&sigma;).'
+      : 'Significant (|r| &ge; 3&sigma;): voice B plays the ' + v.iv.name + ' above voice A.';
+  const html = duetFields(duetPairHTML(p.A, p.B), '&asymp; <b>' + Math.round(v.ell) + '</b>',
+    'r = <b>' + fmtR + '</b>' + (sig ? ' &plusmn; ' + sig.toFixed(3) + ' <span class="df__sub">(N<sub>modes</sub> &asymp; ' + Math.round(v.n) + ')</span>' : ''),
+    v.s > 0 ? '<b>' + v.iv.name + '</b>' : 'none', gate, note);
   if ($('duetReadout').innerHTML !== html) $('duetReadout').innerHTML = html;
+  setRbar(v.r, sig, v.s, v.iv.idx);
+}
+/** The readout's fields (the same layout idle and playing, so the plot does not jump when the duet starts). */
+function duetFields(pair, ell, r, iv, gate, note) {
+  return pair + ' <span class="df df--ell"><span class="df__k">&#8467;</span> ' + ell + '</span>' +
+    ' <span class="df df--r"><span class="df__k">correlation</span> ' + r + '</span>' +
+    ' <span class="df df--iv"><span class="df__k">interval</span> ' + iv + '</span>' +
+    ' <span class="df df--gate"><span class="df__k">gate</span> ' + gate + '</span>' +
+    ' <span class="df-note">' + note + '</span>';
+}
+/** Duet mode while the duet is not playing: the pair, empty fields, and how to start it. */
+function duetIdle() {
+  const note = RT.player ? 'Build-Up and &nu;-Sweep play the selected components as Shaped Noise in this mode; &#9654; Play plays the duet.'
+    : 'Press &#9654; Play to sweep &#8467;: voice B sounds an interval above voice A, set by their correlation r at the cursor.';
+  const html = duetFields(duetPairHTML(S.duetA, S.duetB), '&ndash;', 'r = &ndash;', '&ndash;', '&ndash;', note);
+  if ($('duetReadout').innerHTML !== html) $('duetReadout').innerHTML = html;
+  setRbar(null);
 }
 // Output meter, after the limiter, per channel (a single AnalyserNode would read the down-mix 0.5 (L + R),
 // 6 dB low for hard-panned stereo). 'dB re' names the reference family of the running mode.
@@ -2129,14 +2967,17 @@ function channelLevel(a) {
   return { rms: 10 * Math.log10(Math.max(s / d.length, 1e-12)), peak: 20 * Math.log10(Math.max(pk, 1e-9)) };
 }
 function updateMeter() {
-  const fill = $('meterFill'), ro = $('meterReadout');
-  if (!RT.analysers || !RT.player) { fill.style.width = '0%'; ro.textContent = 'Output meter (after the limiter): –'; return; }
+  const fill = $('meterFill'), ro = $('meterReadout'), short = $('meterDb');
+  // the transport shows a short figure (RMS of the louder channel); the full reading is behind its (i) toggle
+  const setShort = function (t, hot) { if (short.textContent !== t) short.textContent = t; short.classList.toggle('warn', !!hot); };
+  if (!RT.analysers || !RT.player) { fill.style.width = '0%'; ro.textContent = 'Output meter (after the limiter): –'; setShort('– dBFS', false); return; }
   const L = channelLevel(RT.analysers[0]), R = channelLevel(RT.analysers[1]);
   const top = Math.max(L.rms, R.rms), pk = Math.max(L.peak, R.peak), ref = refName();
   fill.style.width = Math.max(0, Math.min(100, (top + 60) / 60 * 100)) + '%';
   const re = function (x) { return ref ? ' (' + fmtDb(x - S.monitorDb + 20) + ' dB re ' + ref + ')' : ''; };
   ro.textContent = 'Output meter (after the limiter), RMS per channel: L ' + L.rms.toFixed(1) + ' dBFS' + re(L.rms) + ', R ' + R.rms.toFixed(1) +
     ' dBFS' + re(R.rms) + '; peak ' + pk.toFixed(1) + ' dBFS' + (pk > -0.5 ? '  — near 0 dBFS: the limiter may engage, lower the monitor gain' : '');
+  setShort(top < -99.5 ? '−∞ dBFS' : (Math.round(top) < 0 ? '−' : '') + Math.abs(Math.round(top)) + ' dBFS', pk > -0.5);   // (silence: −∞)
 }
 // Screen readers: the fast visual readouts are not live regions; #srLive gets a short plain-text line
 // on user actions and stage changes, at most every 1.5 s and only when it changed.
@@ -2163,6 +3004,8 @@ function animate(ts) {
       if (RT.scrub == null) $('sweepPosSlider').value = Math.round(pos * 1000);
       $('sweepPosVal').textContent = 'ℓ=' + Math.round(posToEll(pos));
       drawSpectrum();
+      // the duet readout follows the cursor frame by frame (one l on the plot, the scrubber and the readout)
+      if (RT.player.kind === 'duet') { const p = RT.player; duetReadout(p.values(p.ellAt(RT.ctx.currentTime)), p); }
     }
     if (!RT.lastReadout || ts - RT.lastReadout > 80) { RT.lastReadout = ts; updateReadouts(); updateMeter(); }
   } catch (e) {
@@ -2253,7 +3096,17 @@ function setup() {
     settingsChanged('seed'); settingsChanged('spectrum');
   });
   $('bitDepth').addEventListener('change', function (e) { S.bitDepth = parseInt(e.target.value, 10) === 24 ? 24 : 16; syncUI(); });
-  $('renderBtn').addEventListener('click', function () { $('renderNote').dataset.locked = '1'; renderWav().then(function () { setTimeout(function () { delete $('renderNote').dataset.locked; }, 8000); }); });
+  $('renderBtn').addEventListener('click', function () {
+    // the transport's copy of the button shows the render in progress (the note itself sits in 'Render & export')
+    const proxy = $('renderProxy'), label = proxy.innerHTML;
+    proxy.disabled = true; proxy.innerHTML = 'Rendering&hellip;';
+    $('renderNote').dataset.locked = '1';
+    renderWav().then(function () {
+      proxy.disabled = false; proxy.innerHTML = label;
+      announce($('renderNote').textContent);
+      setTimeout(function () { delete $('renderNote').dataset.locked; }, 8000);
+    });
+  });
   $('loadSettingsBtn').addEventListener('click', function () { $('loadSettings').click(); });
   $('loadSettings').addEventListener('change', function (e) {
     const f = e.target.files && e.target.files[0];
@@ -2282,11 +3135,109 @@ function setup() {
   $('buildupBtn').addEventListener('click', function () { if (RT.kind === 'buildup') stopAll(); else startAction('buildup'); });
   $('freqSweepBtn').addEventListener('click', function () { if (RT.kind === 'freqsweep') stopAll(); else startAction('freqsweep'); });
   $('stopBtn').addEventListener('click', function () { stopTour(); stopAll(); });
-  $('bigBangBtn').addEventListener('click', function () { startAction('bigbang'); });
+  // Big Bang: pressed while it plays, and pressing it again stops it (as its 'Start here' chip); a running Tour ends first
+  $('bigBangBtn').addEventListener('click', function () {
+    if (RT.kind === 'bigbang') { stopTour(); stopAll(); return; }
+    stopTour(); startAction('bigbang');
+  });
+  // 'Skip to Play' (the first Tab stop): focus Play without touching the address (#s= links live there)
+  $('skipToPlay').addEventListener('click', function (e) { e.preventDefault(); $('playBtn').focus(); });
   $('recBtn').addEventListener('click', toggleRecord);
   $('shareBtn').addEventListener('click', shareLink);
   $('tourBtn').addEventListener('click', runTour);
+  // the transport's copies of Share and Render WAV (one element per id: each clicks the original)
+  $('shareProxy').addEventListener('click', function () { $('shareBtn').click(); });
+  $('renderProxy').addEventListener('click', function () { $('renderBtn').click(); });
+  $('resetBtn').addEventListener('click', resetToDefaults);
+  // sonifier.html#tour: the Tour's start under its note presses the (ringed) Tour chip, so the Tour ends with focus there
+  $('arrivalTourBtn').addEventListener('click', function () { $('demoTour').click(); });
+  // 'Start here': the paper's demonstrations, Tour and Big Bang
+  const chips = document.querySelectorAll('.demo-chip');
+  chips.forEach(function (b) {
+    b.addEventListener('click', function () { rovingTab(chips, b); startDemo(b.dataset.demo, b); });
+    b.addEventListener('focus', function () { rovingTab(chips, b); });
+  });
+  // a toolbar: one Tab stop, the arrow keys (and Home / End) move between the chips
+  $('startHere').addEventListener('keydown', function (e) {
+    const list = Array.prototype.slice.call(chips), i = list.indexOf(document.activeElement);
+    if (i < 0 || e.altKey || e.ctrlKey || e.metaKey) return;
+    const j = e.key === 'ArrowRight' ? (i + 1) % list.length : e.key === 'ArrowLeft' ? (i + list.length - 1) % list.length
+      : e.key === 'Home' ? 0 : e.key === 'End' ? list.length - 1 : -1;
+    if (j < 0) return;
+    e.preventDefault();
+    rovingTab(chips, list[j]); list[j].focus();
+  });
+  // the Tour dock: Back, Next, Close; Esc ends the Tour from anywhere, the arrow keys step while focus is in the dock
+  $('tourBack').addEventListener('click', function () { if (TOUR.on && TOUR.i > 0) { tourGo(TOUR.i - 1); revealTour(false); } });
+  $('tourNext').addEventListener('click', function () { if (TOUR.on) { tourGo(TOUR.i + 1); revealTour(false); } });
+  $('tourClose').addEventListener('click', stopTour);
+  // the meter's (i) popover closes on Esc (focus back on its toggle), on a click outside it and when focus leaves it
+  const mh = $('meterHelp');
+  const inMeter = function (el) { return !!(el && mh.contains && mh.contains(el)); };
+  document.addEventListener('click', function (e) { if (mh.open && !inMeter(e.target)) mh.open = false; });
+  mh.addEventListener('focusout', function (e) { if (mh.open && e.relatedTarget && !inMeter(e.relatedTarget)) mh.open = false; });
+  document.addEventListener('keydown', function (e) {
+    if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+    const esc = e.key === 'Escape' || e.key === 'Esc';
+    if (esc && mh.open) {
+      e.preventDefault(); mh.open = false;
+      if (inMeter(document.activeElement)) { const s = mh.querySelector('summary'); if (s) s.focus(); }
+      return;
+    }
+    if (!TOUR.on) return;
+    if (esc) { e.preventDefault(); stopTour(); return; }
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && focusInDock(true)) {
+      e.preventDefault();
+      if (e.key === 'ArrowRight') tourGo(TOUR.i + 1); else if (TOUR.i > 0) tourGo(TOUR.i - 1);
+      revealTour(false);
+    }
+  });
+  buildRbar();
+  // phones: 'More' opens the rest of the bottom bar (scrubber, monitor gain)
+  $('moreBtn').addEventListener('click', function () {
+    const open = !$('transport').classList.contains('is-open');
+    $('transport').classList.toggle('is-open', open);
+    $('moreBtn').setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
   window.addEventListener('resize', function () { drawSpectrum(); if ($('isoHelp').open) drawIsoHelp(); });
+  observeLayout();
+}
+/**
+ * Browser-only layout observers (absent in the test harness): redraw the plot when its box changes (the duet strip
+ * or the Tour caption takes height from it); publish the transport's height (--transport-h, at every width), which
+ * the page's scroll-padding (focus never lands under the sticky or fixed bar) and the phone's bottom padding use;
+ * mark the desktop transport while it is stuck to the top of the viewport (.is-stuck: a shadow).
+ */
+function observeLayout() {
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(function () { drawSpectrum(); }).observe($('plotWrap'));
+    new ResizeObserver(function () {
+      document.documentElement.style.setProperty('--transport-h', $('transport').offsetHeight + 'px');
+    }).observe($('transport'));
+  }
+  if (typeof IntersectionObserver !== 'undefined') {
+    new IntersectionObserver(function (es) {
+      const e = es[es.length - 1];
+      $('transport').classList.toggle('is-stuck', !e.isIntersecting && e.boundingClientRect.top < 0);
+    }).observe($('transportSentinel'));
+  }
+  placePageActions();
+}
+/**
+ * The Share and Render WAV copies live in the top bar's page-actions slot (their place in the markup). Between 720 and
+ * 960 px the top bar has no room for them beside the site links, so they move to the end of the transport's second row
+ * (the same two elements: ids, handlers and labels unchanged), and back when the width changes. Browser-only.
+ */
+function placePageActions() {
+  if (typeof window.matchMedia !== 'function') return;
+  const mq = window.matchMedia('(min-width: 720px) and (max-width: 959.98px)');
+  const home = document.querySelector('.topbar__actions'), alt = $('transportMore');
+  const place = function () {
+    const dest = mq.matches ? alt : home;
+    for (const id of ['shareProxy', 'renderProxy']) if ($(id).parentNode !== dest) dest.appendChild($(id));
+  };
+  if (mq.addEventListener) mq.addEventListener('change', place); else if (mq.addListener) mq.addListener(place);
+  place();
 }
 
 // ---------------------------------------------------------------------------
@@ -2294,7 +3245,7 @@ function setup() {
 // ---------------------------------------------------------------------------
 function toggleRecord() {
   const btn = $('recBtn');
-  if (typeof MediaRecorder === 'undefined') { btn.textContent = 'no rec'; return; }
+  if (typeof MediaRecorder === 'undefined') { btn.textContent = 'Record: not supported here'; return; }
   initAudio();
   if (RT.recorder && RT.recorder.state === 'recording') { RT.recorder.stop(); return; }
   if (!RT.recDest) return;
@@ -2303,30 +3254,87 @@ function toggleRecord() {
   rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
   rec.onstop = function () {
     downloadBlob(new Blob(chunks, { type: mime || 'audio/webm' }), 'multiprobe_sky_live.' + (mime.indexOf('ogg') >= 0 ? 'ogg' : 'webm'));
-    btn.innerHTML = '&#9210; Record'; btn.classList.remove('active'); btn.style.background = ''; btn.style.color = '';
+    btn.innerHTML = 'Record'; btn.classList.remove('is-recording'); btn.setAttribute('aria-pressed', 'false');
     RT.recorder = null;
   };
   rec.start(); RT.recorder = rec;
-  btn.innerHTML = '&#9632; Stop rec'; btn.classList.add('active'); btn.style.background = '#cc3333'; btn.style.color = '#fff';
+  // (#stopBtn is the one control labelled Stop: a second click here finishes the recording and downloads it)
+  btn.innerHTML = 'Finish recording'; btn.classList.add('is-recording'); btn.setAttribute('aria-pressed', 'true');
 }
 
 // ---------------------------------------------------------------------------
-// Guided tour (uses Equalized levels for the faint components and says so)
+// Guided tour, docked under the plot (#tourDock): step n of N with Back, Next and Close; Esc closes. It advances by
+// itself on a timer; Back and Next jump a step and restart that step's sound. Every step sets all the settings its
+// sound depends on, so any step plays the same whichever step came before. The Tour saves each setting the first
+// time it changes it and restores them all when it ends (Close, Esc, Stop, Reset, a 'Start here' demo, or after the
+// last step). Faint components play with Equalized levels, and the caption says so. Bands come from cl_data.json.
 // ---------------------------------------------------------------------------
-let tourToken = 0, tourSaved = null;
-function tourCaption(html) { const c = $('tourCaption'); c.innerHTML = html; c.style.display = html ? 'block' : 'none'; }
-function tourWait(ms, token) { return new Promise(function (r) { setTimeout(function () { r(token === tourToken); }, ms); }); }
-function tourSet(o) { Object.assign(S, o); syncUI(); }
+const TOUR = { on: false, steps: [], i: -1, seq: 0, timer: null, saved: null, opener: null };
+const TOUR_DOCK_IDS = ['tourDock', 'tourBack', 'tourNext', 'tourClose'];
+// The caption is in the Tour dock under the plot; showing or hiding the dock changes the plot's height.
+function tourCaption(html) {
+  const c = $('tourCaption'), dock = $('tourDock'), was = dock.style.display;
+  c.innerHTML = html; c.style.display = html ? 'block' : 'none';
+  dock.style.display = html ? 'block' : 'none';
+  if (dock.style.display !== was) drawSpectrum();
+}
+/** Apply a step's settings, saving each setting's own value the first time the Tour changes it. */
+function tourSet(o) {
+  for (const k of Object.keys(o)) if (!(k in TOUR.saved)) TOUR.saved[k] = clone(S[k]);
+  Object.assign(S, clone(o));
+  syncUI();
+}
+/** Focus is on the dock or one of its buttons (strict), or nowhere in particular (focus lost to the page body). */
+function focusInDock(strict) {
+  const a = document.activeElement;
+  if (!strict && (!a || a === document.body)) return true;
+  return TOUR_DOCK_IDS.some(function (id) { return $(id) === a; });
+}
+function canFocus(el) { return !!(el && el.focus && (!el.getClientRects || el.getClientRects().length > 0)); }
 function stopTour() {
-  if (!$('tourBtn').classList.contains('active')) return;
-  tourToken++; tourCaption('');
-  if (tourSaved) { Object.assign(S, tourSaved); tourSaved = null; }
+  if (!TOUR.on) return;
+  const refocus = focusInDock(false);
+  TOUR.on = false; TOUR.seq++;
+  clearTimeout(TOUR.timer); TOUR.timer = null;
+  tourCaption('');
+  if (TOUR.saved) { Object.assign(S, TOUR.saved); TOUR.saved = null; }
+  const b = $('tourBtn'); setPressed(b, false); b.innerHTML = '&#9654; Tour';
   stopAll();
-  const b = $('tourBtn'); b.classList.remove('active'); b.innerHTML = '&#9654; Tour';
+  // focus goes back to the button that started the Tour (#tourBtn, or its chip under 'Start here' when the
+  // 'Guided & artistic' panel is closed), unless the listener has moved on to another control; the page scrolls
+  // only if that button is out of view (so the focus is always visible, and nothing jumps otherwise)
+  if (refocus) {
+    const o = [TOUR.opener, b, $('demoTour')].find(canFocus);
+    if (o) {
+      try { o.focus({ preventScroll: true }); } catch (e) { o.focus(); }
+      if (o.scrollIntoView) o.scrollIntoView({ block: 'nearest', behavior: scrollBehavior() });
+    }
+  }
+  TOUR.opener = null;
+}
+function scrollBehavior() {
+  const still = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  return still ? 'auto' : 'smooth';
 }
 /**
- * The Tour's bands, from cl_data.json (never hard-coded): the default band (143 GHz if present), the
- * band where the tSZ is faintest (its null, 217 GHz when present), and the lowest and highest bands.
+ * Bring the Tour dock into view only if it is cut off (block 'nearest', within the page's scroll-padding, so never
+ * under the transport). At the start, a dock above the viewport (the Tour started from far down the page) brings
+ * the whole plot back instead. Browser-only (the harness has no layout).
+ */
+function revealTour(start) {
+  const dock = $('tourDock'), plot = $('plotPanel');
+  if (!TOUR.on || !dock.scrollIntoView || !dock.getBoundingClientRect) return;
+  const r = dock.getBoundingClientRect();
+  if (typeof r.top !== 'number') return;
+  let padTop = 0;
+  try { padTop = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0; } catch (e) { /* ignore */ }
+  if (start && r.top < padTop && plot.scrollIntoView) plot.scrollIntoView({ block: 'start', behavior: scrollBehavior() });
+  else dock.scrollIntoView({ block: 'nearest', behavior: scrollBehavior() });
+}
+/**
+ * The Tour's bands, from cl_data.json (never hard-coded): the default band (143 GHz if present), the band where the
+ * tSZ is faintest (its null, 217 GHz when present), the lowest and highest bands, and for the duet steps the band of
+ * Table 2's 'Duet at 353 GHz' row (DEMOS.duet353), or null when the data do not have it.
  */
 function tourBands() {
   const B = RT.bands, g = Core.gridOf(RT.cl);
@@ -2337,53 +3345,144 @@ function tourBands() {
     const p = D ? Core.bandPower(g, D, Core.ELL_MIN, Core.ELL_MAX) : Infinity;
     if (p < best) { best = p; nul = b; }
   }
-  return { def: def, tszNull: nul, lo: B[0], hi: B[B.length - 1] };
+  const hiDuet = JSON.parse(DEMOS.duet353.frag.slice(3)).band;
+  return { def: def, tszNull: nul, lo: B[0], hi: B[B.length - 1], duetHi: B.indexOf(hiDuet) >= 0 && hiDuet !== def ? hiDuet : null };
 }
-async function runTour() {
-  const btn = $('tourBtn');
-  if (btn.classList.contains('active')) { stopTour(); return; }
-  if (!RT.cl) return;
-  const token = ++tourToken;
-  tourSaved = { comps: S.comps.slice(), band: S.band, method: S.method, level: S.level, ellMin: S.ellMin, ellMax: S.ellMax };
-  btn.classList.add('active'); btn.innerHTML = '&#9632; Stop tour';
-  initAudio();
-  const eq = ' <span style="color:#ff9f43;font-size:0.85em;">(levels equalized for this step)</span>';
-  const TB = tourBands(), M = model();
-  const tszDb = M.playLevelDb(['dT_tsz'], TB.def, 'absolute', 2, 6000) - M.playLevelDb(['dT_cmblens'], TB.def, 'absolute', 2, 6000);
-  const cibDb = M.playLevelDb(['dT_cib'], TB.hi, 'absolute', 2, 6000) - M.playLevelDb(['dT_cib'], TB.lo, 'absolute', 2, 6000);
-  const nullDb = M.playLevelDb(['dT_tsz'], TB.tszNull, 'absolute', 2, 6000) - M.playLevelDb(['dT_tsz'], TB.def, 'absolute', 2, 6000);
-  const nullCap = nullDb < -10 ? 'the tSZ almost <b>vanishes</b> near its 217 GHz null (' + Math.round(nullDb) + ' dB).'
-    : 'the tSZ is faintest of these bands (' + Math.round(nullDb) + ' dB); its null is at 217 GHz.';
+/** The duet's interval over most of a sweep: the rung of the median r over l = 500-6000 (cross_data.json, as played). */
+function duetSummary(A, B, band) {
+  const rs = [];
+  for (let k = 0; k <= 24; k++) rs.push(Core.crossR(RT.cross, A, B, band, 500 * Math.pow(12, k / 24)));
+  rs.sort(function (a, b) { return a - b; });
+  return { r: rs[12], iv: Core.duetInterval(rs[12]) };
+}
+/** The steps: { cap() (HTML), set (settings), action (a startAction mode, or null: silence), dur (ms, or a function) }. */
+function tourSteps() {
+  const TB = tourBands();
+  const eq = ' <span class="tour-flag">(levels equalized for this step)</span>';
   const kHz = function (ell) { return (Core.ellToFreq(ell) / 1000).toFixed(1); };   // analysis map, as heard in Play
+  const lv = function (c, b) { return model().playLevelDb([c], b, 'absolute', 2, 6000); };
+  const noise = function (o) { return Object.assign({ method: 'noise', ellMin: 2, ellMax: 6000 }, o); };
+  // the sweeps run at the default timing (Table 2: one 10 s pass, logarithmic, no ping-pong), whatever the listener's
+  // 'Sweep options', so each step lasts what it says; restored with the rest when the Tour ends
+  const timing = { sweepSpeed: DEFAULTS.sweepSpeed, linearSweep: DEFAULTS.linearSweep, pingPong: DEFAULTS.pingPong };
+  const cmb = noise({ comps: ['dT_cmblens'], band: TB.def, level: 'absolute' });
+  // the l-sweep step: the caption's half-octave window, a pitch that follows l (not the fixed 440 Hz tone)
+  const lsweep = Object.assign({}, cmb, timing, { windowOct: DEFAULTS.windowOct, fixedPitch: DEFAULTS.fixedPitch });
   const steps = [
-    { cap: '&#127759; <b>The cosmic microwave background</b>, the universe&rsquo;s first light. Large scales (low &#8467;) are low pitches; the acoustic peaks (&#8467; &asymp; 220&ndash;1400) sit near ' +
-      kHz(220) + '&ndash;' + kHz(1400) + ' kHz.',
-      run: function () { tourSet({ method: 'noise', comps: ['dT_cmblens'], band: TB.def, level: 'absolute', ellMin: 2, ellMax: 6000 }); startAction('play'); }, dur: 7000 },
-    { cap: 'Now we <b>sweep across angular scales</b>, from the largest structures (low pitch) to the finest (high pitch). The loudness is the sky&rsquo;s fluctuation power in a half-octave window.',
-      run: function () { startAction('sweep'); }, dur: 10000 },
-    { cap: '&#127755; <b>The thermal Sunyaev&ndash;Zel&rsquo;dovich effect</b>: hot gas in galaxy clusters. It is about ' + Math.round(-tszDb) + ' dB fainter than the CMB at ' + TB.def + ' GHz.' + eq,
-      run: function () { tourSet({ comps: ['dT_tsz'], band: TB.def, level: 'equalized' }); startAction('play'); }, dur: 6500 },
-    { cap: 'Tune to <b>' + TB.tszNull + ' GHz</b>: ' + nullCap + eq,
-      run: function () { tourSet({ band: TB.tszNull }); startAction('play'); }, dur: 6500 },
-    { cap: '&#10024; <b>The cosmic infrared background</b>, dusty star-forming galaxies. Faint at ' + TB.lo + ' GHz&hellip;' + eq,
-      run: function () { tourSet({ comps: ['dT_cib'], band: TB.lo }); startAction('play'); }, dur: 5000 },
-    { cap: '&hellip;and <b>' + Math.round(cibDb) + ' dB louder by ' + TB.hi + ' GHz</b>.' + eq,
-      run: function () { tourSet({ band: TB.hi }); startAction('play'); }, dur: 5000 },
-    { cap: 'All together, on one absolute scale: the <b>multi-probe sky</b> crossfading through the bands, from CMB-dominated to dust-dominated.',
-      run: function () { tourSet({ comps: Core.totalParts(RT.cl), level: 'absolute' }); startAction('freqsweep'); }, dur: 11000 },
-    { cap: '&#127775; An <b>artistic</b> &ldquo;sound of the Big Bang&rdquo;: the CMB acoustic peaks found in the data, played as a slowly descending chord.',
-      run: function () { startAction('bigbang'); }, dur: 12800 },
-    { cap: 'That&rsquo;s the multi-probe sky. <b>Now explore it yourself</b>: mix components, sweep, or render a WAV.',
-      run: function () { stopAll(); }, dur: 6000 },
+    { cap: function () {
+      return '<b>The cosmic microwave background</b>, the universe&rsquo;s first light. Large scales (low &#8467;) are low pitches; the acoustic peaks (&#8467; &asymp; 220&ndash;1400) sit near ' +
+        kHz(220) + '&ndash;' + kHz(1400) + ' kHz.';
+    }, set: cmb, action: 'play', dur: 7000 },
+    { cap: function () {
+      return 'Now we <b>sweep across angular scales</b>, from the largest structures (low pitch) to the finest (high pitch). The loudness is the sky&rsquo;s fluctuation power in a half-octave window.';
+    }, set: lsweep, action: 'sweep', dur: 10000 },
+    { cap: function () {
+      return '<b>The thermal Sunyaev&ndash;Zel&rsquo;dovich effect</b>: hot gas in galaxy clusters. It is about ' + Math.round(lv('dT_cmblens', TB.def) - lv('dT_tsz', TB.def)) +
+        ' dB fainter than the CMB at ' + TB.def + ' GHz.' + eq;
+    }, set: noise({ comps: ['dT_tsz'], band: TB.def, level: 'equalized' }), action: 'play', dur: 6500 },
+    { cap: function () {
+      const nullDb = lv('dT_tsz', TB.tszNull) - lv('dT_tsz', TB.def);
+      return 'Tune to <b>' + TB.tszNull + ' GHz</b>: ' + (nullDb < -10 ? 'the tSZ almost <b>vanishes</b> near its 217 GHz null (' + Math.round(nullDb) + ' dB).'
+        : 'the tSZ is faintest of these bands (' + Math.round(nullDb) + ' dB); its null is at 217 GHz.') + eq;
+    }, set: noise({ comps: ['dT_tsz'], band: TB.tszNull, level: 'equalized' }), action: 'play', dur: 6500 },
+    { cap: function () { return '<b>The cosmic infrared background</b>, dusty star-forming galaxies. Faint at ' + TB.lo + ' GHz&hellip;' + eq; },
+      set: noise({ comps: ['dT_cib'], band: TB.lo, level: 'equalized' }), action: 'play', dur: 5000 },
+    { cap: function () { return '&hellip;and <b>' + Math.round(lv('dT_cib', TB.hi) - lv('dT_cib', TB.lo)) + ' dB louder by ' + TB.hi + ' GHz</b>.' + eq; },
+      set: noise({ comps: ['dT_cib'], band: TB.hi, level: 'equalized' }), action: 'play', dur: 5000 },
+    { cap: function () { return 'All together, on one absolute scale: the <b>multi-probe sky</b> crossfading through the bands, from CMB-dominated to dust-dominated.'; },
+      set: noise(Object.assign({ comps: Core.totalParts(RT.cl), band: TB.def, level: 'absolute' }, timing)), action: 'freqsweep', dur: 11000 },
   ];
-  for (const st of steps) {
-    if (token !== tourToken) return;
-    tourCaption(st.cap);
-    try { st.run(); } catch (e) { console.error(e); }
-    const ok = await tourWait(st.dur, token);
-    if (!ok) return;
+  // The tSZ x CIB duet, as in Table 2 (the duet tone at the common level, snapped), at the default band and then at the
+  // band of the 'Duet at 353 GHz' row; one sweep pass each. Without cross_data.json the duet has no r: no duet steps.
+  if (RT.cross) {
+    const duet = function (band) {
+      return Object.assign({ method: 'duet', duetA: 'dT_tsz', duetB: 'dT_cib', comps: ['dT_tsz', 'dT_cib'], band: band, duetTimbre: 'tone', duetLevel: 'common',
+        snap: true, ellMin: 2, ellMax: 6000 }, timing);
+    };
+    // one sweep pass at the step's own timing (10.6 s)
+    const pass = function () { return Math.round(timing.sweepSpeed * (timing.pingPong ? 2 : 1) * 1000) + 600; };
+    const side = function (b) { return b < TB.tszNull ? 'below' : 'above'; };
+    const harmony = function (r) { return r < 0 ? 'anti-correlated, so the duet is <b>dissonant</b>' : 'correlated, so the duet is <b>consonant</b>'; };
+    steps.push({ cap: function () {
+      const d = duetSummary('dT_tsz', 'dT_cib', TB.def);
+      return '<b>The tSZ&times;CIB duet</b> at ' + TB.def + ' GHz: voice A (tSZ) follows &#8467;, and voice B (CIB) sits an interval above it, set by their correlation (the bar under the plot). ' +
+        (side(TB.def) === 'below' ? 'Below' : 'Above') + ' the tSZ null they are ' + harmony(d.r) + ', mostly the ' + d.iv.name + '.';
+    }, set: duet(TB.def), action: 'play', dur: pass });
+    if (TB.duetHi != null) {
+      steps.push({ cap: function () {
+        const a = duetSummary('dT_tsz', 'dT_cib', TB.def), d = duetSummary('dT_tsz', 'dT_cib', TB.duetHi);
+        const flip = (a.r < 0) !== (d.r < 0);
+        return '&hellip;and at <b>' + TB.duetHi + ' GHz</b>, ' + side(TB.duetHi) + ' the null' + (flip
+          ? ', the sign of the correlation is reversed. Voice A plays the same line and only the harmony changes: the ' +
+            (a.r < 0 ? 'dissonant duet becomes a <b>consonant</b> one' : 'consonant duet becomes a <b>dissonant</b> one') + ', mostly the ' + d.iv.name + '.'
+          : ': voice A plays the same line, and voice B mostly the ' + d.iv.name + '.');
+      }, set: duet(TB.duetHi), action: 'play', dur: pass });
+    }
   }
-  stopTour();
+  steps.push(
+    { cap: function () { return 'An <b>artistic</b> &ldquo;sound of the Big Bang&rdquo;: the CMB acoustic peaks found in the data, played as a slowly descending chord.'; },
+      set: cmb, action: 'bigbang', dur: 12800 },
+    { cap: function () { return 'That&rsquo;s the multi-probe sky. <b>Now explore it yourself</b>: mix components, sweep, or render a WAV.'; },
+      set: null, action: null, dur: 6000 });
+  return steps;
+}
+/** The dock for the current step: 'Step n of N', the step strip, the caption (with the step for screen readers), Back / Next. */
+function renderTourStep() {
+  const n = TOUR.steps.length, i = TOUR.i, st = TOUR.steps[i];
+  $('tourStep').textContent = 'Tour · step ' + (i + 1) + ' of ' + n;
+  const bar = $('tourProgress');
+  if (bar.children.length !== n) { bar.innerHTML = ''; for (let k = 0; k < n; k++) bar.appendChild(document.createElement('span')); }
+  Array.prototype.forEach.call(bar.children, function (s, k) { s.className = k < i ? 'is-done' : k === i ? 'is-on' : ''; });
+  let cap = '';
+  try { cap = st.cap(); } catch (e) { console.error(e); }
+  tourCaption('<span class="sr-only">Step ' + (i + 1) + ' of ' + n + ': </span>' + cap);
+  $('tourBack').setAttribute('aria-disabled', i === 0 ? 'true' : 'false');
+  $('tourNext').innerHTML = i === n - 1 ? 'Finish' : 'Next &#9654;';
+}
+/** Go to step i (past the last: the Tour ends): its settings, its sound, and the timer to the next step. */
+function tourGo(i) {
+  if (!TOUR.on) return;
+  clearTimeout(TOUR.timer); TOUR.timer = null;
+  if (i >= TOUR.steps.length) { stopTour(); return; }
+  TOUR.i = Math.max(0, i);
+  const seq = ++TOUR.seq, st = TOUR.steps[TOUR.i];
+  renderTourStep();
+  let started = null;
+  try {
+    if (st.set) tourSet(st.set);
+    started = st.action ? startAction(st.action) : stopAll();
+  } catch (e) { console.error(e); }
+  // the step's time runs from when its sound has started (the duet first calibrates its voices)
+  Promise.resolve(started).then(function () {
+    if (!TOUR.on || seq !== TOUR.seq) return;
+    const ms = typeof st.dur === 'function' ? st.dur() : st.dur;
+    TOUR.timer = setTimeout(function () { if (TOUR.on && seq === TOUR.seq) tourGo(TOUR.i + 1); }, ms);
+  }, function (e) { console.error(e); });
+}
+function runTour() {
+  const btn = $('tourBtn');
+  if (TOUR.on) { stopTour(); return; }
+  if (!RT.cl) return;
+  let steps;
+  try { steps = tourSteps(); } catch (e) { console.error(e); return; }
+  TOUR.on = true; TOUR.steps = steps; TOUR.i = -1; TOUR.saved = {};
+  TOUR.opener = tourOpenerNext || btn;
+  // (#stopBtn is the one control labelled Stop; Stop, Close, Esc, or this button again end the Tour)
+  setPressed(btn, true); btn.innerHTML = '&#9632; End tour';
+  initAudio();
+  tourGo(0);
+  // the dock is under the plot: scroll only if it is cut off (or, started from far down the page, back to the plot)
+  revealTour(true);
+  const dock = $('tourDock');
+  if (TOUR.on && dock.focus) { try { dock.focus({ preventScroll: true }); } catch (e) { dock.focus(); } }
+}
+/** 'about N s' in the 'Guided & artistic' note: the steps' total at the current sweep speed. */
+function setTourLength() {
+  const el = $('tourLen');
+  if (!el || !RT.cl) return;
+  let ms = 0;
+  for (const st of tourSteps()) ms += typeof st.dur === 'function' ? st.dur() : st.dur;
+  el.textContent = String(Math.round(ms / 5000) * 5);
 }
 
 // ---------------------------------------------------------------------------
@@ -2394,6 +3493,7 @@ async function init() {
   applyShareParams();
   await loadData();
   applyShareParams();
+  if (RT.cl) detectArrival();          // a demo's link or #tour: the 'Ready' note and the ring (nothing plays)
   syncUI();
   requestAnimationFrame(animate);
 }

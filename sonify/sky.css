@@ -1,0 +1,261 @@
+/* sky.css: the layout and controls the three sky views share (Sky Explorer, 3D Sky Globe, Inside the Lightcone;
+   website redesign phases 1 and 3, 2026-11-15; paper/WEB_REDESIGN_BRIEF.md). Linked right after site.css, whose tokens
+   (--surface-*, --text*, --muted, --select-*, --cmb ...) and components (.btn, .chip, .badge, .note, .sr-only, .topbar)
+   it builds on. Each page keeps only its own rules inline (the map's canvases, the crosshair, the shell states).
+
+   Layout. Desktop (wider than 720 px and taller than 500 px): a grid of the top bar; the page title beside a short
+   audio note (two lines at most, so the map never moves when the band changes); ONE toolbar row from 1280 px
+   (components, bands, Scan, then Sound key and the Sound settings popover, which holds Mute/Solo, Scale, Ref tone,
+   Equal loudness, the halo sound and Vol); and the map, which takes the rest of the height. Phones and short
+   (landscape) screens: the page flows in document order, so the map comes right after the title and the controls
+   follow below it; the page scrolls and the map is never shorter than max(260px, 60svh); Sound settings opens as a
+   bottom sheet. The map's own controls (zoom, spin, centre, Clusters, the CMB shell) float in its bottom-right corner;
+   the colour bar and the readout sit bottom left; status and the Sound key top right. */
+
+[hidden] { display: none !important; }   /* .btn and .chip set display: hidden controls (Mute/Solo) must still vanish */
+
+/* ------------------------------------------------------------------ page */
+body { display: flex; flex-direction: column; min-height: 100vh; min-height: 100svh; }
+
+.pagehead {
+  flex: none; display: flex; align-items: center; gap: var(--sp-1) var(--sp-3);
+  padding: var(--sp-2) var(--sp-4) 2px;
+}
+/* the title: .page-title (site.css), as on the Sonifier and How it works; one line */
+.pagehead .page-title { white-space: nowrap; }
+
+/* the audio note (site.css .note): the mapping in plain words, the scale and the tSZ sign at this band (SkyCore
+   noteShortHTML); the full statement opens the Sound key */
+.skynote { flex: none; padding: var(--sp-1) var(--sp-4); }
+.skynote b { color: var(--text-2); font-weight: 600; }
+.warn { color: var(--warn); }
+
+/* the toolbar: labelled groups; one row on a desktop from 1280 px, wrapping on narrower screens (nothing wider than 320 px) */
+.controls {
+  flex: none; position: relative; z-index: 20;
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3);
+  padding: 6px var(--sp-4); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+}
+.controls .chip { padding: 2px 10px; }
+.cgroup { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) 6px; min-width: 0; }
+.cgroup--end { margin-left: auto; }
+.clabel {
+  font-size: var(--fs-12); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
+}
+/* selects and the volume slider: at least 24 px tall (WCAG 2.5.8), like the 26 px .btn and .chip */
+.controls select { font-size: var(--fs-13); min-height: 26px; max-width: 100%; padding: 2px 6px; }
+.controls input[type="range"] { width: 140px; min-height: 24px; margin: 0; vertical-align: middle; }
+
+/* Mute and Solo (audio only), in Sound settings: one pair per component that is on (the others stay in the page,
+   hidden); turning a component off clears its Mute and Solo */
+.voice { display: inline-flex; align-items: center; gap: 3px; margin-right: 6px; }
+.voice__name { font-size: var(--fs-13); font-weight: 600; min-width: 2.6em; }
+.btn.mini {
+  min-width: 24px; min-height: 24px; padding: 0 6px;            /* the 24 x 24 px minimum target (WCAG 2.5.8) */
+  font-size: var(--fs-12); font-weight: 600; border-radius: 4px;
+}
+.btn.mini.active.mute { background: var(--danger); border-color: var(--danger); color: var(--select-fg); }
+.btn.mini.active.solo { background: var(--warn); border-color: var(--warn); color: var(--select-fg); }
+
+/* the bands: the shared band component (site.css: 'Band (GHz)', one segmented pair per survey, the selected band a
+   secondary selection), as on the Sonifier */
+#bandGroup { gap: var(--sp-1) 10px; }
+
+/* Sound settings: a popover (details) whose summary lists the non-default settings as badges (the first one and a
+   count when there are several; the full list is in its title and its accessible name) */
+.more { position: relative; }
+.more > summary { list-style: none; }
+.more > summary::-webkit-details-marker { display: none; }
+.more > summary::after {
+  content: ''; width: 6px; height: 6px; margin: 0 2px 3px 4px;
+  border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg);
+}
+.more[open] > summary::after { transform: rotate(225deg); margin-bottom: -2px; }
+.more[open] > summary { background: var(--surface-3); color: var(--text); }
+.more__chips:empty { display: none; }
+.more__chips { display: inline-flex; gap: var(--sp-1); }
+.more__panel {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 25;
+  width: max-content; max-width: min(380px, calc(100vw - 32px));
+  display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 10px 12px;
+  padding: var(--sp-3); background: var(--surface-1); border: 1px solid var(--border-strong);
+  border-radius: var(--r-md); box-shadow: 0 10px 28px rgba(0, 0, 0, .55);
+}
+.more__panel > .clabel { line-height: 26px; }            /* a label lines up with the first control of its row */
+.more__panel .note { grid-column: 1 / -1; max-width: 320px; }
+.more__row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.more__head { display: none; }                          /* the bottom sheet's title and Done (phones) */
+.more:not([open]) > .more__panel { display: none; }     /* closed: nothing laid out (the browser hides it anyway) */
+
+/* ------------------------------------------------------------------ the map / 3D view */
+.viewport {
+  position: relative; flex: 1 0 auto; overflow: hidden; background: var(--bg-deep);
+  min-height: 260px; min-height: max(260px, 60vh); min-height: max(260px, 60svh);
+}
+/* the canvases fill the view; position:absolute keeps them out of the layout, so the page decides the view's size
+   and the page scripts follow it (a ResizeObserver on the view; three.js sets its canvas size inline) */
+.viewport > canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.viewport > canvas:focus-visible { outline-offset: -2px; }
+
+/* the floating map controls (bottom right): zoom, spin, centre, Clusters, the CMB shell; 36 px targets. Each page sets
+   --mapctl-w and --mapctl-h (their box), which the legend and the Sound key keep clear of. */
+.mapctl {
+  position: absolute; right: 10px; bottom: 10px; z-index: 4;
+  display: flex; flex-direction: column; align-items: stretch; gap: 6px;
+}
+.mapctl__row { display: flex; gap: 6px; }
+.mapctl__row > .btn { flex: 1 1 0; }
+.mapctl .btn {
+  min-width: 36px; min-height: 36px; padding: 4px 10px; font-size: var(--fs-13); color: var(--text);
+  background: rgba(8, 11, 22, .86); border-color: var(--border-strong);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+.mapctl .btn:hover { background: var(--surface-3); }
+.mapctl .btn.active, .mapctl .btn[aria-pressed="true"] { background: var(--select-bg); color: var(--select-fg); border-color: var(--select-bg); }
+.mapctl .btn--icon { font-size: 18px; font-weight: 500; line-height: 1; padding: 0; }
+/* the cluster markers, as drawn: a gold ring with a dark edge (the map and the globe), a gold glow (the Lightcone) */
+.ring-ico {
+  flex: none; display: inline-block; width: 12px; height: 12px; border-radius: 50%;
+  border: 2px solid var(--halo); box-shadow: 0 0 0 1px rgba(4, 6, 12, .7), inset 0 0 0 1px rgba(4, 6, 12, .5);
+}
+.dot-ico {
+  flex: none; display: inline-block; width: 12px; height: 12px; border-radius: 50%;
+  background: radial-gradient(circle, #fff6e0 0, var(--halo) 30%, rgba(255, 213, 138, .45) 55%, rgba(255, 213, 138, 0) 72%);
+}
+
+/* bottom left: the colour-bar legend above the readout (neither takes pointer events) */
+.mapinfo {
+  position: absolute; left: 10px; bottom: 10px; z-index: 3; pointer-events: none;
+  max-width: calc(100% - 30px - var(--mapctl-w, 120px));
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+}
+.readout {
+  max-width: 100%;
+  font-size: var(--fs-14); color: var(--text-2); background: rgba(4, 6, 12, .9);
+  padding: var(--sp-1) var(--sp-2); border-radius: var(--r-sm);
+}
+.readout b { color: var(--text); font-weight: 600; }
+.readout .for-touch { display: none; }          /* the idle hint, worded for the pointer in use */
+.readout:empty { display: none; }               /* (phones drop the idle hint after the first touch) */
+@media (pointer: coarse) { .readout .for-touch { display: inline; } .readout .for-mouse { display: none; } }
+.legend {
+  display: flex; flex-direction: column; gap: 3px; max-width: 100%;
+  font-size: var(--fs-12); line-height: 1.3; font-variant-numeric: tabular-nums; color: var(--text-2);
+  background: rgba(4, 6, 12, .9); padding: 5px var(--sp-2); border-radius: var(--r-sm);
+}
+.legend__row { display: flex; align-items: center; gap: 6px; white-space: nowrap; min-width: 0; }
+.legend__row--note, .legend__row--sign { white-space: normal; }
+.legend__row--sign { color: var(--text); margin: -2px 0 1px; }   /* the tSZ sign at this band, under its colour bar */
+.legend__name { font-weight: 600; min-width: 4.5em; }
+.legend__q { color: var(--text-2); font-style: italic; }   /* not --muted: over a near-white map pixel the backing is ~#313238 */
+.legend__lo { min-width: 2.6em; text-align: right; }
+.legend__name, .legend__lo, .legend__hi, .legend__q { flex: none; }
+.legend__bar { flex: none; width: 88px; height: 8px; border-radius: 2px; box-shadow: 0 0 0 1px rgba(255, 255, 255, .25); }
+.legend__bar--dim { filter: brightness(.45); }              /* the Lightcone's dimmed shell */
+
+/* the empty state: no component on (the map is dark and silent but for the clusters); one click brings a map back */
+.empty {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; pointer-events: none;
+  max-width: calc(100% - 40px); padding: var(--sp-3) var(--sp-4); text-align: center;
+  font-size: var(--fs-14); color: var(--text); background: rgba(17, 22, 42, .94);
+  border: 1px solid var(--border-strong); border-radius: var(--r-md);
+}
+.empty__row { display: flex; justify-content: center; gap: var(--sp-2); margin-top: var(--sp-2); pointer-events: auto; }
+.empty__row .chip { min-height: 32px; padding: 2px 14px; }
+
+/* top right: the status hint and the Sound key */
+.hint {
+  position: absolute; right: 10px; top: 10px; z-index: 3; max-width: 46%; text-align: right;
+  /* --text-2, not --muted: over a white map pixel the .9 backing is ~#232428, where --text-2 is > 9:1 */
+  font-size: var(--fs-12); color: var(--text-2); background: rgba(4, 6, 12, .9);
+  padding: var(--sp-1) var(--sp-2); border-radius: var(--r-sm); pointer-events: none;
+}
+.hint:empty { padding: 0; background: none; }   /* stays in the accessibility tree (role=status) */
+/* the Sound key keeps clear of the map controls below it (when the view is tall enough), closes with its x button,
+   Escape or the toolbar button */
+.key {
+  position: absolute; right: 10px; top: 10px; z-index: 5;
+  width: min(440px, calc(100% - 20px));
+  max-height: calc(100% - 20px); max-height: max(55%, calc(100% - 30px - var(--mapctl-h, 130px))); overflow: auto;
+  font-size: var(--fs-13); line-height: 1.45; font-variant-numeric: tabular-nums; color: var(--text-2);
+  background: rgba(17, 22, 42, .97); border: 1px solid var(--border); border-radius: var(--r-md);
+  padding: 10px var(--sp-3);
+}
+.key__close {
+  position: sticky; top: 0; float: right; z-index: 1; margin: -4px -6px 4px 8px;
+  min-width: 32px; min-height: 32px; padding: 0; font-size: 18px; line-height: 1;
+  background: var(--surface-2); color: var(--text);
+}
+.key h2 { font-size: var(--fs-14); color: var(--text); margin: 0 0 var(--sp-1); }
+.key h3 { font-size: var(--fs-13); color: var(--text); margin: var(--sp-2) 0 2px; }
+.key p + p { margin-top: var(--sp-1); }
+.key ul { padding-left: 18px; }
+.key table { border-collapse: collapse; width: 100%; margin: var(--sp-1) 0; }
+.key td, .key th { border-bottom: 1px solid var(--border); padding: 2px var(--sp-1); text-align: left; vertical-align: top; }
+.key th { color: var(--muted); font-weight: 400; }
+
+/* ------------------------------------------------------------------ desktop: title + note, one toolbar row, the map */
+@media (min-width: 721px) and (min-height: 501px) {
+  body {
+    display: grid; grid-template-columns: max-content minmax(0, 1fr); grid-template-rows: auto auto auto 1fr;
+    grid-template-areas: "top top" "head note" "tools tools" "map map";
+  }
+  .topbar { grid-area: top; }
+  /* the row keeps two lines of the note (13 px x 1.5) whatever it says, so a band or component change never moves the
+     toolbar and the map */
+  .pagehead { grid-area: head; padding: 6px var(--sp-3) 6px var(--sp-4); align-self: stretch; min-height: 51px; }
+  .skynote { grid-area: note; align-self: center; padding: 6px var(--sp-4) 6px 0; }
+  .controls { grid-area: tools; }
+  .viewport { grid-area: map; }
+}
+
+/* ------------------------------------------------------------------ phones and short screens: the map first */
+@media (max-width: 720px), (max-height: 500px) {
+  .pagehead { padding: 6px var(--sp-4); }
+  .controls { border-bottom: 0; padding: var(--sp-2) var(--sp-4); }
+  .skynote { padding: 2px var(--sp-4) var(--sp-4); }
+  .readout { font-size: var(--fs-13); }
+  .legend__bar { width: 64px; }
+  /* the bands: one row, each survey's name as a caption under its pair (site.css) */
+  #bandGroup { gap: 4px 8px; align-items: flex-start; }
+  #bandGroup > .band-unit { align-self: flex-start; margin-top: 6px; }
+  /* Sound settings: a bottom sheet over a dimmed page (a tap outside, Done or Escape closes it) */
+  .more[open]::before { content: ''; position: fixed; inset: 0; z-index: 40; background: rgba(4, 6, 12, .6); }
+  .more__panel {
+    position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 41;
+    width: auto; max-width: none; max-height: 80vh; max-height: 80svh; overflow: auto;
+    padding: var(--sp-3) var(--sp-4) calc(var(--sp-4) + env(safe-area-inset-bottom, 0px));
+    border-width: 1px 0 0; border-radius: var(--r-lg) var(--r-lg) 0 0; box-shadow: 0 -10px 28px rgba(0, 0, 0, .6);
+  }
+  .more__head {
+    display: flex; grid-column: 1 / -1; align-items: center; justify-content: space-between; gap: var(--sp-2);
+    font-size: var(--fs-14); font-weight: 600; color: var(--text);
+  }
+  .more__panel .note { max-width: none; }
+}
+@media (max-height: 500px) { .pagehead .page-title { font-size: var(--fs-16); } }   /* short (landscape) screens: the map first */
+@media (max-width: 400px) {
+  /* the three band pairs and their captions stay on one row down to 320 px */
+  .freq-group .freq-btn { min-width: 36px; padding-left: 6px; padding-right: 6px; }
+  #bandGroup { gap: 4px 6px; }
+}
+@media (max-width: 420px) {
+  .legend__q { display: none; }   /* the quantity stays in each row's accessible name */
+  .legend__dim { display: none; } /* 'CMB (dim)': the dimmed bar shows it, and the row's name says it */
+  .legend__unit { display: none; } /* 'tSZ 353' (no ellipsis: the band is the point of the row); 'GHz' stays in its name */
+  .legend { padding: 4px 6px; }
+  .legend__row { gap: 4px; }
+  .legend__name, .legend__lo { min-width: 0; }
+  .legend__bar { width: 36px; flex: 0 1 auto; min-width: 16px; }   /* the bar gives way first on the narrowest views */
+  /* the Sound key: one block per voice instead of the four-column table */
+  .key tr:first-child { display: none; }
+  .key table, .key tbody, .key tr, .key td { display: block; }
+  .key tr { padding: 4px 0; border-bottom: 1px solid var(--border); }
+  .key td { border: 0; padding: 0; }
+}
+/* touch screens: bigger targets in the toolbar */
+@media (pointer: coarse) {
+  .controls .btn, .controls .chip, .controls select { min-height: 32px; }
+  .btn.mini { min-width: 32px; min-height: 32px; }
+  .controls input[type="range"] { min-height: 32px; }
+}

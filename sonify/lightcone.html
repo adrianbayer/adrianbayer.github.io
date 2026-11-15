@@ -18,82 +18,106 @@
   throw 'blocked';
 })();
 </script>
+<link rel="stylesheet" href="site.css">
+<link rel="stylesheet" href="sky.css">
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <style>
-:root{--bg:#04060c;--panel:#131829;--border:#1e2744;--text:#c8cde0;--muted:#8a93b4;--accent:#4a9eff;--focus:#ffd58a;--cmb:#4a9eff;}
-*{margin:0;padding:0;box-sizing:border-box;}
-html,body{height:100%;}
-body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;display:flex;flex-direction:column;}
-header{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:8px 14px;border-bottom:1px solid var(--border);}
-header h1{font-size:1.05em;font-weight:600;color:#e8ecf4;}
-header .sub{font-size:0.78em;color:var(--muted);}
-a.back{color:var(--accent);text-decoration:none;font-size:0.82em;border:1px solid var(--border);padding:4px 10px;border-radius:6px;}
-a.back:hover{background:#1e2744;}
-.controls{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:6px 14px;border-bottom:1px solid var(--border);}
-.clabel{font-size:0.68em;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);}
-.btn{padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text);cursor:pointer;font-size:0.8em;}
-.btn.active{background:var(--accent);color:var(--bg);border-color:var(--accent);}
-.btn:hover{filter:brightness(1.15);}
-:focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
-select{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:0.8em;padding:3px 4px;}
-input[type=range]{accent-color:var(--accent);}
-.note{font-size:0.74em;color:var(--muted);padding:4px 14px;border-bottom:1px solid var(--border);}
-.note b{color:var(--text);font-weight:600;}
-.warn{color:#ffb86b;}
-#view{position:relative;flex:1;min-height:0;}
-#view canvas{display:block;}
-#view canvas:focus-visible{outline:2px solid var(--focus);outline-offset:-2px;}
-.readout{position:absolute;left:10px;bottom:10px;font-size:0.75em;color:#aab3d4;background:rgba(4,6,12,0.8);padding:4px 8px;border-radius:6px;pointer-events:none;max-width:calc(100% - 20px);}
-.readout b{color:var(--accent);font-weight:600;}
-.hint{position:absolute;right:10px;top:10px;font-size:0.72em;color:var(--muted);background:rgba(4,6,12,0.8);padding:4px 8px;border-radius:6px;pointer-events:none;max-width:46%;text-align:right;}
-.hint:empty{padding:0;background:none;}   /* stays in the accessibility tree (role=status) */
+/* Inside the Lightcone: the crosshair, the caption and the CMB-shell button's states (the shared sky-view layout and
+   controls: sky.css; tokens and top bar: site.css) */
 .cross{position:absolute;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;pointer-events:none;opacity:0.5;
   background:linear-gradient(#fff,#fff) center/1px 100% no-repeat,linear-gradient(#fff,#fff) center/100% 1px no-repeat;}
-.key{position:absolute;right:10px;top:10px;width:min(420px,calc(100% - 20px));max-height:calc(100% - 60px);overflow:auto;
-  font-size:0.74em;line-height:1.45;background:rgba(10,14,26,0.95);border:1px solid var(--border);border-radius:8px;padding:10px 12px;z-index:3;}
-.key h2{font-size:1.05em;color:#e8ecf4;margin:0 0 4px;}
-.key h3{font-size:0.95em;color:#e8ecf4;margin:8px 0 2px;}
-.key table{border-collapse:collapse;width:100%;}
-.key td,.key th{border-bottom:1px solid var(--border);padding:2px 4px;text-align:left;vertical-align:top;}
-.key th{color:var(--muted);font-weight:normal;}
-.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+/* 'CMB shell: dim' (the default) is half on: aria-pressed="mixed", a light outline on a raised surface */
+#cmbBtn[aria-pressed="mixed"]{background:var(--surface-3);color:var(--text);border-color:var(--select-bg);}
+@media (forced-colors: active){ #cmbBtn[aria-pressed="mixed"]{outline:2px dashed Highlight;outline-offset:-2px;} }
+#view { --mapctl-w: 132px; --mapctl-h: 204px; }
+/* the scale caption, top left on the view */
+.caption{position:absolute;left:10px;top:10px;z-index:3;max-width:min(46%,420px);pointer-events:none;
+  font-size:var(--fs-12);line-height:1.4;color:var(--text-2);background:rgba(4,6,12,.82);padding:var(--sp-1) var(--sp-2);border-radius:var(--r-sm);}
+@media (max-width: 720px), (max-height: 500px) { .caption{max-width:calc(100% - 20px);} #view{--mapctl-w:122px;} }
+/* desktop: the toolbar holds only Sound key and Sound settings, so it shares the title row (the view gains its height) */
+@media (min-width: 721px) and (min-height: 501px) {
+  body { grid-template-columns: max-content minmax(0, 1fr) auto; grid-template-rows: auto auto 1fr;
+    grid-template-areas: "top top top" "head note tools" "map map map"; }
+  .controls { border: 0; padding: 6px var(--sp-4) 6px 0; align-self: center; }
+  .viewport { border-top: 1px solid var(--border); }
+}
+/* narrower desktops (721-1100 px): the note on its own row under the title and the toolbar, so it never wraps into a
+   narrow middle column (which made the header tall and the view short) */
+@media (min-width: 721px) and (max-width: 1100px) and (min-height: 501px) {
+  body { grid-template-columns: max-content minmax(0, 1fr); grid-template-rows: auto auto auto 1fr;
+    grid-template-areas: "top top" "head tools" "note note" "map map"; }
+  .controls { justify-self: end; }
+  .skynote { padding: 0 var(--sp-4) 6px; }
+}
 </style>
 </head>
 <body>
-<header>
-  <h1>Inside the Lightcone</h1>
-  <span class="sub" id="sub">you start at the observer (the centre) &middot; clusters at their comoving distance &chi; &middot; the CMB shell at &chi;<sub>*</sub>, on the same scale</span>
-  <a class="back" href="index.html">&larr; All toys</a>
-  <a class="back" href="globe.html">3D Globe</a>
-  <a class="back" href="about.html">How it works</a>
+<a class="skip-link" id="skipToMap" href="#view">Skip to the view</a>
+<header class="topbar">
+  <a class="topbar__brand" href="index.html"><span class="topbar__brand-pre">Experiencing the </span>Multi-Probe Sky</a>
+  <nav class="topbar__nav" aria-label="Site">
+    <a href="sonifier.html">Sonifier</a>
+    <a href="sky.html">Sky Explorer</a>
+    <a href="globe.html">Globe</a>
+    <a href="lightcone.html" aria-current="page">Lightcone</a>
+    <a href="about.html">How it works</a>
+  </nav>
+  <div class="topbar__actions"></div>
 </header>
-<div class="controls" role="group" aria-label="Lightcone controls">
-  <button class="btn" id="spinBtn" aria-pressed="false">Auto-spin</button>
-  <button class="btn active" id="haloBtn" aria-pressed="true">Clusters: on</button>
-  <button class="btn active" id="cmbBtn" aria-pressed="true">CMB shell: on</button>
-  <button class="btn" id="recenterBtn" title="Return to the observer (the origin), keeping the view direction">Back to centre</button>
-  <span class="clabel">Audio</span>
-  <button class="btn" id="refBtn" aria-pressed="false" title="Play the CMB voice's centre pitch (the empty-sky level, the map median) as a reference">Ref tone</button>
-  <button class="btn active" id="eqBtn" aria-pressed="true" title="ISO 226 (60 phon) equal-loudness weighting">Equal loudness</button>
-  <label class="clabel" for="haloSel">Halo sound</label>
-  <select id="haloSel">
-    <option value="data" selected>data (bell)</option>
-    <option value="artistic">artistic ('hey!' / your clip)</option>
-  </select>
-  <button class="btn" id="haloRecBtn" title="Record a short clip (up to 3 s) for the artistic halo sound">&#127908; record</button>
-  <label class="clabel" for="vol">Vol</label>
-  <input type="range" id="vol" min="0" max="200" value="70" style="width:90px;" title="Default 70: the limiter stays idle at 99.9% of sky positions; louder settings may engage it on bright spots">
-  <button class="btn" id="keyBtn" aria-expanded="false" aria-controls="key">Sound key</button>
+<div class="pagehead">
+  <h1 class="page-title">Inside the Lightcone</h1>
 </div>
-<div class="note" id="note">loading&hellip;</div>
-<div id="view">
+<div class="viewport" id="view">
   <div class="cross" aria-hidden="true"></div>
-  <div class="readout" id="readout" aria-hidden="true">drag or <b>I/J/K/L</b> to look &middot; <b>WASD</b>/arrows fly, Q/E (Shift/Space) down/up &middot; wheel or +/&minus; zoom (field of view) &middot; click a cluster or the CMB &middot; Enter listens at the centre</div>
+  <span class="caption sub" id="sub">You start at the observer (the centre) &middot; clusters at their comoving distance &chi; &middot; the CMB shell at &chi;<sub>*</sub>, on the same scale</span>
+  <div class="mapinfo">
+    <div class="legend" id="legend" hidden></div>
+    <div class="readout" id="readout" aria-hidden="true"><span class="for-mouse">Drag or <b>I/J/K/L</b> to look &middot; <b>WASD</b>/arrows fly, Q/E (Shift/Space) down/up &middot; wheel or +/&minus; zoom (field of view) &middot; click a cluster or the CMB &middot; Enter listens at the centre</span><span class="for-touch">Drag to look around &middot; tap a cluster or the CMB to listen</span></div>
+  </div>
+  <div class="mapctl" role="group" aria-label="Lightcone view">
+    <div class="mapctl__row">
+      <button class="btn btn--icon" id="zoomOut" aria-label="Zoom out (wider field of view)" title="Zoom out: a wider field of view (−)">&minus;</button>
+      <button class="btn btn--icon" id="zoomIn" aria-label="Zoom in (narrower field of view)" title="Zoom in: a narrower field of view (+)">+</button>
+    </div>
+    <button class="btn" id="spinBtn" aria-pressed="false" title="Turn the sky around you, one revolution per 100 s">Auto-spin</button>
+    <button class="btn" id="recenterBtn" title="Return to the observer (the origin), keeping the view direction">Back to centre</button>
+    <button class="btn active" id="haloBtn" aria-pressed="true" title="Show or hide the clusters; hidden clusters are silent"><span class="dot-ico" aria-hidden="true"></span>Clusters</button>
+    <button class="btn" id="cmbBtn" aria-pressed="mixed" aria-label="CMB shell: dim, 20 per cent brightness; press for full brightness" title="The last-scattering shell: dim (the default, so the clusters stand out in front of it), on (full brightness) or off; click to cycle">CMB shell: dim</button>
+  </div>
+  <div class="empty" id="empty" hidden>Turn on the CMB shell or the clusters to see and hear them</div>
   <div class="hint" id="hint" role="status" aria-live="polite">loading&hellip;</div>
   <aside class="key" id="key" hidden aria-label="Sound key"></aside>
   <div class="sr-only" id="live" aria-live="polite"></div>
 </div>
+<div class="controls" role="group" aria-label="Lightcone controls">
+  <div class="cgroup cgroup--end">
+    <button class="btn" id="keyBtn" aria-expanded="false" aria-controls="key">Sound key</button>
+    <details class="more" id="moreSet">
+      <summary class="btn" id="moreSum">Sound settings <span class="more__chips" id="moreChips"></span></summary>
+      <div class="more__panel" role="group" aria-label="Sound settings">
+        <div class="more__head"><span>Sound settings</span><button class="btn" id="moreDone">Done</button></div>
+        <span class="clabel" id="toneLabel">Tones</span>
+        <div class="more__row" role="group" aria-labelledby="toneLabel">
+          <button class="btn" id="refBtn" aria-pressed="false" title="Play the CMB voice's centre pitch (the empty-sky level, the map median) as a reference">Ref tone</button>
+          <button class="btn active" id="eqBtn" aria-pressed="true" title="ISO 226 (60 phon) equal-loudness weighting">Equal loudness</button>
+        </div>
+        <label class="clabel" for="haloSel">Halo sound</label>
+        <div class="more__row">
+          <select id="haloSel" title="Data halo sound (a bell): mass sets pitch, distance sets level/brightness/reverb. Artistic: a 'hey!' or your recorded clip">
+            <option value="data" selected>data (bell)</option>
+            <option value="artistic">artistic ('hey!' / your clip)</option>
+          </select>
+          <button class="btn" id="haloRecBtn" title="Record a short clip (up to 3 s) for the artistic halo sound">&#127908; record</button>
+        </div>
+        <label class="clabel" for="vol">Vol</label>
+        <input type="range" id="vol" min="0" max="200" value="70" title="Default 70: the limiter stays idle at 99.9% of sky positions; louder settings may engage it on bright spots">
+        <p class="note">Badges on the button list the settings that differ from the defaults.</p>
+      </div>
+    </details>
+  </div>
+</div>
+<div class="note skynote" id="note">loading&hellip;</div>
 
 <script src="sonify_core.js"></script>
 <script src="sky_core.js"></script>
@@ -120,9 +144,19 @@ const LOOK_STEP_DEG = 4, LOOK_MAX_ELEV_DEG = 89;
 const LOOK_KEYS = { KeyJ: [1, 0], KeyL: [-1, 0], KeyI: [0, 1], KeyK: [0, -1] };   // [turn left +, look up +]
 const FLY_CODES = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'ShiftLeft'];
 const ANNOUNCE_MS = 350;                        // announce the view after the last turn / flight key
-const BIN_PX = [2.5, 3.5, 5, 7];                // marker size [CSS px] per mass bin (bigger = more massive)
+const BIN_PX = [3.5, 5, 7, 9.5];                // marker size [CSS px] per mass bin (bigger = more massive); drawn with
+                                                // additive blending so they glow in front of the shell. Display only:
+                                                // a click picks the nearest projected centre (pickHaloScreen), whatever the size
+// The CMB shell opens dimmed, so the clusters show in front of it in the first frame; its button cycles
+// dim -> on (full brightness) -> off. Display only: the shell's sound is the same whenever it is shown.
+const SHELL_STATES = ['dim', 'on', 'off'], SHELL_DIM = 0.2;    // dim = the texture at 20 % brightness
+const SHELL_NAMES = {                           // the button's accessible name states the state (and what a press does)
+  dim: 'CMB shell: dim, ' + Math.round(SHELL_DIM * 100) + ' per cent brightness; press for full brightness',
+  on: 'CMB shell: on, full brightness; press to hide it',
+  off: 'CMB shell: off (hidden and silent); press to show it dimmed',
+};
 const V = { meta: null, halos: null, store: null, scales: null, keys: {}, spin: false, touch: false,
-  chiStar: null, rShell: null, haloLocal: null, colourCam: null };
+  chiStar: null, rShell: null, haloLocal: null, colourCam: null, shell: 'dim', vol0: 70 };
 const $ = (id) => document.getElementById(id);
 
 let scene, camera, renderer, controls, skyGroup, cmbSphere, haloGroup, haloBins = [], raycaster;
@@ -150,19 +184,33 @@ function initThree() {
   cv.setAttribute('aria-label', 'Lightcone. I, J, K, L turn the view (look up, left, down, right); arrow keys or W A S D fly, ' +
     'Q and E move down and up; plus and minus zoom the field of view; Enter listens in the view direction.');
   view.insertBefore(cv, view.firstChild);
+  // 'Skip to the view' (the first Tab stop): focus the 3D view, as Tab would after the top bar
+  $('skipToMap').addEventListener('click', (e) => { e.preventDefault(); cv.focus(); });
+  // phones: the caption and the idle hint go after the first touch on the view (the Sound key keeps both)
+  view.addEventListener('pointerdown', () => { if (narrow()) { $('sub').hidden = true; dropIdleHint(); } });
+  const mq = window.matchMedia ? window.matchMedia('(max-width: 480px)') : null;
+  if (mq && mq.addEventListener) mq.addEventListener('change', refreshLayers);   // the legend's phone and desktop wording
 
   skyGroup = new THREE.Group(); scene.add(skyGroup);
-  // CMB shell at chi_* (seen from the inside); the texture is the CMB display image
-  const e = C.findMap(V.meta, 'dT_cmblens', null);
-  const loader = new THREE.TextureLoader();
+  // CMB shell at chi_* (seen from the inside); the texture is the CMB display image: the 1024-px preview at once, the
+  // 2048-px md image once the CMB value map (the sound) is in or has failed (sky_img.json display tiers); both
+  // requested with fetchPriority 'high'
+  const img = C.displayImages(C.findMap(V.meta, 'dT_cmblens', null), false);
   const mat = new THREE.MeshBasicMaterial({ side: THREE.BackSide });
-  loader.load('sky_img/' + e.display.lo, (t) => {
+  const shellTexture = (src, done) => {
+    const im = new Image(); im.decoding = 'async'; im.fetchPriority = 'high';
+    im.onload = () => { const t = new THREE.Texture(im); t.format = THREE.RGBFormat; t.needsUpdate = true; done(t); };
+    im.src = 'sky_img/' + src;
+  };
+  shellTexture(img.lo, (t) => {
     if (!mat.map) { mat.map = t; mat.needsUpdate = true; }
     if (!V.store.error('dT_cmblens', null)) setHint('');
-    loader.load('sky_img/' + e.display.hi, (t2) => { mat.map = t2; mat.needsUpdate = true; });
   });
+  const md = () => shellTexture(img.md, (t2) => { mat.map = t2; mat.needsUpdate = true; });
+  V.store.request('dT_cmblens', null).then(md, md);       // after the value map (already requested: the same promise)
   cmbSphere = new THREE.Mesh(new THREE.SphereGeometry(V.rShell, 192, 96), mat);
   skyGroup.add(cmbSphere);
+  setShell(V.shell);
 
   // "look around" from the observer: OrbitControls orbiting a target EPS in front of the camera
   controls = new THREE.OrbitControls(camera, cv);
@@ -182,9 +230,38 @@ function initThree() {
       V.touch ? PICK_PX_TOUCH : PICK_PX);
   });
   cv.addEventListener('wheel', (e) => { e.preventDefault(); setFov(camera.fov * (e.deltaY < 0 ? 1 / 1.1 : 1.1)); }, { passive: false });
-  window.addEventListener('resize', () => {
-    const [w2, h2] = viewSize(); camera.aspect = w2 / h2; camera.updateProjectionMatrix(); renderer.setSize(w2, h2);
-  });
+  window.addEventListener('resize', onResize);
+  // the view's box, not only the window: the toolbar and the audio note change height, and on phones the page
+  // scrolls (sky.css); the canvas is absolutely positioned, so resizing it never feeds back into the layout
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => onResize()).observe(view);
+}
+function onResize() {
+  const [w, h] = viewSize();
+  if (!w || !h) return;                                        // hidden or not laid out yet
+  camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h);
+}
+/** The CMB shell: 'dim' (the default), 'on' (full brightness) or 'off' (hidden, and silent to clicks).
+ *  The button exposes the three states as aria-pressed mixed / true / false. */
+function setShell(state) {
+  V.shell = state;
+  cmbSphere.visible = state !== 'off';
+  cmbSphere.material.color.setScalar(state === 'dim' ? SHELL_DIM : 1);
+  const b = $('cmbBtn');
+  b.textContent = 'CMB shell: ' + state;
+  b.setAttribute('aria-pressed', state === 'on' ? 'true' : state === 'dim' ? 'mixed' : 'false');
+  b.setAttribute('aria-label', SHELL_NAMES[state]);       // screen readers say 'mixed' for the dim state: the name says what it is
+  b.classList.toggle('active', state === 'on');
+  refreshLayers();
+}
+/** The colour bar of the CMB shell (when shown) and the cluster marker (when shown), and the empty state when
+ *  neither is shown (nothing to see or hear). */
+function refreshLayers() {
+  const shell = V.shell !== 'off', halos = !!(haloGroup && haloGroup.visible);
+  const rows = shell && V.meta ? C.legendRows(V.meta, ['dT_cmblens'], null) : [];
+  const html = C.legendHTML(rows, { dim: V.shell === 'dim', icon: 'dot',
+    clusters: halos ? (narrow() ? 'clusters' : 'clusters (bigger = heavier, dimmer = farther)') : '' });   // phones: short (the Sound key says it)
+  $('legend').innerHTML = html; $('legend').hidden = !html;
+  $('empty').hidden = shell || halos || !haloGroup;
 }
 
 // ============================== halos: positions to scale, size by mass, brightness by distance ==============================
@@ -213,14 +290,16 @@ function buildHalos() {
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     const pts = new THREE.Points(g, new THREE.PointsMaterial({ size: BIN_PX[b], map: tex, sizeAttenuation: false,
-      vertexColors: true, transparent: true, depthWrite: false }));
+      vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
     haloGroup.add(pts);
     return { idx, pts, col };
   });
   recolourHalos();
+  refreshLayers();
 }
-/** Colour = mass (warm gold -> hot white); brightness falls with the distance d from the camera
- *  (~ d^-1/2 beyond 0.5 Gpc/h, floor 0.3): farther = dimmer, as farther = quieter in the audio. */
+/** Gold, the cluster colour of the three views (a little lighter for the heaviest); brightness falls with the
+ *  distance d from the camera (~ d^-1/2 beyond 0.5 Gpc/h, floor 0.3): farther = dimmer, as farther = quieter in the
+ *  audio. Size (BIN_PX) carries the mass. */
 function recolourHalos() {
   if (!haloBins.length) return;
   const H = V.halos, cam = camera.position, p = new THREE.Vector3();
@@ -230,7 +309,7 @@ function recolourHalos() {
       p.set(V.haloLocal[3 * i], V.haloLocal[3 * i + 1], V.haloLocal[3 * i + 2]); skyGroup.localToWorld(p);
       const d = p.distanceTo(cam), br = Math.min(1, Math.max(0.3, Math.sqrt(0.5 / Math.max(d, 1e-3))));
       const t = Math.min(1, Math.max(0, (H.log_mass[i] - 14.6) / 0.9));
-      bin.col[3 * k] = br; bin.col[3 * k + 1] = (0.80 + 0.16 * t) * br; bin.col[3 * k + 2] = (0.52 + 0.40 * t) * br;
+      bin.col[3 * k] = br; bin.col[3 * k + 1] = (0.80 + 0.08 * t) * br; bin.col[3 * k + 2] = (0.46 + 0.20 * t) * br;
     });
     bin.pts.geometry.attributes.color.needsUpdate = true;
   }
@@ -369,11 +448,15 @@ function animate(t) {
 
 // ============================== controls ==============================
 function setToggle(id, on) { const b = $(id); b.classList.toggle('active', on); b.setAttribute('aria-pressed', on); }
+const KEY_CLOSE = '<button class="btn key__close" id="keyClose" aria-label="Close the Sound key" title="Close (Esc)">&times;</button>';
+/** The full audio mapping, which opens the Sound key (the note under the toolbar is the short form). */
+const AUDIO_TEXT = '<b>Audio:</b> the CMB voice’s pitch = signed ΔT relative to the empty sky (hot = high), loudness = |ΔT − empty sky| / σ; ' +
+  'halo sounds: heavier clusters lower, farther ones quieter, duller and more reverberant, from their 3D direction (HRTF; headphones help).';
 function renderKey() {
   const k = $('key'); if (k.hidden || !V.meta) return;
-  k.innerHTML = C.keyHTML({ meta: V.meta, band: null, comps: ['dT_cmblens'], scales: V.scales, scaleMode: C.DEFAULT_SCALE_MODE,
+  k.innerHTML = KEY_CLOSE + C.keyHTML({ meta: V.meta, band: null, comps: ['dT_cmblens'], scales: V.scales, scaleMode: C.DEFAULT_SCALE_MODE,
     ref: audio.state.ref, eq: audio.state.eq, artistic: audio.state.artistic, pickPx: PICK_PX, pickMode: 'screen', scanPx: 0,
-    controlRate: SkyAudio.CONTROL_RATE, stagger: SkyAudio.STAGGER, maxLagS: 0, view: 'lightcone' }) +
+    controlRate: SkyAudio.CONTROL_RATE, stagger: SkyAudio.STAGGER, maxLagS: 0, view: 'lightcone' }).replace('</h2>', '</h2><p>' + AUDIO_TEXT + '</p>') +
     '<h3>Keys</h3><p>I / K look up / down, J / L turn left / right (' + LOOK_STEP_DEG + '° per press at a ' + FOV0 +
     '° field of view, finer when zoomed in); W A S D or the arrows fly, Q / E (Shift / Space) down / up; + / − zoom the ' +
     'field of view; Enter listens at the crosshair. After turning or flying, the view direction (θ, φ on the CMB shell) and ' +
@@ -382,35 +465,48 @@ function renderKey() {
     Math.round(V.chiMin) + '–' + Math.round(V.chiMax) + ' Mpc/h) and the CMB shell at χ<sub>*</sub> = ' + Math.round(V.chiStar) +
     ' Mpc/h (z<sub>*</sub> = ' + (V.halos && V.halos.z_star ? V.halos.z_star : 1091.9) + '), all in the HalfDome cosmology (h = ' +
     C.HALFDOME.h + ', Ω<sub>m</sub> = ' + C.HALFDOME.Om + ', flat ΛCDM): the picture is to scale. Marker size grows with mass; ' +
-    'markers get dimmer with distance from you.</p>';
+    'markers get dimmer with distance from you (gold glows, as the clusters are gold rings on the map and the globe). The CMB shell opens dimmed (' + Math.round(SHELL_DIM * 100) + ' % brightness) ' +
+    'so the clusters stand out in front of it; the CMB shell button cycles dim, on (full brightness) and off. ' +
+    'Clicking the shell plays the CMB voice whenever it is shown, dim or on; when it is off, only clusters sound.</p>';
 }
 function wireControls() {
   $('spinBtn').addEventListener('click', () => { V.spin = !V.spin; setToggle('spinBtn', V.spin); });
-  $('haloBtn').addEventListener('click', () => {
+  $('haloBtn').addEventListener('click', () => {     // a toggle: the name stays 'Clusters', aria-pressed gives the state
     if (!haloGroup) return; haloGroup.visible = !haloGroup.visible;
-    $('haloBtn').textContent = 'Clusters: ' + (haloGroup.visible ? 'on' : 'off'); setToggle('haloBtn', haloGroup.visible);
+    setToggle('haloBtn', haloGroup.visible); refreshLayers();
   });
   $('cmbBtn').addEventListener('click', () => {
-    cmbSphere.visible = !cmbSphere.visible;
-    $('cmbBtn').textContent = 'CMB shell: ' + (cmbSphere.visible ? 'on' : 'off'); setToggle('cmbBtn', cmbSphere.visible);
+    setShell(SHELL_STATES[(SHELL_STATES.indexOf(V.shell) + 1) % SHELL_STATES.length]);
   });
+  $('zoomIn').addEventListener('click', () => { setFov(camera.fov / 1.2); refreshView(); scheduleAnnounce(); });
+  $('zoomOut').addEventListener('click', () => { setFov(camera.fov * 1.2); refreshView(); scheduleAnnounce(); });
   $('recenterBtn').addEventListener('click', () => {
     const fwd = new THREE.Vector3().subVectors(controls.target, camera.position).normalize();
     camera.position.set(0, 0, 0); controls.target.copy(fwd.multiplyScalar(EPS)); controls.update(); recolourHalos();
   });
-  $('refBtn').addEventListener('click', () => { const on = !audio.state.ref; audio.setRef(on); setToggle('refBtn', on); renderKey(); });
-  $('eqBtn').addEventListener('click', () => { const on = !audio.state.eq; audio.setEq(on); setToggle('eqBtn', on); renderKey(); });
-  $('haloSel').addEventListener('change', (e) => { audio.setArtistic(e.target.value === 'artistic'); renderKey(); });
-  $('vol').addEventListener('input', (e) => audio.setVolume(e.target.value / 100));
+  $('refBtn').addEventListener('click', () => { const on = !audio.state.ref; audio.setRef(on); setToggle('refBtn', on); renderKey(); updateSettingsSummary(); });
+  $('eqBtn').addEventListener('click', () => { const on = !audio.state.eq; audio.setEq(on); setToggle('eqBtn', on); renderKey(); updateSettingsSummary(); });
+  $('haloSel').addEventListener('change', (e) => { audio.setArtistic(e.target.value === 'artistic'); renderKey(); updateSettingsSummary(); });
+  $('vol').addEventListener('input', (e) => { audio.setVolume(e.target.value / 100); updateSettingsSummary(); });
   $('haloRecBtn').addEventListener('click', () => audio.recordClip((st) => {
     const b = $('haloRecBtn');
     if (st === 'recording') { b.innerHTML = '&#9632; recording…'; b.classList.add('active'); }
     else { b.classList.remove('active'); b.innerHTML = st === 'nomic' ? 'no mic' : st === 'denied' ? 'mic denied' : '&#127908; record'; }
-    if (st === 'idle') { $('haloSel').value = 'artistic'; audio.setArtistic(true); renderKey(); }
+    if (st === 'idle') { $('haloSel').value = 'artistic'; audio.setArtistic(true); renderKey(); updateSettingsSummary(); }
   }));
-  $('keyBtn').addEventListener('click', () => {
-    const k = $('key'), open = k.hidden; k.hidden = !open; $('keyBtn').setAttribute('aria-expanded', open);
-    setToggle('keyBtn', open); if (open) renderKey();
+  $('keyBtn').addEventListener('click', () => setKey($('key').hidden));
+  $('key').addEventListener('click', (e) => { if (e.target && e.target.id === 'keyClose') setKey(false, true); });
+  // Sound settings (a details popover; a bottom sheet on phones): Escape, Done, or a press anywhere outside it (a tap
+  // on the view or the dimmed page too) closes it
+  $('moreDone').addEventListener('click', () => closeSettings(true));
+  document.addEventListener('pointerdown', (e) => {
+    const t = e.target;
+    if ($('moreSet').open && !(t && t.closest && t.closest('.more__panel, #moreSum'))) closeSettings(false);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if ($('moreSet').open) closeSettings(true);
+    else if (!$('key').hidden) setKey(false, true);
   });
   // flight keys work anywhere on the page except in form controls (as in v1); Enter listens at the
   // crosshair when the 3D view (or the page) has focus
@@ -433,14 +529,40 @@ function wireControls() {
   window.addEventListener('blur', () => { V.keys = {}; });
 }
 
+function closeSettings(refocus) { $('moreSet').open = false; if (refocus) $('moreSum').focus(); }
+/** A phone-sized view (480 px or narrower), where the floating text covers much of the view. */
+function narrow() { return !!(window.matchMedia && window.matchMedia('(max-width: 480px)').matches); }
+/** The idle hint (how to look and listen) leaves the readout; a click or tap writes the readout as before. */
+function dropIdleHint() { const r = $('readout'); if (r && /for-touch/.test(r.innerHTML)) r.innerHTML = ''; }
+/** The Sound key panel: the toolbar button, its x button and Escape (focus back on the toolbar button). */
+function setKey(open, refocus) {
+  const k = $('key'); k.hidden = !open; $('keyBtn').setAttribute('aria-expanded', open); setToggle('keyBtn', open);
+  if (open) { renderKey(); showView(); } else if (refocus) $('keyBtn').focus();
+}
+/** On a phone the controls are below the view: bring the view (where the Sound key opens) into view. */
+function showView() {
+  const w = $('view'), r = w.getBoundingClientRect();
+  if (w.scrollIntoView && (r.top < 0 || r.bottom > (window.innerHeight || r.bottom))) w.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+function updateSettingsSummary() {
+  const r = C.settingsSummary({ ref: audio.state.ref, eq: audio.state.eq, artistic: audio.state.artistic, vol: $('vol').value, vol0: V.vol0 });
+  $('moreChips').innerHTML = r.html; $('moreSum').title = r.title;
+}
+
 async function init() {
   if (typeof THREE === 'undefined') { setHint('Could not load the 3D library (check the connection).'); return; }
   try {
-    const [a, b] = await Promise.all([fetch('sky_img/sky_img.json'), fetch('halos.json')]);
+    // halos.json loads in parallel; the CMB value map (the sound) starts as soon as sky_img.json names it
+    const halosP = fetch('halos.json').then((r) => (r.ok ? r.json() : null), () => null);
+    const a = await fetch('sky_img/sky_img.json');
     if (!a.ok) throw new Error('sky_img.json HTTP ' + a.status);
     V.meta = await a.json();
     if (V.meta.version !== 3) throw new Error('sky_img.json version ' + V.meta.version + ' (need 3: HEALPix value maps)');
-    V.halos = b.ok ? await b.json() : null;
+    V.scales = { dT_cmblens: C.voiceScales(V.meta, 'dT_cmblens', null, C.DEFAULT_SCALE_MODE) };
+    V.store = C.createMapStore(V.meta, { base: 'sky_img/', fetch: (u) => fetch(u), inflate: C.inflateStream,   // failures reported once
+      onError: (err) => setHint('sky values unavailable: ' + err.message) });
+    V.store.get('dT_cmblens', null);            // the value map first (the sound), then the shell images (initThree)
+    V.halos = await halosP;
   } catch (err) {
     setHint('Load failed: ' + err.message + (location.protocol === 'file:' ? ' (serve over http)' : ''));
     $('note').textContent = ''; return;
@@ -452,15 +574,12 @@ async function init() {
     let lo = Infinity, hi = 0; for (let i = 0; i < V.halos.n; i++) { const c = haloChi(i); lo = Math.min(lo, c); hi = Math.max(hi, c); }
     V.chiMin = lo; V.chiMax = hi;
   }
-  V.scales = { dT_cmblens: C.voiceScales(V.meta, 'dT_cmblens', null, C.DEFAULT_SCALE_MODE) };
-  V.store = C.createMapStore(V.meta, { base: 'sky_img/', fetch: (u) => fetch(u), inflate: C.inflateStream,   // failures reported once
-    onError: (err) => setHint('sky values unavailable: ' + err.message) });
-  V.store.get('dT_cmblens', null);
-  $('note').innerHTML = '<b>Audio:</b> the CMB voice’s pitch = signed ΔT relative to the empty sky (hot = high), loudness = |ΔT − empty sky| / σ; ' +
-    'halo sounds: heavier clusters lower, farther ones quieter, duller and more reverberant, from their 3D direction (HRTF; headphones help). ' +
-    'To scale: 1 unit = 1 Gpc/h, shell at χ<sub>*</sub> = ' + Math.round(V.chiStar) + ' Mpc/h' +
+  V.vol0 = Number($('vol').value);
+  // the short note (the full mapping opens the Sound key)
+  $('note').innerHTML = '<b>Audio:</b> the CMB: hotter = higher pitch, farther from the empty sky = louder &middot; clusters: heavier = lower, ' +
+    'farther = quieter and duller, from their direction (headphones help) &middot; to scale: the shell at χ<sub>*</sub> = ' + Math.round(V.chiStar) + ' Mpc/h' +
     (V.meta.provisional ? ' &middot; <span class="warn">sky values are PROVISIONAL</span>' : '');
-  initThree(); buildHalos(); wireControls();
+  initThree(); buildHalos(); wireControls(); refreshLayers(); updateSettingsSummary();
   audio.loadStoredClip();
   requestAnimationFrame(animate);
 }

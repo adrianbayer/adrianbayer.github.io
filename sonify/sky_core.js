@@ -769,6 +769,154 @@
   }
 
   // ======================================================================================
+  // Display helpers (website phase 3): which display image to fetch, and the colour-bar legend. Display only:
+  // nothing here reads the value maps or changes the sound.
+  // ======================================================================================
+  /** Display image tiers (sky_img.json display: lo 1024 px preview, md 2048 px, hi 4096 px). md serves the Globe,
+   *  the Lightcone shell and the Sky Explorer whenever it is sharp enough: hi is fetched only when the flat map is
+   *  shown so wide that md would be magnified by more than `magnification` device pixels per image pixel, the
+   *  device-pixel ratio counted up to dprCap (the 3D views cap their renderers at 2 too). The whole-sky view follows
+   *  the same rule: md on phones and on 1x and 1.5x desktops, hi on a 2x desktop (a 1440-px map is 2880 device px). */
+  const DISPLAY_TIER = { magnification: 1.2, dprCap: 2 };
+  /** 'md' or 'hi' for a view that shows the full map screenW CSS px wide at device-pixel ratio dpr. An index without
+   *  the md tier (no display.md_width): 'hi'. */
+  function displayTier(meta, screenW, dpr) {
+    const mdW = meta && meta.display && meta.display.md_width;
+    if (!mdW) return 'hi';
+    const dev = screenW * Math.min(DISPLAY_TIER.dprCap, Math.max(1, dpr || 1));
+    return dev > DISPLAY_TIER.magnification * mdW ? 'hi' : 'md';
+  }
+  /** The display image names of a map entry, {lo, md, hi, dark}: dark = the dark-centred overlay variant (when the
+   *  entry has one and `dark` is asked for). md falls back to hi in an index without the md tier. null: no images. */
+  function displayImages(entry, dark) {
+    const d = (entry && entry.display) || {}, k = dark && d.hi_dk ? '_dk' : '';
+    if (!d['hi' + k]) return null;
+    return { lo: d['lo' + k] || d['hi' + k], md: d['md' + k] || d['hi' + k], hi: d['hi' + k], dark: !!k };
+  }
+  /** Colour-bar stops (9 per map, low to high) of the display colour maps, sampled from export_sky_images.py's maps
+   *  (planck and darkdiv are defined there, the others are matplotlib's). */
+  const CMAP_STOPS = {
+    planck: ['#0000ff', '#0054ff', '#00a7ff', '#42e1f5', '#ffecd6', '#ffc133', '#ff7e00', '#d53700', '#640000'],
+    RdBu_r: ['#053061', '#2a71b2', '#6bacd1', '#c2ddec', '#f7f6f6', '#fbccb4', '#e48066', '#ba2832', '#67001f'],
+    magma: ['#000004', '#1d1147', '#51127c', '#832681', '#b73779', '#e75263', '#fc8961', '#fec488', '#fcfdbf'],
+    inferno: ['#000004', '#210c4a', '#57106e', '#8a226a', '#bc3754', '#e45a31', '#f98e09', '#f9cb35', '#fcffa4'],
+    darkdiv: ['#4580ff', '#3460bf', '#22407f', '#11203f', '#010000', '#41130e', '#81271c', '#c13a2a', '#ff4c38'],
+  };
+  /** CSS linear-gradient (left = low) through evenly spaced colour stops. */
+  function stopsGradient(s) {
+    return 'linear-gradient(90deg, ' + s.map((c, i) => c + ' ' + +(100 * i / (s.length - 1)).toFixed(1) + '%').join(', ') + ')';
+  }
+  /** CSS linear-gradient (left = low) of a display colour map, or null if unknown. */
+  function cmapGradient(cmap) {
+    const s = CMAP_STOPS[cmap]; return s ? stopsGradient(s) : null;
+  }
+  /** The component colours (site.css --cmb, --tsz, --cib, --ksz, --tot), for the canvases: colour means data, so an
+   *  overlaid map is drawn in its component's colour. */
+  const COMP_HEX = { dT_cmblens: '#4a9eff', dT_tsz: '#ff9f43', dT_cib: '#2ed573', dT_ksz: '#ff6fb7', T_tot: '#c9ced9' };
+  const hexRGB = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
+  const rgbHex = (c) => '#' + c.map((v) => Math.round(Math.min(1, Math.max(0, v)) * 255).toString(16).padStart(2, '0')).join('');
+  const lum = (c) => 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2];
+  /** The canvas 'luminosity' blend of two opaque colours (W3C Compositing and Blending, non-separable modes:
+   *  SetLum(backdrop, Lum(source)) with ClipColor): the hue and chroma of `backdrop`, the luminance of `source`. The
+   *  pages tint an overlaid map by filling its component colour and drawing the map over it with
+   *  globalCompositeOperation 'luminosity'; this gives the colour bar the same colours. Hex in, hex out. */
+  function blendLuminosity(backdrop, source) {
+    const b = hexRGB(backdrop), l = lum(hexRGB(source)), d = l - lum(b);
+    let c = b.map((v) => v + d);
+    const L = lum(c), n = Math.min(...c), x = Math.max(...c);
+    if (n < 0) c = c.map((v) => L + (v - L) * L / (L - n));
+    if (x > 1) c = c.map((v) => L + (v - L) * (1 - L) / (x - L));
+    return rgbHex(c);
+  }
+  /** A colour-bar end in muK: 3 significant digits at most (0 dp from 100, 1 dp from 1), signed on a diverging axis. */
+  function legendNumber(v, signedAxis) {
+    const a = Math.abs(v), s = a.toFixed(a >= 100 ? 0 : a >= 1 ? 1 : 2);
+    if (Number(s) === 0) return '0';
+    return (v < 0 ? '−' : signedAxis ? '+' : '') + s;
+  }
+  /** The tSZ sign at a band as the legend states it under the tSZ (or a Total holding it): an arrow, the word and
+   *  what it means for the sound. null when unknown. */
+  function tszSign(meta, band) {
+    const pol = tszPolarity(meta, band);
+    return pol === 'decrement' ? { pol, arrow: '↓', text: 'decrement: clusters sound lower' }
+      : pol === 'increment' ? { pol, arrow: '↑', text: 'increment: clusters sound higher' }
+        : pol === 'null' ? { pol, arrow: '≈', text: 'near its null: clusters nearly silent' } : null;
+  }
+  /** The colour-bar legend of the displayed maps, one row per active component in voice order: its name and band,
+   *  the quantity shown (|ΔT| for the tSZ image), the colour map drawn and its stops, the display range in muK from
+   *  sky_img.json (display.range_uK) and the words for its ends (cold to hot; weak to strong for |ΔT|). One map: its
+   *  classic colour map. Overlaid (2 or more): the dark-centred variant where there is one, drawn in the component's
+   *  colour (tint, see blendLuminosity), as the pages draw them. sign: the tSZ sign at this band (the tSZ, and a
+   *  Total holding it), which the pages show on a line of its own. text: the colour bar as one sentence (its
+   *  accessible name). */
+  function legendRows(meta, comps, band) {
+    const multi = comps.length >= 2;
+    return VOICE_ORDER.filter((c) => comps.indexOf(c) >= 0).map((c) => {
+      const e = findMap(meta, c, band); if (!e || !e.display) return null;
+      const d = e.display, img = displayImages(e, multi), cmap = img && img.dark ? 'darkdiv' : d.cmap;
+      const tint = multi ? COMP_HEX[c] : null, src = CMAP_STOPS[cmap];
+      const stops = src ? (tint ? src.map((x) => blendLuminosity(tint, x)) : src.slice()) : null;
+      const rng = d.range_uK || [e.vmin, e.vmax], sym = d.mode === 'sym', mag = d.mode === 'mag';
+      const name = COMP_LABELS[c] + (e.band != null ? ' ' + e.band + ' GHz' : ''), quantity = mag ? '|ΔT|' : 'ΔT';
+      const lo = legendNumber(rng[0], sym), hi = legendNumber(rng[1], sym), ends = mag ? ['weak', 'strong'] : ['cold', 'hot'];
+      const withTsz = c === 'dT_tsz' || (c === 'T_tot' && totalParts(meta).indexOf('dT_tsz') >= 0);
+      const sg = withTsz && e.band != null ? tszSign(meta, e.band) : null;
+      const sign = sg ? Object.assign({}, sg, { text: (c === 'T_tot' ? 'tSZ ' : '') + sg.text }) : null;
+      return { comp: c, name, band: e.band != null ? String(e.band) : null, quantity, cmap, tint, stops,
+        gradient: stops ? stopsGradient(stops) : null, lo, hi, ends, sign,
+        text: name + ' ' + quantity + ': ' + lo + ' µK (' + ends[0] + ') to ' + hi + ' µK (' + ends[1] + ')' +
+          (tint ? ', in its component colour' : '') };
+    }).filter(Boolean);
+  }
+
+  /** The legend's HTML (the pages insert it into #legend): a colour-bar row per legendRows row, named by its
+   *  sentence (role img); the tSZ sign on a line under its row; a line on the colours when maps are overlaid; the
+   *  cluster marker. The band's unit is a span (legend__unit) that a narrow phone hides, so the band itself is never
+   *  cut. o = {clusters: the marker's caption, or '' for none; icon: 'ring' (default) or 'dot'; dim: the Lightcone's
+   *  dimmed shell}. */
+  function legendHTML(rows, o) {
+    o = o || {};
+    let h = '';
+    for (const r of rows) {
+      h += '<div class="legend__row" role="img" aria-label="' + r.text + (o.dim ? ', shown dimmed' : '') + '">' +
+        '<span class="legend__name" style="color:var(--' + CSS_VAR[r.comp] + ')">' + COMP_LABELS[r.comp] +
+        (r.band ? ' ' + r.band + '<span class="legend__unit"> GHz</span>' : '') +
+        (o.dim ? '<span class="legend__dim"> (dim)</span>' : '') + '</span>' +
+        '<span class="legend__q">' + r.quantity + '</span><span class="legend__lo">' + r.lo + '</span>' +
+        '<span class="legend__bar' + (o.dim ? ' legend__bar--dim' : '') + '" style="background:' + r.gradient + '"></span>' +
+        '<span class="legend__hi">' + r.hi + ' µK</span></div>';
+      if (r.sign) h += '<div class="legend__row legend__row--sign">' + r.sign.arrow + ' ' + r.sign.text + '</div>';
+    }
+    if (rows.some((r) => r.tint)) h += '<div class="legend__row legend__row--note">overlaid: colour = component, brighter = stronger</div>';
+    if (o.clusters) {
+      h += '<div class="legend__row legend__row--note"><span class="' + (o.icon === 'dot' ? 'dot-ico' : 'ring-ico') +
+        '" aria-hidden="true"></span>' + o.clusters + '</div>';
+    }
+    return h;
+  }
+  const SCALE_BADGE = { component: 'per component', common: 'common µK' };
+  /** The Sound settings summary of the sky views: a badge for every setting that differs from its default (the
+   *  scale, Solo, Mute, Ref tone, Equal loudness off, the artistic halo sound, Vol). One shows in full; with several,
+   *  the first and a count ('+2'), so the toolbar keeps one row, and the others in words for screen readers; the
+   *  title lists them all. s = {scaleMode (omit: no scale setting), solo, mute (Sets of components), ref, eq,
+   *  artistic, vol, vol0}. Returns {html, title, n}. */
+  function settingsSummary(s) {
+    const b = [], names = (set) => VOICE_ORDER.filter((c) => set.has(c)).map((c) => COMP_LABELS[c]).join(', ');
+    if (s.scaleMode && s.scaleMode !== DEFAULT_SCALE_MODE) b.push({ t: SCALE_BADGE[s.scaleMode], full: 'Scale: ' + SCALE_LABELS[s.scaleMode] });
+    if (s.solo && s.solo.size) b.push({ t: 'Solo ' + names(s.solo) });
+    if (s.mute && s.mute.size) b.push({ t: 'Mute ' + names(s.mute) });
+    if (s.ref) b.push({ t: 'Ref tone' });
+    if (s.eq === false) b.push({ t: 'Eq. loudness off' });
+    if (s.artistic) b.push({ t: 'artistic', cls: 'badge--artistic' });
+    if (s.vol !== undefined && Number(s.vol) !== Number(s.vol0)) b.push({ t: 'Vol ' + s.vol });
+    const badge = (x) => '<span class="badge' + (x.cls ? ' ' + x.cls : '') + '"' + (x.full ? ' title="' + x.full + '"' : '') + '>' + x.t + '</span>';
+    const words = (x) => x.full || x.t, rest = b.slice(1).map(words).join(', ');
+    const html = !b.length ? '' : b.length === 1 ? badge(b[0]) : badge(b[0]) +
+      '<span class="badge" aria-hidden="true" title="Also: ' + rest + '">+' + (b.length - 1) + '</span><span class="sr-only">, also ' + rest + '</span>';
+    return { html, n: b.length, title: b.length ? 'Changed from the defaults: ' + b.map(words).join(', ') : '' };
+  }
+
+  // ======================================================================================
   // UI text shared by the sky views (pure string builders; the pages insert them as HTML)
   // ======================================================================================
   function fmtHz(f) { return f >= 1000 ? (f / 1000).toFixed(2) + ' kHz' : Math.round(f) + ' Hz'; }
@@ -785,13 +933,15 @@
   }
 
   /** One-line statement of the audio mapping, the scale mode and the tSZ polarity at the current
-   *  band. s = {meta, band, comps, scaleMode}. */
-  function noteHTML(s) {
+   *  band. s = {meta, band, comps, scaleMode}. opt (optional): {scale: false} leaves out the scale sentence,
+   *  {provisional: false} the PROVISIONAL warning (the Sound key states both on its own). */
+  function noteHTML(s, opt) {
+    opt = opt || {};
     const mode = SCALE_MODES.indexOf(s.scaleMode) >= 0 ? s.scaleMode : DEFAULT_SCALE_MODE;
     const parts = ['<b>Audio:</b> pitch = signed ΔT (hot = high) ' +
       (mode === 'map' ? 'relative to the empty sky' : 'relative to 0 µK') + ', each component in its own register; ' +
       'loudness = |ΔT − empty sky| / σ'];
-    if (s.scaleMode) {
+    if (s.scaleMode && opt.scale !== false) {
       parts.push(mode === 'map'
         ? 'scale: <b>equalized per map</b> (each component and band uses its full register and its own σ: ' +
           'levels are not comparable across bands; use a physical scale for that)'
@@ -808,7 +958,7 @@
       parts.push('tSZ at ' + s.band + ' GHz is ' + said + (mode === 'map' ? ' than the empty sky' : '') +
         (tsz ? ' (the tSZ image shows |ΔT|, brighter = stronger)' : ''));
     }
-    if (s.meta.provisional) {
+    if (s.meta.provisional && opt.provisional !== false) {
       const approx = approximateEntries(s.meta, s.comps, s.band);
       parts.push('<span class="warn">sky values are PROVISIONAL (from the 8-bit 21′ v1 maps; readouts rounded to their ' +
         'level spacing)' + approx.map((e) => '; ' + COMP_LABELS[e.component] + ' at ' + e.band + ' GHz is APPROXIMATE: ' +
@@ -817,10 +967,29 @@
     }
     return parts.join(' &middot; ');
   }
+  const SCALE_SHORT = { map: 'equalized per map', component: 'physical per component', common: 'common µK' };
+  /** The short audio note above the toolbar (a line or two, so that the map does not move when the band changes):
+   *  the mapping in plain words, the scale by its name in Sound settings and, with the tSZ (or a Total holding it) on,
+   *  the tSZ sign at this band. The full statement (noteHTML) opens the Sound key. s = {meta, band, comps, scaleMode}. */
+  function noteShortHTML(s) {
+    const mode = SCALE_MODES.indexOf(s.scaleMode) >= 0 ? s.scaleMode : DEFAULT_SCALE_MODE;
+    const parts = ['<b>Audio:</b> hotter = higher pitch' + (mode === 'map' ? '' : ' (0 µK at the centre)') +
+      ', farther from the empty sky = louder', 'scale: <b>' + SCALE_SHORT[mode] + '</b>'];
+    const tsz = s.comps.indexOf('dT_tsz') >= 0, tot = s.comps.indexOf('T_tot') >= 0 && totalParts(s.meta).indexOf('dT_tsz') >= 0;
+    if (tsz || tot) {
+      const pol = tszPolarity(s.meta, s.band);
+      parts.push('tSZ at ' + s.band + ' GHz: ' + (pol === 'decrement' ? 'a <b>decrement</b>, clusters sound <b>lower</b>'
+        : pol === 'increment' ? 'an <b>increment</b>, clusters sound <b>higher</b>'
+          : pol === 'null' ? 'near its <b>null</b>, clusters nearly silent' : 'of unknown sign'));
+    }
+    if (s.meta.provisional) parts.push('<span class="warn">sky values are PROVISIONAL (see the Sound key)</span>');
+    return parts.join(' &middot; ');
+  }
 
   /** The 'Sound key' panel. s = {meta, band, comps, scales (scaleTable), scaleMode, ref, eq,
    *  artistic, pickPx, pickMode: 'angle' | 'screen', scanPx, controlRate, stagger, maxLagS,
-   *  view: 'map' | 'globe' | 'lightcone'}. */
+   *  view: 'map' | 'globe' | 'lightcone', note: true to open with the audio mapping and the tSZ sign (noteHTML),
+   *  which the pages' short note leaves out}. */
   function keyHTML(s) {
     const mode = SCALE_MODES.indexOf(s.scaleMode) >= 0 ? s.scaleMode : DEFAULT_SCALE_MODE;
     const comps = VOICE_ORDER.filter((c) => s.comps.indexOf(c) >= 0);
@@ -836,7 +1005,7 @@
     }).join('');
     const pitchRef = mode === 'map' ? 'that map’s largest |ΔT − empty| (its stored 0.05–99.95 percentile range)'
       : mode === 'component' ? 'the largest |ΔT| of that component over all bands' : 'the largest |ΔT| of any map';
-    let h = '<h2>Sound key</h2>' +
+    let h = '<h2>Sound key</h2>' + (s.note ? '<p>' + noteHTML(s, { scale: false, provisional: false }) + '</p>' : '') +
       '<p>Scale: <b>' + SCALE_LABELS[mode] + '</b>. ' +
       (mode === 'map' ? 'Each component and band is normalized by its own map, so every voice uses its full register and ' +
         'is audible, but levels and pitch steps are not comparable across bands or components. '
@@ -872,7 +1041,8 @@
       h += 'Here the 1/distance level comes from your actual distance to the cluster (HRTF panner, inverse model), ' +
         'so it changes as you fly. ' + pickText + '; hidden clusters are silent.</p>';
     } else {
-      h += pickText + (s.view === 'globe' ? '; hidden clusters are silent; sounds come from the clicked direction (HRTF).' : '.') +
+      h += pickText + (s.view === 'globe' ? '; hidden clusters are silent; sounds come from the clicked direction (HRTF).'
+        : '; hidden clusters (Clusters off) are silent.') +
         (s.scanPx ? ' While scanning, the ear rings each cluster it passes (within the same radius around the ear).' : '') + '</p>';
     }
     if (s.scanPx) {
@@ -927,7 +1097,10 @@
     C_OVER_H0, HALFDOME, omegaRadiation, comovingDistance,
     // misc
     mulberry32, reverbImpulse, clipNormGain, formatMicroK, formatSkyCoords,
+    // display (image tiers, colour-bar legend)
+    DISPLAY_TIER, displayTier, displayImages, CMAP_STOPS, cmapGradient, COMP_HEX, blendLuminosity, legendNumber, tszSign, legendRows,
+    legendHTML, settingsSummary,
     // UI text
-    fmtHz, CSS_VAR, noteHTML, keyHTML, approximateEntries,
+    fmtHz, CSS_VAR, noteHTML, noteShortHTML, keyHTML, approximateEntries,
   };
 });

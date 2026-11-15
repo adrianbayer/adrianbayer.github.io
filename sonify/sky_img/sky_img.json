@@ -39,6 +39,8 @@
  "display": {
   "width": 4096,
   "height": 2048,
+  "md_width": 2048,
+  "md_height": 1024,
   "lo_width": 1024,
   "lo_height": 512,
   "note": "JPEG colour images for viewing only (not for values). _dk = dark-centred diverging variant for overlays. tSZ display shows |dT|."
@@ -128,6 +130,7 @@
    "sigma_field_uK": 105.46979487131212,
    "display": {
     "hi": "dT_cmblens.jpg",
+    "md": "dT_cmblens_md.jpg",
     "lo": "dT_cmblens_lo.jpg",
     "cmap": "planck",
     "mode": "sym",
@@ -136,6 +139,7 @@
      289.9760495168567
     ],
     "hi_dk": "dT_cmblens_dk.jpg",
+    "md_dk": "dT_cmblens_dk_md.jpg",
     "lo_dk": "dT_cmblens_dk_lo.jpg"
    }
   },
@@ -162,6 +166,7 @@
    "sigma_field_uK": 1.0256982932573635,
    "display": {
     "hi": "dT_ksz.jpg",
+    "md": "dT_ksz_md.jpg",
     "lo": "dT_ksz_lo.jpg",
     "cmap": "RdBu_r",
     "mode": "sym",
@@ -170,6 +175,7 @@
      3.8532978532643756
     ],
     "hi_dk": "dT_ksz_dk.jpg",
+    "md_dk": "dT_ksz_dk_md.jpg",
     "lo_dk": "dT_ksz_dk_lo.jpg"
    }
   },
@@ -198,6 +204,7 @@
    "sigma_field_uK": 5.520836127104364,
    "display": {
     "hi": "dT_tsz.jpg",
+    "md": "dT_tsz_md.jpg",
     "lo": "dT_tsz_lo.jpg",
     "cmap": "magma",
     "mode": "mag",
@@ -233,6 +240,7 @@
    "sigma_field_uK": 3.6548819830981523,
    "display": {
     "hi": "dT_tsz.jpg",
+    "md": "dT_tsz_md.jpg",
     "lo": "dT_tsz_lo.jpg",
     "cmap": "magma",
     "mode": "mag",
@@ -268,6 +276,7 @@
    "sigma_field_uK": 3.568541961629501,
    "display": {
     "hi": "dT_tsz.jpg",
+    "md": "dT_tsz_md.jpg",
     "lo": "dT_tsz_lo.jpg",
     "cmap": "magma",
     "mode": "mag",
@@ -303,6 +312,7 @@
    "sigma_field_uK": 0.40399950282187774,
    "display": {
     "hi": "dT_tsz.jpg",
+    "md": "dT_tsz_md.jpg",
     "lo": "dT_tsz_lo.jpg",
     "cmap": "magma",
     "mode": "mag",
@@ -338,6 +348,7 @@
    "sigma_field_uK": 3.5168871748094666,
    "display": {
     "hi": "dT_tsz.jpg",
+    "md": "dT_tsz_md.jpg",
     "lo": "dT_tsz_lo.jpg",
     "cmap": "magma",
     "mode": "mag",
@@ -373,6 +384,7 @@
    "sigma_field_uK": 7.865941679589153,
    "display": {
     "hi": "dT_tsz.jpg",
+    "md": "dT_tsz_md.jpg",
     "lo": "dT_tsz_lo.jpg",
     "cmap": "magma",
     "mode": "mag",
@@ -406,6 +418,7 @@
    "sigma_field_uK": 1.2144727625308982,
    "display": {
     "hi": "dT_cib_f93.jpg",
+    "md": "dT_cib_f93_md.jpg",
     "lo": "dT_cib_f93_lo.jpg",
     "cmap": "inferno",
     "mode": "pos",
@@ -438,6 +451,7 @@
    "sigma_field_uK": 105.58083751813052,
    "display": {
     "hi": "T_tot_f93.jpg",
+    "md": "T_tot_f93_md.jpg",
     "lo": "T_tot_f93_lo.jpg",
     "cmap": "RdBu_r",
     "mode": "sym",
@@ -446,6 +460,7 @@
      290.3336701955732
     ],
     "hi_dk": "T_tot_f93_dk.jpg",
+    "md_dk": "T_tot_f93_dk_md.jpg",
     "lo_dk": "T_tot_f93_dk_lo.jpg"
    }
   },
@@ -472,6 +487,7 @@
    "sigma_field_uK": 2.8759290345624526,
    "display": {
     "hi": "dT_cib_f143.jpg",
+    "md": "dT_cib_f143_md.jpg",
     "lo": "dT_cib_f143_lo.jpg",
     "cmap": "inferno",
     "mode": "pos",
@@ -504,6 +520,7 @@
    "sigma_field_uK": 105.54020489502994,
    "display": {
     "hi": "T_tot_f143.jpg",
+    "md": "T_tot_f143_md.jpg",
     "lo": "T_tot_f143_lo.jpg",
     "cmap": "RdBu_r",
     "mode": "sym",
@@ -512,6 +529,7 @@
      290.5966850845031
     ],
     "hi_dk": "T_tot_f143_dk.jpg",
+    "md_dk": "T_tot_f143_dk_md.jpg",
     "lo_dk": "T_tot_f143_dk_lo.jpg"
    }
   },
@@ -538,6 +556,7 @@
    "sigma_field_uK": 2.967340139658275,
    "display": {
     "hi": "dT_cib_f145.jpg",
+    "md": "dT_cib_f145_md.jpg",
     "lo": "dT_cib_f145_lo.jpg",
     "cmap": "inferno",
     "mode": "pos",
@@ -570,6 +589,7 @@
    "sigma_field_uK": 105.54052326562001,
    "display": {
     "hi": "T_tot_f145.jpg",
+    "md": "T_tot_f145_md.jpg",
     "lo": "T_tot_f145_lo.jpg",
     "cmap": "RdBu_r",
     "mode": "sym",
@@ -578,6 +598,7 @@
      290.6349629669213
     ],
     "hi_dk": "T_tot_f145_dk.jpg",
+    "md_dk": "T_tot_f145_dk_md.jpg",
     "lo_dk": "T_tot_f145_dk_lo.jpg"
    }
   },
@@ -604,6 +625,7 @@
    "sigma_field_uK": 9.652631445260447,
    "display": {
     "hi": "dT_cib_f225.jpg",
+    "md": "dT_cib_f225_md.jpg",
     "lo": "dT_cib_f225_lo.jpg",
     "cmap": "inferno",
     "mode": "pos",
@@ -636,6 +658,7 @@
    "sigma_field_uK": 105.98000027749057,
    "display": {
     "hi": "T_tot_f225.jpg",
+    "md": "T_tot_f225_md.jpg",
     "lo": "T_tot_f225_lo.jpg",
     "cmap": "RdBu_r",
     "mode": "sym",
@@ -644,6 +667,7 @@
      298.6967499581776
     ],
     "hi_dk": "T_tot_f225_dk.jpg",
+    "md_dk": "T_tot_f225_dk_md.jpg",
     "lo_dk": "T_tot_f225_dk_lo.jpg"
    }
   },
@@ -670,6 +694,7 @@
    "sigma_field_uK": 21.145929855016956,
    "display": {
     "hi": "dT_cib_f280.jpg",
+    "md": "dT_cib_f280_md.jpg",
     "lo": "dT_cib_f280_lo.jpg",
     "cmap": "inferno",
     "mode": "pos",
@@ -702,6 +727,7 @@
    "sigma_field_uK": 107.97294989488117,
    "display": {
     "hi": "T_tot_f280.jpg",
+    "md": "T_tot_f280_md.jpg",
     "lo": "T_tot_f280_lo.jpg",
     "cmap": "RdBu_r",
     "mode": "sym",
@@ -710,6 +736,7 @@
      324.2687682345935
     ],
     "hi_dk": "T_tot_f280_dk.jpg",
+    "md_dk": "T_tot_f280_dk_md.jpg",
     "lo_dk": "T_tot_f280_dk_lo.jpg"
    }
   },
@@ -736,6 +763,7 @@
    "sigma_field_uK": 60.153942245807634,
    "display": {
     "hi": "dT_cib_f353.jpg",
+    "md": "dT_cib_f353_md.jpg",
     "lo": "dT_cib_f353_lo.jpg",
     "cmap": "inferno",
     "mode": "pos",
@@ -768,6 +796,7 @@
    "sigma_field_uK": 123.18188209885675,
    "display": {
     "hi": "T_tot_f353.jpg",
+    "md": "T_tot_f353_md.jpg",
     "lo": "T_tot_f353_lo.jpg",
     "cmap": "RdBu_r",
     "mode": "sym",
@@ -776,6 +805,7 @@
      437.34347826767674
     ],
     "hi_dk": "T_tot_f353_dk.jpg",
+    "md_dk": "T_tot_f353_dk_md.jpg",
     "lo_dk": "T_tot_f353_dk_lo.jpg"
    }
   }

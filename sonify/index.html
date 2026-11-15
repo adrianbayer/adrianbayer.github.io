@@ -18,116 +18,230 @@
   throw 'blocked';
 })();
 </script>
+<link rel="stylesheet" href="site.css">
 <style>
-:root{--bg:#0a0e1a;--panel:#131829;--border:#1e2744;--text:#c8cde0;--accent:#4a9eff;
-  --cmb:#4a9eff;--tsz:#ff9f43;--cib:#2ed573;--ksz:#b86bff;}
-*{margin:0;padding:0;box-sizing:border-box;}
-body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;
-  min-height:100vh;display:flex;flex-direction:column;}
-.hero{text-align:center;padding:42px 18px 10px;}
-.hero h1{font-size:2.1em;font-weight:700;color:#e8ecf4;letter-spacing:0.3px;}
-.hero p{color:#8a93b4;margin-top:8px;font-size:1.0em;}
-.wrap{max-width:980px;margin:0 auto;padding:18px;width:100%;}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin:18px 0 8px;}
-@media(max-width:720px){.cards{grid-template-columns:1fr;}}
-.card{position:relative;display:flex;flex-direction:column;border:1px solid var(--border);
-  border-radius:14px;overflow:hidden;background:var(--panel);text-decoration:none;color:inherit;
-  transition:transform .15s, border-color .15s, box-shadow .15s;min-height:230px;}
-.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 8px 30px rgba(0,0,0,.4);}
-.card .thumb{height:120px;background-size:cover;background-position:center;position:relative;}
-.card .thumb.son{background:
-  linear-gradient(90deg,var(--cmb),var(--tsz) 45%,var(--cib) 75%,var(--ksz));opacity:0.85;}
-.card .thumb.son::after{content:"";position:absolute;inset:0;
-  background:repeating-linear-gradient(90deg,rgba(10,14,26,.0) 0 6px,rgba(10,14,26,.35) 6px 8px);}
-.card .thumb.sky{background-image:url('sky_img/dT_cmblens_lo.jpg');background-color:#10204a;}
-.card .thumb.globe{background:radial-gradient(circle at 42% 36%, #6bb3ff, #1a3a8a 55%, #05070d 100%);}
-.card .thumb.cone{background:radial-gradient(circle at 50% 50%, #04060c 26%, #1a3a8a 80%, #6bb3ff 100%);}
-.card .body{padding:16px 18px;flex:1;display:flex;flex-direction:column;}
-.card h2{font-size:1.2em;color:#e8ecf4;margin-bottom:6px;}
-.card .icon{font-size:1.1em;margin-right:6px;}
-.card p{color:#aeb6d4;font-size:0.9em;line-height:1.55;flex:1;}
-.card .go{margin-top:12px;align-self:flex-start;background:var(--accent);color:var(--bg);
-  font-weight:600;font-size:0.85em;padding:7px 16px;border-radius:7px;}
-.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:center;margin-top:14px;}
-.linkbtn{color:var(--accent);text-decoration:none;border:1px solid var(--border);
-  padding:9px 16px;border-radius:8px;font-size:0.9em;}
-.linkbtn:hover{background:#1e2744;}
-.try{margin:26px auto 0;max-width:760px;color:#8a93b4;font-size:0.86em;line-height:1.7;text-align:center;}
-.try b{color:#c2c9e0;font-weight:600;}
-footer{margin-top:auto;text-align:center;padding:22px;color:#6b7394;font-size:0.78em;}
-footer a{color:#8a93b4;}
+/* The hub (website redesign phase 3b; paper/WEB_REDESIGN_BRIEF.md). Tokens, base rules and the top bar: site.css.
+   Phone first: one column (the hero, the Sonifier card, the three sky views, the paper's demonstrations); from 600 px
+   the cards lay their picture beside the text; from 900 px the Sonifier card spans the row and the three sky views
+   share the next. Colour means data: the only hues are the thumbnails (real captures of the pages, made by
+   web_tools/make_hub_thumbs.py); the icons are line drawings in the text colour. */
+body { min-height: 100vh; min-height: 100svh; display: flex; flex-direction: column; }
+.hub { flex: 1 0 auto; width: 100%; max-width: var(--content-max); margin: 0 auto; padding: 0 var(--sp-4) 48px; }
+.ico { flex: none; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.75;
+  stroke-linecap: round; stroke-linejoin: round; }
+
+/* the hero: title, one sentence, the tour, how it works, the headphones note */
+.hero { padding: 44px 0 32px; text-align: center; }
+.hero h1 { font-size: var(--fs-40); line-height: 1.15; letter-spacing: -.01em; text-wrap: balance; }
+.hero__lead { max-width: 46em; text-wrap: balance; margin: 12px auto 0; font-size: var(--fs-16); line-height: var(--lh-prose); color: var(--text-2); }
+.hero__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-3); margin-top: var(--sp-5); }
+.hbtn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: 44px;
+  padding: 10px 20px; border: 1px solid var(--border-strong); border-radius: var(--r-pill);
+  font-size: var(--fs-16); font-weight: 500; line-height: var(--lh-ui); color: var(--text); text-decoration: none;
+  transition: background-color .15s, border-color .15s;
+}
+.hbtn:hover { background: var(--surface-3); }
+.hbtn--primary { background: var(--select-bg); border-color: var(--select-bg); color: var(--select-fg); font-weight: 600; }
+.hbtn--primary:hover { background: #fff; border-color: #fff; }
+.hbtn .ico { width: 18px; height: 18px; }
+.hbtn--primary .ico { fill: currentColor; }
+.hero__note { margin-top: var(--sp-4); font-size: var(--fs-13); line-height: var(--lh-prose); color: var(--muted); text-wrap: balance; }
+.hero__note .ico { display: inline-block; width: 18px; height: 18px; margin-right: 6px; vertical-align: -4px; }   /* in the text's flow */
+@media (max-width: 480px) {
+  .hero { padding: 28px 0 24px; }
+  .hero h1 { font-size: 30px; }
+  .hbtn { flex: 1 1 100%; }          /* full-width buttons, one above the other */
+}
+
+/* the cards: the picture, then the icon and the title (the link, stretched over the whole card), the text, 'Open' */
+.apps { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+.card {
+  position: relative; display: flex; flex-direction: column; min-width: 0;
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden;
+  transition: border-color .15s, box-shadow .15s, transform .15s;
+}
+.card:hover { border-color: var(--border-strong); box-shadow: 0 10px 28px rgba(0, 0, 0, .45); transform: translateY(-2px); }
+@media (prefers-reduced-motion: reduce) { .card:hover { transform: none; } }
+.card__media { display: block; background: var(--bg-deep); }
+.card__media img { display: block; width: 100%; height: auto; }
+.card__body { flex: 1 1 auto; display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-4) 20px 18px; }
+.card__title { display: flex; align-items: flex-start; gap: 10px; font-size: var(--fs-20); }
+.card__title .ico { width: 22px; height: 22px; margin-top: .06em; color: var(--text-2); }   /* on the title's first line */
+.card__link { color: inherit; text-decoration: none; }
+.card__link::after { content: ''; position: absolute; inset: 0; z-index: 1; }   /* the whole card follows the link */
+.card__link:focus-visible { outline: none; }
+.card:has(.card__link:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+@supports not selector(:has(*)) { .card__link:focus-visible::after { outline: 2px solid var(--focus); outline-offset: -3px; border-radius: var(--r-lg); } }
+.card p { font-size: var(--fs-14); line-height: var(--lh-prose); color: var(--text-2); }
+.card__go { margin-top: auto; padding-top: var(--sp-1); display: inline-flex; align-items: center; gap: 6px;
+  font-size: var(--fs-14); font-weight: 500; color: var(--text-2); }
+.card__go .ico { width: 16px; height: 16px; transition: transform .15s; }
+.card:hover .card__go { color: var(--text); }
+.card:hover .card__go .ico { transform: translateX(3px); }
+.card--feature .card__title { font-size: var(--fs-24); }
+.card--feature .card__title .ico { width: 26px; height: 26px; margin-top: .02em; }
+@media (max-width: 480px) { .card--feature .card__title { font-size: var(--fs-20); } .card--feature .card__title .ico { width: 22px; height: 22px; } }
+/* from 600 px: the three sky views lay their picture beside the text; the Sonifier stays stacked, its plot capture full
+   width on top (cropped to a narrow column it would cut the plot's axis and the band row) */
+@media (min-width: 600px) {
+  .card:not(.card--feature) { display: grid; grid-template-columns: minmax(0, 44%) minmax(0, 1fr); }
+  .card:not(.card--feature) .card__media { height: 100%; }
+  .card:not(.card--feature) .card__media img { height: 100%; object-fit: cover; }
+  .card__body { justify-content: center; padding: 20px 24px; }
+}
+/* from 900 px: the Sonifier across the row (its plot at 16:9), the three sky views below it, pictures on top */
+@media (min-width: 900px) {
+  .apps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px 20px; }
+  .card:not(.card--feature) { display: flex; }
+  .card:not(.card--feature) .card__media { height: auto; }
+  .card:not(.card--feature) .card__media img { height: auto; }
+  .card__body { justify-content: flex-start; padding: var(--sp-4) 20px 18px; }
+  .card--feature { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+  .card--feature .card__body { justify-content: center; padding: 28px 32px; gap: var(--sp-3); }
+  .card--feature .card__go { margin-top: var(--sp-1); }    /* with the text, the whole block centred */
+  .card--feature p { font-size: var(--fs-16); }
+}
+
+/* the paper's demonstrations: links that open the pages set up, never playing */
+.demos { margin-top: 40px; }
+.demos h2 { font-size: var(--fs-20); }
+.demos .note { margin-top: var(--sp-1); }
+.demos__list { list-style: none; display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-4); }
+.demo {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 8px 15px 8px 12px;
+  border: 1px solid var(--border-strong); border-radius: var(--r-pill);
+  font-size: var(--fs-14); font-weight: 500; line-height: var(--lh-ui); color: var(--text-2); text-decoration: none;
+  transition: background-color .15s, color .15s;
+}
+.demo:hover { background: var(--surface-3); color: var(--text); }
+.demo .ico { width: 16px; height: 16px; }
+.demo .ico--fill { fill: currentColor; }
+@media (max-width: 480px) {
+  .demos__list { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-2); }
+  .demo { width: 100%; }
+}
+
+footer { margin-top: auto; padding: 22px var(--sp-4); text-align: center; color: var(--muted); font-size: var(--fs-13); line-height: var(--lh-prose); }
+footer a { display: inline-block; padding: 5px 1px; color: var(--text-2); }   /* 24 px targets */
 </style>
 </head>
 <body>
+<!-- the icons: line drawings in currentColor (no icon font, nothing fetched) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.2"/></symbol>
+  <symbol id="i-phones" viewBox="0 0 24 24"><path d="M4 16v-4a8 8 0 0 1 16 0v4"/><rect x="3" y="14" width="4" height="6.5" rx="1.5"/><rect x="17" y="14" width="4" height="6.5" rx="1.5"/></symbol>
+  <symbol id="i-spectrum" viewBox="0 0 24 24"><path d="M4 10v4M8 6.5v11M12 3.5v17M16 8v8M20 10.5v3"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M2.5 12h19M8.5 5c-1.6 2.2-1.6 11.8 0 14M15.5 5c1.6 2.2 1.6 11.8 0 14"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 2.6 3 15.4 0 18M12 3c-3 2.6-3 15.4 0 18"/></symbol>
+  <symbol id="i-cone" viewBox="0 0 24 24"><path d="M12 20.5 4.5 7M12 20.5 19.5 7"/><ellipse cx="12" cy="6.5" rx="7.5" ry="3"/><circle cx="10.2" cy="12" r=".6"/><circle cx="13.6" cy="10" r=".6"/><circle cx="12" cy="15.5" r=".6"/></symbol>
+  <symbol id="i-ring" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="1.8"/></symbol>
+</svg>
 
-<div class="hero">
-  <h1>Experiencing the Multi-Probe Sky</h1>
-  <p>Hear and explore the microwave sky &mdash; CMB, tSZ, CIB &amp; kSZ &mdash; from the HalfDome simulations.</p>
-</div>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="topbar">
+  <a class="topbar__brand" href="index.html" aria-current="page"><span class="topbar__brand-pre">Experiencing the </span>Multi-Probe Sky</a>
+  <nav class="topbar__nav" aria-label="Site">
+    <a href="sonifier.html">Sonifier</a>
+    <a href="sky.html">Sky Explorer</a>
+    <a href="globe.html">Globe</a>
+    <a href="lightcone.html">Lightcone</a>
+    <a href="about.html">How it works</a>
+  </nav>
+  <div class="topbar__actions"></div>
+</header>
 
-<div class="wrap">
-  <div class="cards">
-    <a class="card" href="sonifier.html">
-      <div class="thumb son"></div>
-      <div class="body">
-        <h2><span class="icon">&#128266;</span>Power Spectrum Sonifier</h2>
-        <p>Turn the CMB, tSZ, CIB and kSZ power spectra into sound. Mix components (with
-           their cross-spectra), choose a survey band, sweep across angular scales and
-           frequencies, play them with instruments, hear two probes&rsquo; correlation as
-           harmony, and render reproducible WAV files.</p>
-        <span class="go">Launch &rarr;</span>
+<main class="hub" id="main">
+  <section class="hero" aria-labelledby="heroTitle">
+    <h1 id="heroTitle">Experiencing the Multi-Probe Sky</h1>
+    <p class="hero__lead">Hear and explore the microwave sky of the HalfDome simulations: the Big Bang&rsquo;s afterglow (CMB), hot and moving gas in galaxy clusters (tSZ, kSZ) and dusty galaxies (CIB).</p>
+    <div class="hero__actions">
+      <!-- the Tour: the Sonifier opens with its Tour chip ringed (sonifier.html#tour); sound starts with the press -->
+      <a class="hbtn hbtn--primary" id="tourLink" href="sonifier.html#tour"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-play"/></svg>Take the tour</a>
+      <a class="hbtn" id="howLink" href="about.html"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-info"/></svg>How it works</a>
+    </div>
+    <p class="hero__note"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-phones"/></svg>Headphones recommended; start at a low volume.</p>
+  </section>
+
+  <div class="apps">
+    <article class="card card--feature">
+      <picture class="card__media">
+        <source type="image/webp" srcset="img/hub_sonifier.webp">
+        <img src="img/hub_sonifier.jpg" width="1200" height="675" fetchpriority="high" decoding="async"
+             alt="The Sonifier's plot: the power spectra of the CMB, tSZ and CIB at 143 GHz against the multipole, with the audio frequency of each multipole along the top.">
+      </picture>
+      <div class="card__body">
+        <h2 class="card__title"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-spectrum"/></svg><a class="card__link" href="sonifier.html">Power Spectrum Sonifier</a></h2>
+        <p>Hear the CMB, tSZ, CIB and kSZ power spectra in six bands. Sweep the scales, mix components, hear correlations as harmony, render reproducible WAV files.</p>
+        <span class="card__go" aria-hidden="true">Open<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg></span>
       </div>
-    </a>
-    <a class="card" href="sky.html">
-      <div class="thumb sky"></div>
-      <div class="body">
-        <h2><span class="icon">&#127759;</span>Sky Explorer</h2>
-        <p>Pan and zoom a full-sky map &mdash; longitude wraps, so you can keep scrolling.
-           Switch components and survey bands, click or scan to hear the sky under your
-           cursor (one voice per component), and click clusters to hear their mass and distance.</p>
-        <span class="go">Launch &rarr;</span>
+    </article>
+
+    <article class="card">
+      <picture class="card__media">
+        <source type="image/webp" srcset="img/hub_sky.webp">
+        <img src="img/hub_sky.jpg" width="720" height="450" loading="lazy" decoding="async"
+             alt="The Sky Explorer zoomed in on the tSZ map at 353 GHz: bright spots of hot cluster gas, the clusters ringed in gold.">
+      </picture>
+      <div class="card__body">
+        <h2 class="card__title"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-map"/></svg><a class="card__link" href="sky.html">Sky Explorer</a></h2>
+        <p>Pan and zoom a full-sky map; click or scan to hear the sky under the cursor, one voice per component, and the clusters.</p>
+        <span class="card__go" aria-hidden="true">Open<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg></span>
       </div>
-    </a>
-    <a class="card" href="globe.html">
-      <div class="thumb globe"></div>
-      <div class="body">
-        <h2><span class="icon">&#127760;</span>3D Sky Globe</h2>
-        <p>The same multi-probe sky on a rotatable 3D globe (WebGL). Spin it, zoom in,
-           and click or scan any direction to hear it in 3D audio; the massive clusters glow as points.</p>
-        <span class="go">Launch &rarr;</span>
+    </article>
+
+    <article class="card">
+      <picture class="card__media">
+        <source type="image/webp" srcset="img/hub_globe.webp">
+        <img src="img/hub_globe.jpg" width="720" height="450" loading="lazy" decoding="async"
+             alt="The 3D Sky Globe: the CMB temperature map on a sphere, hot spots orange and cold spots blue.">
+      </picture>
+      <div class="card__body">
+        <h2 class="card__title"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-globe"/></svg><a class="card__link" href="globe.html">3D Sky Globe</a></h2>
+        <p>The same sky on a globe you can spin and zoom; click or scan any direction to hear it in 3D audio.</p>
+        <span class="card__go" aria-hidden="true">Open<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg></span>
       </div>
-    </a>
-    <a class="card" href="lightcone.html">
-      <div class="thumb cone"></div>
-      <div class="body">
-        <h2><span class="icon">&#127756;</span>Inside the Lightcone</h2>
-        <p>Stand at the centre of the observable universe: galaxy clusters fill the 3D
-           volume at their comoving distance, with the CMB as the glowing outer shell, to scale.
-           Look around, fly through, and click to listen.</p>
-        <span class="go">Launch &rarr;</span>
+    </article>
+
+    <article class="card">
+      <picture class="card__media">
+        <source type="image/webp" srcset="img/hub_lightcone.webp">
+        <img src="img/hub_lightcone.jpg" width="720" height="450" loading="lazy" decoding="async"
+             alt="Inside the Lightcone, seen from partway out to the CMB shell: the clusters as a cloud of gold points around the observer, in front of the dimmed far side of the shell.">
+      </picture>
+      <div class="card__body">
+        <h2 class="card__title"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-cone"/></svg><a class="card__link" href="lightcone.html">Inside the Lightcone</a></h2>
+        <p>Stand at the observer: clusters at their comoving distances inside the CMB shell, to scale. Look around, fly through, click to listen.</p>
+        <span class="card__go" aria-hidden="true">Open<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg></span>
       </div>
-    </a>
+    </article>
   </div>
 
-  <div class="row">
-    <a class="linkbtn" href="about.html">&#9432; How it works &amp; what every control does</a>
-  </div>
-
-  <p class="try">
-    Things to try inside the Sonifier: <b>&#127775; Big Bang</b> (artistic: the CMB acoustic peaks as a chord),
-    <b>&#8467;-Sweep</b> &amp; <b>&#957;-Sweep</b>, <b>Build-Up</b> (component by component up to the Total),
-    <b>Instruments</b>, <b>Duet</b> (two probes&rsquo; cross-correlation as harmony),
-    and <b>stereo</b> &amp; <b>3D spatial</b> audio. In the Sky Explorer &amp; Globe, try
-    <b>Scan mode</b> and clicking clusters. Headphones recommended.
-  </p>
-</div>
+  <!-- the paper's demonstrations (sections/demonstrations.tex, Table 2): each Sonifier link is the row's Share fragment,
+       URL-encoded as the Share button writes it; the Sonifier opens with a 'Ready' note and rings the button to press.
+       The last opens the Sky Explorer on the paper's cluster demo (sky.html#demo=cluster). Nothing plays on arrival. -->
+  <section class="demos" id="demos" aria-labelledby="demosTitle">
+    <h2 id="demosTitle">Hear the paper&rsquo;s demonstrations</h2>
+    <p class="note" id="demosNote">Each opens its page set up as in the paper: the first five the Sonifier, the last the Sky Explorer. Nothing plays until you press; the page shows what to do.</p>
+    <ul class="demos__list" id="demoLinks">
+      <li><a class="demo" data-demo="buildup" href="sonifier.html#s=%7B%7D"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-spectrum"/></svg>Build up the sky</a></li>
+      <li><a class="demo" data-demo="tsznull" href="sonifier.html#s=%7B%22comps%22%3A%5B%22dT_tsz%22%5D%2C%22level%22%3A%22equalized%22%7D"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-spectrum"/></svg>The tSZ null</a></li>
+      <li><a class="demo" data-demo="cib353" href="sonifier.html#s=%7B%22comps%22%3A%5B%22T_tot%22%5D%7D"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-spectrum"/></svg>The CIB at 353 GHz</a></li>
+      <li><a class="demo" data-demo="duet143" href="sonifier.html#s=%7B%22method%22%3A%22duet%22%2C%22duetA%22%3A%22dT_tsz%22%2C%22duetB%22%3A%22dT_cib%22%7D"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-spectrum"/></svg>Duet at 143 GHz</a></li>
+      <li><a class="demo" data-demo="duet353" href="sonifier.html#s=%7B%22band%22%3A353%2C%22method%22%3A%22duet%22%2C%22duetA%22%3A%22dT_tsz%22%2C%22duetB%22%3A%22dT_cib%22%7D"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-spectrum"/></svg>Duet at 353 GHz</a></li>
+      <li><a class="demo" data-demo="cluster" href="sky.html#demo=cluster"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-ring"/></svg>A cluster across bands</a></li>
+    </ul>
+  </section>
+</main>
 
 <footer>
   <a href="https://halfdomesims.github.io" target="_blank" rel="noopener">HalfDome simulations</a> &middot;
-  <a href="https://arxiv.org/abs/2407.17462" target="_blank" rel="noopener">paper (Bayer et al. 2025)</a> &middot;
+  <a href="https://arxiv.org/abs/2407.17462" target="_blank" rel="noopener">HalfDome paper (Bayer et al. 2025)</a> &middot;
   sonification &amp; visualization &middot;
-  <a href="about.html">about</a> &middot;
-  <a href="about.html#bugs">report a bug</a>
+  <a href="about.html">How it works</a> &middot;
+  <a href="about.html#bugs">Report a bug</a>
 </footer>
 
 </body>

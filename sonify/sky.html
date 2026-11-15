@@ -18,123 +18,118 @@
   throw 'blocked';
 })();
 </script>
+<link rel="stylesheet" href="site.css">
+<link rel="stylesheet" href="sky.css">
 <style>
-:root{
-  --bg:#0a0e1a; --panel:#131829; --border:#1e2744; --text:#c8cde0; --muted:#8a93b4; --accent:#4a9eff; --focus:#ffd58a;
-  --cmb:#4a9eff; --tsz:#ff9f43; --cib:#2ed573; --ksz:#b86bff; --tot:#ebebeb;
+/* Sky Explorer: the map's two canvases (the shared sky-view layout and controls: sky.css; tokens and top bar: site.css) */
+#map { cursor: grab; touch-action: none; }
+#map.grabbing { cursor: grabbing; }
+#map.scan { cursor: cell; }
+#overlay { pointer-events: none; }
+#wrap { --mapctl-w: 104px; --mapctl-h: 120px; }
+/* the paper's cluster demo (sky.html#demo=cluster): its note, top left on the map, until dismissed; on a narrow map the
+   status hint moves above the map controls, clear of it */
+.demo-banner {
+  position: absolute; left: 10px; top: 10px; z-index: 4; display: flex; align-items: flex-start; gap: var(--sp-2);
+  max-width: min(400px, calc(100% - 20px)); padding: 5px 5px 5px var(--sp-3);
+  font-size: var(--fs-13); line-height: var(--lh-prose); color: var(--text);
+  background: rgba(17, 22, 42, .95); border: 1px solid var(--border-strong); border-radius: var(--r-sm);
 }
-*{margin:0;padding:0;box-sizing:border-box;}
-html,body{height:100%;}
-body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;display:flex;flex-direction:column;}
-header{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:8px 14px;border-bottom:1px solid var(--border);}
-header h1{font-size:1.05em;font-weight:600;color:#e8ecf4;}
-header .sub{font-size:0.78em;color:var(--muted);}
-a.back{color:var(--accent);text-decoration:none;font-size:0.82em;border:1px solid var(--border);padding:4px 10px;border-radius:6px;}
-a.back:hover{background:#1e2744;}
-.controls{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:6px 14px;border-bottom:1px solid var(--border);}
-.cgroup{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;}
-.clabel{font-size:0.68em;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);}
-.btn{padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text);cursor:pointer;font-size:0.8em;}
-.btn.active{background:var(--accent);color:var(--bg);border-color:var(--accent);}
-.btn:hover{filter:brightness(1.15);}
-.btn.mini{padding:1px 5px;font-size:0.68em;border-radius:4px;}
-.btn.mini.active.mute{background:#cc3333;border-color:#cc3333;color:#fff;}
-.btn.mini.active.solo{background:#e0b030;border-color:#e0b030;color:#06101f;}
-:focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
-select{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:0.8em;padding:3px 4px;}
-.comp{display:inline-flex;align-items:center;gap:2px;}
-.comp-btn{border-width:2px;}
-.comp-btn[data-comp="dT_cmblens"]{border-color:var(--cmb);} .comp-btn[data-comp="dT_cmblens"].active{background:var(--cmb);color:#06101f;}
-.comp-btn[data-comp="dT_tsz"]{border-color:var(--tsz);} .comp-btn[data-comp="dT_tsz"].active{background:var(--tsz);color:#06101f;}
-.comp-btn[data-comp="dT_cib"]{border-color:var(--cib);} .comp-btn[data-comp="dT_cib"].active{background:var(--cib);color:#06101f;}
-.comp-btn[data-comp="dT_ksz"]{border-color:var(--ksz);} .comp-btn[data-comp="dT_ksz"].active{background:var(--ksz);color:#06101f;}
-.comp-btn[data-comp="T_tot"]{border-color:var(--tot);} .comp-btn[data-comp="T_tot"].active{background:var(--tot);color:#06101f;}
-.freq-group{display:flex;align-items:center;gap:3px;padding:2px 6px;border:1px solid var(--border);border-radius:6px;}
-.freq-group .clabel{margin-right:2px;}
-.note{font-size:0.74em;color:var(--muted);padding:4px 14px;border-bottom:1px solid var(--border);}
-.note b{color:var(--text);font-weight:600;}
-.note .warn{color:#ffb86b;}
-#wrap{position:relative;flex:1;min-height:0;}
-#map,#overlay{position:absolute;inset:0;display:block;width:100%;height:100%;}
-#map{cursor:grab;touch-action:none;background:#04060c;}
-#map.grabbing{cursor:grabbing;}
-#map.scan{cursor:cell;}
-#map:focus-visible{outline:2px solid var(--focus);outline-offset:-2px;}
-#overlay{pointer-events:none;}
-.readout{position:absolute;left:10px;bottom:10px;font-size:0.75em;color:#aab3d4;background:rgba(4,6,12,0.8);
-  padding:4px 8px;border-radius:6px;pointer-events:none;max-width:calc(100% - 20px);}
-.readout b{color:var(--accent);font-weight:600;}
-.hint{position:absolute;right:10px;top:10px;font-size:0.72em;color:var(--muted);background:rgba(4,6,12,0.8);
-  padding:4px 8px;border-radius:6px;pointer-events:none;max-width:46%;text-align:right;}
-.hint:empty{padding:0;background:none;}   /* stays in the accessibility tree (role=status) */
-.key{position:absolute;right:10px;top:10px;width:min(420px,calc(100% - 20px));max-height:calc(100% - 60px);overflow:auto;
-  font-size:0.74em;line-height:1.45;background:rgba(10,14,26,0.95);border:1px solid var(--border);border-radius:8px;padding:10px 12px;z-index:3;}
-.key h2{font-size:1.05em;color:#e8ecf4;margin:0 0 4px;}
-.key h3{font-size:0.95em;color:#e8ecf4;margin:8px 0 2px;}
-.key table{border-collapse:collapse;width:100%;}
-.key td,.key th{border-bottom:1px solid var(--border);padding:2px 4px;text-align:left;vertical-align:top;}
-.key th{color:var(--muted);font-weight:normal;}
-.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
-input[type=range]{accent-color:var(--accent);}
+.demo-banner__text { padding: 1px 0; }
+.demo-banner__close { flex: none; min-width: 26px; min-height: 26px; padding: 0; font-size: 17px; line-height: 1; color: var(--text); }
+@media (pointer: coarse) { .demo-banner__close { min-width: 32px; min-height: 32px; } }
+@media (max-width: 740px) { #wrap.is-demo .hint { top: auto; bottom: calc(var(--mapctl-h) + 20px); } }
+/* the demo's cue: the light ring of the deep links (.cue-ring, site.css), not gold, so it is not one more cluster marker:
+   around the cluster to click, then on the band button to press next (the script sizes and places it) */
+.map-cue { position: absolute; left: 0; top: 0; z-index: 2; width: 44px; height: 44px; border-radius: 50%; pointer-events: none; }
 </style>
 </head>
 <body>
-
-<header>
-  <h1>Sky Explorer</h1>
-  <span class="sub">drag to pan &middot; wheel/buttons to zoom &middot; click to listen &middot; keyboard: focus the map, arrows move the ear</span>
-  <a class="back" href="index.html">&larr; All toys</a>
-  <a class="back" href="globe.html">3D globe</a>
-  <a class="back" href="sonifier.html">Sonifier</a>
-  <a class="back" href="about.html">How it works</a>
+<a class="skip-link" id="skipToMap" href="#map">Skip to the map</a>
+<header class="topbar">
+  <a class="topbar__brand" href="index.html"><span class="topbar__brand-pre">Experiencing the </span>Multi-Probe Sky</a>
+  <nav class="topbar__nav" aria-label="Site">
+    <a href="sonifier.html">Sonifier</a>
+    <a href="sky.html" aria-current="page">Sky Explorer</a>
+    <a href="globe.html">Globe</a>
+    <a href="lightcone.html">Lightcone</a>
+    <a href="about.html">How it works</a>
+  </nav>
+  <div class="topbar__actions"></div>
 </header>
 
-<div class="controls" role="group" aria-label="Sky Explorer controls">
-  <div class="cgroup" id="compGroup">
-    <span class="clabel" title="Toggle components: the map overlays them and the audio has one voice each. M = mute, S = solo (audio only)">Components</span>
-  </div>
-  <div class="cgroup" id="bandGroup"><span class="clabel">Band (GHz)</span></div>
-  <div class="cgroup">
-    <span class="clabel">Zoom</span>
-    <button class="btn" id="zoomOut" aria-label="Zoom out">&minus;</button>
-    <button class="btn" id="zoomIn" aria-label="Zoom in">+</button>
-    <button class="btn" id="zoomReset">whole sky</button>
-  </div>
-  <div class="cgroup">
-    <span class="clabel">Audio</span>
-    <button class="btn" id="scanBtn" aria-pressed="false" title="Drag (or use the arrow keys) to move a continuous 'ear' along a path">Scan</button>
-    <button class="btn" id="refBtn" aria-pressed="false" title="Play each voice's centre pitch (the empty-sky level when equalized per map, 0 µK in the physical scales) as a reference">Ref tone</button>
-    <button class="btn active" id="eqBtn" aria-pressed="true" title="ISO 226 (60 phon) equal-loudness weighting of each voice's fundamental">Equal loudness</button>
-    <label class="clabel" for="scaleSel">Scale</label>
-    <select id="scaleSel" title="How dT maps to pitch and loudness (see the Sound key)">
-      <option value="map" selected>equalized per map</option>
-      <option value="component">physical per component</option>
-      <option value="common">common &micro;K (physical)</option>
-    </select>
-  </div>
-  <div class="cgroup">
-    <label class="clabel" for="haloSel">Halo sound</label>
-    <select id="haloSel" title="Data halo sound (a bell): mass sets pitch, distance sets level/brightness/reverb. Artistic: a 'hey!' or your recorded clip">
-      <option value="data" selected>data (bell)</option>
-      <option value="artistic">artistic ('hey!' / your clip)</option>
-    </select>
-    <button class="btn" id="haloRecBtn" title="Record a short clip (up to 3 s) for the artistic halo sound">&#127908; record</button>
-    <label class="clabel" for="vol">Vol</label>
-    <input type="range" id="vol" min="0" max="200" value="70" style="width:90px;" title="Default 70: the limiter stays idle at 99.9% of sky positions; louder settings may engage it on bright spots">
-    <button class="btn" id="keyBtn" aria-expanded="false" aria-controls="key">Sound key</button>
-  </div>
+<div class="pagehead">
+  <h1 class="page-title">Sky Explorer</h1>
 </div>
-<div class="note" id="note">loading&hellip;</div>
 
-<div id="wrap">
+<div class="viewport" id="wrap">
   <canvas id="map" tabindex="0" role="application"
     aria-label="Sky map. Arrow keys move the listening point (Shift for bigger steps), Enter or Space plays it, plus and minus zoom."></canvas>
   <canvas id="overlay" aria-hidden="true"></canvas>
-  <div class="readout" id="readout" aria-hidden="true">&mdash;</div>
+  <div class="mapinfo" id="mapinfo">
+    <div class="legend" id="legend" hidden></div>
+    <div class="readout" id="readout" aria-hidden="true"><span class="for-mouse">Click the map to listen &middot; drag to pan &middot; wheel or +/&minus; to zoom &middot; on the focused map, arrow keys move the ear</span><span class="for-touch">Tap to listen &middot; drag to pan &middot; pinch to zoom</span></div>
+  </div>
+  <div class="mapctl" role="group" aria-label="Map view">
+    <div class="mapctl__row">
+      <button class="btn btn--icon" id="zoomOut" aria-label="Zoom out" title="Zoom out (−)">&minus;</button>
+      <button class="btn btn--icon" id="zoomIn" aria-label="Zoom in" title="Zoom in (+)">+</button>
+    </div>
+    <button class="btn" id="zoomReset" title="Fit the whole sky in the view">Whole sky</button>
+    <button class="btn active" id="haloBtn" aria-pressed="true" title="Show or hide the clusters; hidden clusters are silent"><span class="ring-ico" aria-hidden="true"></span>Clusters</button>
+  </div>
+  <div class="empty" id="empty" hidden>Turn on a component to see and hear it<div class="empty__row"><button class="chip" id="emptyCmb" style="--chip-c: var(--cmb)">Show CMB</button><button class="chip" id="emptyTsz" style="--chip-c: var(--tsz)">Show tSZ</button></div></div>
   <div class="hint" id="hint" role="status" aria-live="polite"></div>
+  <!-- the paper's cluster demo (sky.html#demo=cluster): what to do, until dismissed (DEMO in the script) -->
+  <div class="map-cue cue-ring" id="demoCue" aria-hidden="true" hidden></div>
+  <div class="demo-banner" id="demoNote" hidden><span class="demo-banner__text" id="demoNoteText" role="status"></span><button class="btn demo-banner__close" id="demoNoteClose" aria-label="Dismiss the demo note" title="Dismiss">&times;</button></div>
   <aside class="key" id="key" hidden aria-label="Sound key"></aside>
   <div class="sr-only" id="live" aria-live="polite"></div>
 </div>
+
+<div class="controls" role="group" aria-label="Sky Explorer controls">
+  <div class="cgroup" id="compGroup" role="group" aria-labelledby="compLabel" title="Toggle components: the map overlays them and the audio has one voice each (Mute and Solo: Sound settings)">
+    <span class="clabel sr-only" id="compLabel">Components</span>
+  </div>
+  <div class="cgroup" id="bandGroup" role="group" aria-label="Band (GHz)"><span class="band-label" aria-hidden="true">Band (GHz)</span><span class="band-unit" aria-hidden="true">GHz</span></div>
+  <div class="cgroup" role="group" aria-label="Audio">
+    <button class="btn" id="scanBtn" aria-pressed="false" title="Drag (or use the arrow keys) to move a continuous 'ear' along a path">Scan</button>
+  </div>
+  <div class="cgroup cgroup--end">
+    <button class="btn" id="keyBtn" aria-expanded="false" aria-controls="key">Sound key</button>
+    <details class="more" id="moreSet">
+      <summary class="btn" id="moreSum">Sound settings <span class="more__chips" id="moreChips"></span></summary>
+      <div class="more__panel" role="group" aria-label="Sound settings">
+        <div class="more__head"><span>Sound settings</span><button class="btn" id="moreDone">Done</button></div>
+        <span class="clabel" id="voiceLabel">Voices</span>
+        <div class="more__row" id="voiceMS" role="group" aria-labelledby="voiceLabel" title="M = mute, S = solo (audio only), for the components that are on"><span class="note" id="voiceNone" hidden>no component on</span></div>
+        <label class="clabel" for="scaleSel">Scale</label>
+        <select id="scaleSel" title="How dT maps to pitch and loudness (see the Sound key)">
+          <option value="map" selected>equalized per map</option>
+          <option value="component">physical per component</option>
+          <option value="common">common &micro;K (physical)</option>
+        </select>
+        <span class="clabel" id="toneLabel">Tones</span>
+        <div class="more__row" role="group" aria-labelledby="toneLabel">
+          <button class="btn" id="refBtn" aria-pressed="false" title="Play each voice's centre pitch (the empty-sky level when equalized per map, 0 µK in the physical scales) as a reference">Ref tone</button>
+          <button class="btn active" id="eqBtn" aria-pressed="true" title="ISO 226 (60 phon) equal-loudness weighting of each voice's fundamental">Equal loudness</button>
+        </div>
+        <label class="clabel" for="haloSel">Halo sound</label>
+        <div class="more__row">
+          <select id="haloSel" title="Data halo sound (a bell): mass sets pitch, distance sets level/brightness/reverb. Artistic: a 'hey!' or your recorded clip">
+            <option value="data" selected>data (bell)</option>
+            <option value="artistic">artistic ('hey!' / your clip)</option>
+          </select>
+          <button class="btn" id="haloRecBtn" title="Record a short clip (up to 3 s) for the artistic halo sound">&#127908; record</button>
+        </div>
+        <label class="clabel" for="vol">Vol</label>
+        <input type="range" id="vol" min="0" max="200" value="70" title="Default 70: the limiter stays idle at 99.9% of sky positions; louder settings may engage it on bright spots">
+        <p class="note">Badges on the button list the settings that differ from the defaults.</p>
+      </div>
+    </details>
+  </div>
+</div>
+<div class="note skynote" id="note">loading&hellip;</div>
 
 <script src="sonify_core.js"></script>
 <script src="sky_core.js"></script>
@@ -162,6 +157,10 @@ const V = {
   layers: {}, mute: new Set(), solo: new Set(),
   dragging: false, moved: false, lastX: 0, lastY: 0, downX: 0, downY: 0, touch: false,
   scan: false, path: null, ear: null, haloLast: new Map(), keyTimer: null, lastKeyPlay: 0,
+  showHalos: true, tier: null, vol0: 70, shown: null,   // shown: the point (and cluster) the readout describes
+  viewMode: 'open',     // 'open' (the opening view) or 'whole' (whole sky) follow the box on a resize; 'user': moved by hand
+                        // ('demo': the cluster demo's view, centred on V.demoHalo, the catalogue index of its cluster)
+  demoHalo: null, demoOn: false, demoHeard: new Set(), demoCue: false,   // the demo's note, the bands heard, the map cue
 };
 const canvas = document.getElementById('map'), ctx = canvas.getContext('2d');
 const ov = document.getElementById('overlay'), octx = ov.getContext('2d');
@@ -180,58 +179,84 @@ function resize() {
   const first = !V.cw;
   V.cw = r.width; V.ch = r.height;
   recomputeScaleLimits();
-  if (first) { V.scale = V.minScale; V.panX = (V.cw - V.dispW * V.scale) / 2; }
+  if (V.viewMode === 'demo') demoView();                                   // the cluster demo: centred on its cluster
+  else if (first || V.viewMode !== 'user') openView(V.viewMode === 'whole');   // until moved by hand, the view follows the box
   clampView(); draw();
 }
+/** The opening view, centred: a portrait view (a phone) with latitude filling the view height (swipe through
+ *  longitude, which wraps); otherwise, or with whole = true ('whole sky'), the full map fitted (minScale). */
+function openView(whole) {
+  V.scale = !whole && V.cw < V.ch ? Math.min(V.maxScale, V.ch / V.dispH) : V.minScale;
+  V.panX = (V.cw - V.dispW * V.scale) / 2;
+}
+/** The map is no wider than the view (the whole sky in a wide box): one copy, centred, no wrap in longitude. */
+function single() { return V.dispW * V.scale <= V.cw + 0.5; }
 function clampView() {
   V.scale = Math.min(V.maxScale, Math.max(V.minScale, V.scale));
-  const sH = V.dispH * V.scale;
+  const sW = V.dispW * V.scale, sH = V.dispH * V.scale;
+  if (single()) V.panX = (V.cw - sW) / 2;
   if (sH <= V.ch) V.panY = (V.ch - sH) / 2;
   else V.panY = Math.min(0, Math.max(V.ch - sH, V.panY));
 }
-/** Screen (CSS px) -> sky. Longitude wraps; outside the map in latitude -> null. */
+/** Screen (CSS px) -> sky. Longitude wraps (one copy: outside it -> null); outside the map in latitude -> null. */
 function screenToSky(sx, sy) {
   const fx = (sx - V.panX) / (V.dispW * V.scale), fy = (sy - V.panY) / (V.dispH * V.scale);
   if (fy < 0 || fy > 1) return null;
+  if (single() && (fx < 0 || fx > 1)) return null;
   return C.imgFracToSky(fx - Math.floor(fx), fy);
 }
-/** Sky -> screen x positions (all wrapped copies on screen) and y. */
+/** Sky -> screen x positions (all wrapped copies on screen; one in the single-copy view) and y. */
 function skyToScreen(theta, phi) {
-  const f = C.skyToImgFrac(theta, phi), sW = V.dispW * V.scale;
+  const f = C.skyToImgFrac(theta, phi), sW = V.dispW * V.scale, y = V.panY + f.fy * V.dispH * V.scale;
+  if (single()) return { xs: [V.panX + f.fx * sW], y };
   let x = V.panX + f.fx * sW; x -= Math.ceil(x / sW) * sW;
   const xs = []; for (; x < V.cw + sW; x += sW) if (x > -sW) xs.push(x);
-  return { xs, y: V.panY + f.fy * V.dispH * V.scale };
+  return { xs, y };
+}
+/** The left edges [CSS px] of the map copies drawn: one in the single-copy view, else the wrapped copies on screen. */
+function tileXs() {
+  const sW = V.dispW * V.scale;
+  if (single()) return [V.panX];
+  let x = V.panX % sW; if (x > 0) x -= sW;
+  const out = []; for (; x < V.cw; x += sW) out.push(x);
+  return out;
 }
 
 // ============================== display layers ==============================
-function displayFiles(comp) {
-  const e = C.findMap(V.meta, comp, V.band); if (!e) return null;
-  const d = e.display, multi = V.comps.length >= 2;
-  return (multi && d.hi_dk) ? { hi: d.hi_dk, lo: d.lo_dk } : { hi: d.hi, lo: d.lo };
+// Load order: the value maps of the active components first (they carry the sound); the 1024-px preview at once (a
+// picture straight away, 150-250 kB); the 2048-px md image or, once the map is shown so wide that md would be magnified
+// beyond 1.2 device px per image px (SkyCore.displayTier; a 2x desktop at the whole sky, or a zoom), the 4096-px
+// image, when those value maps are in (or have
+// failed), so the large image never competes with the sound's data. Every image is on screen when requested
+// (fetchPriority 'high'); nothing is prefetched.
+function displayFiles(comp) { return C.displayImages(C.findMap(V.meta, comp, V.band), V.comps.length >= 2); }
+function wantTier() { return C.displayTier(V.meta, V.dispW * V.scale, window.devicePixelRatio || 1); }
+/** The sharpest suitable image loaded so far for a layer: the tier the view wants, else the other, else the preview. */
+function layerImg(files) {
+  const L = files && V.layers[files.hi]; if (!L) return null;
+  const I = L.img;
+  return wantTier() === 'hi' ? (I.hi || I.md || I.lo) : (I.md || I.hi || I.lo);
 }
-function layerImg(files) { const L = files && V.layers[files.hi]; return L ? (L.hi || L.lo) : null; }
+/** The value maps of the active components are in (or have failed): the large display images may load. */
+function soundLoaded() { return V.comps.every((c) => V.store.isReady(c, V.band) || !!V.store.error(c, V.band)); }
 function ensureLayers() {
+  const tier = wantTier(), big = soundLoaded();
   for (const c of V.comps) {
     const f = displayFiles(c); if (!f) continue;
-    let L = V.layers[f.hi];
-    if (!L) L = V.layers[f.hi] = { lo: null, hi: null, loLoading: false, hiLoading: false };
-    if (!L.lo && !L.loLoading) {
-      L.loLoading = true;
-      const im = new Image();
-      im.onload = () => { L.lo = im; draw(); loadHi(f, L); updateHint(); };
-      im.onerror = () => { L.loLoading = false; };
-      im.src = 'sky_img/' + f.lo;
-    } else if (!L.hi && !L.hiLoading) loadHi(f, L);
+    const L = V.layers[f.hi] || (V.layers[f.hi] = { img: {}, loading: {} });
+    loadTier(f, L, 'lo');                                                   // the instant preview
+    if (big) loadTier(f, L, tier === 'md' && f.md === f.hi ? 'hi' : tier);  // md, or hi when zoomed in
   }
   updateHint();
 }
-function loadHi(f, L) {
-  if (L.hi || L.hiLoading) return;
-  L.hiLoading = true;
+function loadTier(f, L, t) {
+  if (L.img[t] || L.loading[t]) return;
+  L.loading[t] = true;
   const im = new Image();
-  im.onload = () => { L.hi = im; draw(); };
-  im.onerror = () => { L.hiLoading = false; };
-  im.src = 'sky_img/' + f.hi;
+  im.decoding = 'async'; im.fetchPriority = 'high';               // requested only when it is on screen
+  im.onload = () => { L.img[t] = im; L.loading[t] = false; draw(); updateHint(); };
+  im.onerror = () => { L.loading[t] = false; };
+  im.src = 'sky_img/' + f[t];
 }
 function setHint(t) { if ($('hint').textContent !== t) $('hint').textContent = t; }   // a live region: announce changes only
 function updateHint() {
@@ -244,73 +269,153 @@ function updateHint() {
 // ============================== draw ==============================
 function draw() {
   if (!V.cw || !V.meta) return;
+  const tier = wantTier();
+  if (tier !== V.tier) { V.tier = tier; ensureLayers(); }       // a view that needs the 4096-px image fetches it
   ctx.globalCompositeOperation = 'source-over';
   ctx.fillStyle = '#04060c'; ctx.fillRect(0, 0, V.cw, V.ch);
-  const sW = V.dispW * V.scale, sH = V.dispH * V.scale;
-  let baseX = V.panX % sW; if (baseX > 0) baseX -= sW;
+  const sW = V.dispW * V.scale, sH = V.dispH * V.scale, tiles = tileXs();
+  // copies abut on device pixels (no partly covered pixel at a seam, which would show a dark line)
+  const dpr = window.devicePixelRatio || 1, snap = (v) => Math.round(v * dpr) / dpr, y0 = snap(V.panY), y1 = snap(V.panY + sH);
   ctx.imageSmoothingEnabled = true;
-  // single component -> classic colormap; overlay -> dark-centred variants combined by per-channel
-  // max ('lighten') so the composite never washes to white
-  const multi = V.comps.length >= 2;
+  // one component: its classic colour map; overlaid: the dark-centred variants, each in its component's colour,
+  // combined by per-channel max ('lighten'), so the composite never washes to white and colour still means data
+  const multi = V.comps.length >= 2, used = new Set();
   for (const c of DRAW_ORDER) {
     if (V.comps.indexOf(c) < 0) continue;
-    const img = layerImg(displayFiles(c)); if (!img) continue;
+    const f = displayFiles(c), img = layerImg(f); if (!img) continue;
+    const L = V.layers[f.hi], src = multi ? tintedImg(L, img, c) : img;
+    if (multi) used.add(L);
     ctx.globalCompositeOperation = multi ? 'lighten' : 'source-over';
-    for (let x = baseX; x < V.cw; x += sW) ctx.drawImage(img, x, V.panY, sW, sH);
+    for (const x of tiles) { const x0 = snap(x); ctx.drawImage(src, x0, y0, snap(x + sW) - x0, y1 - y0); }
   }
+  for (const k in V.layers) if (V.layers[k].tint && !used.has(V.layers[k])) V.layers[k].tint = null;   // free unused copies
   ctx.globalCompositeOperation = 'source-over';
-  drawHalos(baseX, sW, sH);
+  drawHalos(tiles, sW, sH);
   drawOverlay();
+  placeDemoCue();
 }
-function drawHalos(baseX, sW, sH) {
-  if (!V.halos) return;
-  const H = V.halos;
+/** An overlaid map in its component's colour: the map's luminance over the component colour (canvas 'luminosity';
+ *  SkyCore.blendLuminosity gives the colour bar the same colours). One tinted copy per layer, made again only when
+ *  the image drawn changes (the preview, md or the 4096-px image). Display only. */
+function tintedImg(L, img, comp) {
+  if (L.tint && L.tint.src === img) return L.tint.canvas;
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth || img.width; c.height = img.naturalHeight || img.height;
+  const x = c.getContext('2d');
+  x.fillStyle = C.COMP_HEX[comp]; x.fillRect(0, 0, c.width, c.height);
+  x.globalCompositeOperation = 'luminosity'; x.drawImage(img, 0, 0, c.width, c.height);
+  L.tint = { src: img, canvas: c };
+  return c;
+}
+// ------------------------------ clusters ------------------------------
+// Gold rings sized by mass that grow with the zoom like the Globe's (radius ~ the square root of the map's width), so
+// a ring frames its cluster's tSZ spot. A mass bin (C.MASS_BIN_EDGES) is drawn as rings once the map is wide enough
+// for them not to bury the data (RING_FROM_W: the desktop whole sky rings the two heaviest bins, 273 clusters); the
+// lighter clusters are small gold dots, so every cluster that sounds is marked. Display only: picking uses the
+// catalogue positions (pickHalo), not the drawing.
+const RING_REF_W = 1440;                       // the map width [CSS px] of a desktop's whole sky
+const RING_FROM_W = [5600, 2800, 1000, 0];     // map width [CSS px] from which each mass bin is drawn as rings
+const RING_ALPHA = [0.85, 0.9, 1, 1];          // gold ring opacity per mass bin: heavier = brighter
+function ringScale(sW) { return Math.min(2.6, Math.max(0.75, Math.sqrt(sW / RING_REF_W))); }
+/** Ring radius [CSS px]: 3 px at log M = 14.7 to 6.6 px at 15.41 on the desktop whole sky, times ringScale; in half-px
+ *  steps (one cached sprite each). */
+function haloRadius(logM, g) { return Math.min(16, Math.max(2, Math.round(2 * (3 + 5 * (logM - 14.7)) * g) / 2)); }
+/** Dot radius [CSS px]: on a small map (a landscape phone's whole sky, 520 px wide) the dots shrink and lose their
+ *  dark edge, so 2700 of them stay a light texture rather than a cover. */
+function dotRadius(g) { return g >= 1.25 ? 1.5 : g >= 0.9 ? 1.25 : g >= 0.8 ? 1 : 0.75; }
+const haloSprites = new Map();
+/** A marker as a small pre-rendered canvas at the screen's pixel density: a ring (gold over a thin dark edge, so it
+ *  reads on any colour map) or a dot. Drawing 3000 sprites stays cheap where stroking one path of 3000 circles is not
+ *  (a canvas rasterized on the CPU stalled the whole page for seconds). */
+function haloSprite(kind, r, bin) {
+  const dpr = window.devicePixelRatio || 1, key = kind + '|' + r + '|' + bin + '|' + dpr;
+  let c = haloSprites.get(key);
+  if (c) return c;
+  const half = r + 2.5, px = Math.ceil(2 * half * dpr);
+  c = document.createElement('canvas'); c.width = c.height = px; c.half = half;
+  const x = c.getContext('2d');
+  x.scale(px / (2 * half), px / (2 * half));
+  const circle = (rr) => { x.beginPath(); x.arc(half, half, rr, 0, 2 * Math.PI); };
+  if (kind === 'ring') {
+    const w = bin === 3 ? 2 : 1.5;
+    x.lineWidth = w + 1.5; x.strokeStyle = 'rgba(4, 6, 12, 0.5)'; circle(r); x.stroke();
+    x.globalAlpha = RING_ALPHA[bin]; x.lineWidth = w; x.strokeStyle = '#ffd58a'; circle(r); x.stroke();
+  } else {
+    if (r >= 1) { x.fillStyle = 'rgba(4, 6, 12, 0.5)'; circle(r + 0.7); x.fill(); }
+    x.globalAlpha = r >= 1 ? 0.9 : 0.75; x.fillStyle = '#ffd58a'; circle(r); x.fill();
+  }
+  haloSprites.set(key, c);
+  return c;
+}
+/** Dots first, then rings from the lightest bin, so the heaviest sit on top. */
+function drawHalos(tiles, sW, sH) {
+  if (!V.halos || !V.showHalos) return;
+  const H = V.halos, g = ringScale(sW), dr = dotRadius(g), dots = [], rings = [[], [], [], []];
+  const x0s = single() ? tiles : [tiles[0] - sW].concat(tiles);
   for (let i = 0; i < H.n; i++) {
     const y = V.panY + (H.theta[i] / 180) * sH;
-    if (y < -4 || y > V.ch + 4) continue;
-    const ix = (H.phi[i] / 360) * sW, logM = H.log_mass[i];
-    const sz = Math.max(1.2, (logM - 14.5) * 3.2);           // radius grows with log M
-    for (let x = baseX + ix; x < V.cw + sz; x += sW) {
-      if (x < -sz) continue;
-      ctx.globalAlpha = Math.min(0.8, (logM - 14.5) * 0.7 + 0.2);
-      ctx.fillStyle = '#ffd58a';
-      ctx.beginPath(); ctx.arc(x, y, sz, 0, 2 * Math.PI); ctx.fill();
-      if (logM > 15.0) { ctx.globalAlpha = 0.9; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, sz + 1, 0, 2 * Math.PI); ctx.stroke(); }
-    }
+    if (y < -20 || y > V.ch + 20) continue;
+    const logM = H.log_mass[i], b = C.massBin(logM), ring = sW >= RING_FROM_W[b];
+    const r = ring ? haloRadius(logM, g) : dr, ix = (H.phi[i] / 360) * sW, list = ring ? rings[b] : dots;
+    for (const x0 of x0s) { const x = x0 + ix; if (x > -r - 3 && x < V.cw + r + 3) list.push(x, y, r); }
   }
-  ctx.globalAlpha = 1;
+  const put = (p, kind, b) => {
+    for (let k = 0; k < p.length; k += 3) {
+      const sp = haloSprite(kind, p[k + 2], b), h = sp.half;
+      ctx.drawImage(sp, p[k] - h, p[k + 1] - h, 2 * h, 2 * h);
+    }
+  };
+  put(dots, 'dot', 0);
+  rings.forEach((p, b) => put(p, 'ring', b));
 }
 function niceStep(pxPerDeg) {
   for (const s of [1, 2, 5, 10, 15, 30, 45, 60, 90]) if (s * pxPerDeg >= 70) return s;
   return 90;
 }
+/** The top of the legend and readout box [CSS px in the view], which the theta labels keep clear of (Infinity when
+ *  it cannot be measured). */
+function mapinfoTop() {
+  const m = $('mapinfo'), w = $('wrap');
+  if (!m || !m.getBoundingClientRect) return Infinity;
+  const r = m.getBoundingClientRect(), rw = w.getBoundingClientRect();
+  return r.height > 0 && r.height < V.ch * 0.8 ? r.top - rw.top : Infinity;
+}
 function drawOverlay() {
   octx.clearRect(0, 0, V.cw, V.ch);
   if (!V.meta) return;
-  // coordinate labels: simulation (theta, phi), theta = 0 at the top, phi increasing to the right
+  // coordinate labels: simulation (theta, phi), theta = 0 at the top, phi increasing to the right; light text with a
+  // dark halo, readable over any colour map
   const ppd = pxPerRad() * C.DEG, step = niceStep(ppd);
-  octx.font = '11px system-ui,sans-serif'; octx.textBaseline = 'top';
-  octx.fillStyle = 'rgba(200,205,224,0.85)'; octx.strokeStyle = 'rgba(200,205,224,0.5)'; octx.lineWidth = 1;
-  const top = Math.max(0, V.panY);
+  octx.font = '12px ' + (getComputedStyleSafe() || 'system-ui, sans-serif'); octx.textBaseline = 'top'; octx.lineJoin = 'round';
+  const label = (t, x, y) => {
+    octx.lineWidth = 3; octx.strokeStyle = 'rgba(4, 6, 12, 0.8)'; octx.strokeText(t, x, y);
+    octx.fillStyle = '#eef1f8'; octx.fillText(t, x, y);
+  };
+  const tick = (x0, y0, x1, y1) => {
+    octx.lineWidth = 3; octx.strokeStyle = 'rgba(4, 6, 12, 0.6)'; octx.beginPath(); octx.moveTo(x0, y0); octx.lineTo(x1, y1); octx.stroke();
+    octx.lineWidth = 1; octx.strokeStyle = 'rgba(238, 241, 248, 0.8)'; octx.beginPath(); octx.moveTo(x0, y0); octx.lineTo(x1, y1); octx.stroke();
+  };
+  const top = Math.max(0, V.panY), left = Math.max(0, single() ? V.panX : 0);
   for (let p = 0; p < 360; p += step) {
     for (const x of skyToScreen(Math.PI / 2, p * C.DEG).xs) {
-      if (x < 0 || x > V.cw - 30) continue;
-      octx.beginPath(); octx.moveTo(x, top); octx.lineTo(x, top + 6); octx.stroke();
-      octx.fillText('φ=' + p + '°', x + 2, top + 2);
+      if (x < left || x > V.cw - 40) continue;
+      tick(x, top, x, top + 6); label('φ=' + p + '°', x + 3, top + 2);
     }
   }
   octx.textBaseline = 'middle';
+  const yMax = Math.min(V.ch - 30, mapinfoTop() - 10);
   for (let t = step; t < 180; t += step) {
     const y = V.panY + t / 180 * V.dispH * V.scale;
-    if (y < 14 || y > V.ch - 30) continue;
-    octx.beginPath(); octx.moveTo(0, y); octx.lineTo(6, y); octx.stroke();
-    octx.fillText('θ=' + t + '°', 8, y);
+    if (y < 20 || y > yMax) continue;
+    tick(left, y, left + 6, y); label('θ=' + t + '°', left + 9, y);
   }
   // the ear (listening point)
   if (V.ear) {
     const s = skyToScreen(V.ear.theta, V.ear.phi);
-    octx.strokeStyle = '#ffffff'; octx.lineWidth = 2;
     for (const x of s.xs) {
+      octx.strokeStyle = 'rgba(4, 6, 12, 0.8)'; octx.lineWidth = 4;   // a dark outline under the white ring
+      octx.beginPath(); octx.arc(x, s.y, 7, 0, 2 * Math.PI); octx.stroke();
+      octx.strokeStyle = '#ffffff'; octx.lineWidth = 2;
       octx.beginPath(); octx.arc(x, s.y, 7, 0, 2 * Math.PI); octx.stroke();
       octx.beginPath(); octx.arc(x, s.y, 1.5, 0, 2 * Math.PI); octx.fillStyle = '#fff'; octx.fill();
     }
@@ -323,6 +428,14 @@ function drawOverlay() {
       }
     }
   }
+}
+let fontFamily = null;
+/** The page's font stack (site.css), for the canvas labels. */
+function getComputedStyleSafe() {
+  if (fontFamily === null) {
+    try { fontFamily = window.getComputedStyle ? window.getComputedStyle(document.body).fontFamily : ''; } catch (e) { fontFamily = ''; }
+  }
+  return fontFamily;
 }
 
 // ============================== value maps + audio ==============================
@@ -338,7 +451,7 @@ function samplesAt(theta, phi) {
 function updateScales() { V.scales = C.scaleTable(V.meta, V.band, V.scaleMode); }
 function loadValueMaps() { for (const c of V.comps) V.store.get(c, V.band); }
 function haloAt(theta, phi, radiusPx) {
-  if (!V.hidx) return null;
+  if (!V.hidx || !V.showHalos) return null;                     // hidden clusters are silent (as on the globe)
   return C.pickHalo(V.hidx, theta, phi, C.pickRadiusAngle(radiusPx, pxPerRad()));
 }
 function haloText(p, verbose) {
@@ -356,14 +469,26 @@ function valueText(s) {
 }
 function valuesText(samples) { return samples.map((s) => C.COMP_LABELS[s.comp] + ' ' + valueText(s)).join(', '); }
 function setReadout(sky, samples, halo) {
-  let html = C.formatSkyCoords(sky.theta, sky.phi) + ' &nbsp;|&nbsp; ' +
-    samples.map((s) => '<b style="color:var(--' + cssVar(s.comp) + ')">' + C.COMP_LABELS[s.comp] + '</b> ' +
-      (s.uK === null ? '&hellip;' : C.formatMicroK(s.uK, s.step))).join(' &nbsp; ');
-  if (halo) html += ' &nbsp;|&nbsp; <span style="color:#ffd58a">&#9679; ' + haloText(halo, false) + '</span>';
-  $('readout').innerHTML = html;
+  const seg = [C.formatSkyCoords(sky.theta, sky.phi)];               // no empty field when no component is on
+  if (samples.length) {
+    seg.push(samples.map((s) => '<b style="color:var(--' + cssVar(s.comp) + ')">' + C.COMP_LABELS[s.comp] + '</b> ' +
+      (s.uK === null ? '&hellip;' : C.formatMicroK(s.uK, s.step))).join(' &nbsp; '));
+  }
+  if (halo) seg.push('<span style="color:#ffd58a">&#9679; ' + haloText(halo, false) + '</span>');
+  $('readout').innerHTML = seg.join(' &nbsp;|&nbsp; ');
+  V.shown = { sky, halo };
 }
 function announce(sky, samples, halo) {
-  $('live').textContent = C.formatSkyCoords(sky.theta, sky.phi) + '. ' + valuesText(samples) + (halo ? '. ' + haloText(halo, true) : '');
+  $('live').textContent = [C.formatSkyCoords(sky.theta, sky.phi), samples.length ? valuesText(samples) : '',
+    halo ? haloText(halo, true) : ''].filter(Boolean).join('. ');
+}
+/** After the components, the band or the Clusters toggle change (and when a value map arrives): the readout states
+ *  the values of the maps now on at the point last listened to, so it never shows a value of a map that is off.
+ *  Display only: nothing plays and nothing is announced. */
+function refreshReadout() {
+  if (!V.shown || audio.scanning) return;
+  const p = V.shown.sky;
+  setReadout(p, samplesAt(p.theta, p.phi), V.showHalos ? V.shown.halo : null);
 }
 function cssVar(c) { return C.CSS_VAR[c]; }
 
@@ -373,6 +498,7 @@ function listenAt(sky, radiusPx) {
   audio.playPoint(samples);
   const halo = haloAt(sky.theta, sky.phi, radiusPx);
   if (halo) playHaloIdx(halo.index);
+  if (halo && halo.index === V.demoHalo) demoHeard();            // the cluster demo: this band done, the cue moves on
   V.ear = sky; V.target = sky; drawOverlay();
   setReadout(sky, samples, halo); announce(sky, samples, halo);
   if (samples.some((s) => s.uK === null)) loadValueMaps();
@@ -402,6 +528,7 @@ function onScanSample(s, samples) {
 
 // ============================== interaction ==============================
 function zoomAt(sx, sy, factor) {
+  V.viewMode = 'user';
   const ns = Math.min(V.maxScale, Math.max(V.minScale, V.scale * factor));
   const f = ns / V.scale; V.panX = sx - (sx - V.panX) * f; V.panY = sy - (sy - V.panY) * f;
   V.scale = ns; clampView(); draw();
@@ -424,7 +551,7 @@ function pointerMove(x, y) {
       audio.ensure(); scanBegin(V.scanFrom || sky); V.scanDrag = true;
     }
     V.path.push(sky.theta, sky.phi);
-  } else { V.panX += dx; V.panY += dy; clampView(); draw(); }
+  } else { V.panX += dx; V.panY += dy; V.viewMode = 'user'; clampView(); draw(); }
 }
 function pointerUp() {
   V.dragging = false; canvas.classList.remove('grabbing');
@@ -475,8 +602,8 @@ canvas.addEventListener('touchend', (e) => {
 function keepEarVisible(p) {
   const s = skyToScreen(p.theta, p.phi), m = 40;
   const visible = s.xs.some((x) => x >= m && x <= V.cw - m);
-  if (!visible) { const x = s.xs.length ? s.xs[0] : 0; V.panX += V.cw / 2 - x; }
-  if (s.y < m || s.y > V.ch - m) V.panY += V.ch / 2 - s.y;
+  if (!visible) { const x = s.xs.length ? s.xs[0] : 0; V.panX += V.cw / 2 - x; V.viewMode = 'user'; }
+  if (s.y < m || s.y > V.ch - m) { V.panY += V.ch / 2 - s.y; V.viewMode = 'user'; }
   clampView(); draw();
 }
 canvas.addEventListener('keydown', (e) => {
@@ -514,38 +641,53 @@ canvas.addEventListener('keydown', (e) => {
 
 // ============================== controls ==============================
 function buildComponentButtons() {
-  const g = $('compGroup');
+  const g = $('compGroup'), vg = $('voiceMS');
   for (const c of COMPS) {
     if ((V.meta.components || []).indexOf(c) < 0) continue;
-    const w = document.createElement('span'); w.className = 'comp';
     const b = document.createElement('button');
-    b.className = 'btn comp-btn'; b.dataset.comp = c; b.textContent = C.COMP_LABELS[c];
+    b.className = 'chip comp-btn'; b.dataset.comp = c; b.textContent = C.COMP_LABELS[c];
     b.title = c === 'T_tot' ? C.totalTitle(V.meta) : C.COMP_LABELS[c];
-    b.addEventListener('click', () => {
-      V.comps = C.toggleComponent(V.comps, c, V.meta);
-      refreshComponents();
-    });
+    b.addEventListener('click', () => { V.comps = toggledComps(c); refreshComponents(); });
+    g.appendChild(b);
+    // its Mute and Solo (audio only), in Sound settings, shown while it is on
+    const w = document.createElement('span'); w.className = 'voice'; w.dataset.voice = c;
+    const n = document.createElement('span'); n.className = 'voice__name'; n.textContent = C.COMP_LABELS[c];
+    n.style.color = 'var(--' + C.CSS_VAR[c] + ')';
     const m = document.createElement('button');
     m.className = 'btn mini mute'; m.textContent = 'M'; m.dataset.comp = c; m.setAttribute('aria-label', 'Mute ' + C.COMP_LABELS[c] + ' audio');
     m.addEventListener('click', () => { toggleSet(V.mute, c); applyMuteSolo(); });
     const s = document.createElement('button');
     s.className = 'btn mini solo'; s.textContent = 'S'; s.dataset.comp = c; s.setAttribute('aria-label', 'Solo ' + C.COMP_LABELS[c] + ' audio');
     s.addEventListener('click', () => { toggleSet(V.solo, c); applyMuteSolo(); });
-    w.append(b, m, s); g.appendChild(w);
+    w.append(n, m, s); vg.appendChild(w);
   }
 }
+/** The components after clicking c: SkyCore.toggleComponent (the Total rule), except that the last one on may be
+ *  turned off too (the map then shows the empty state; clusters still ring). */
+function toggledComps(c) { return V.comps.length === 1 && V.comps[0] === c ? [] : C.toggleComponent(V.comps, c, V.meta); }
 function toggleSet(s, c) { if (s.has(c)) s.delete(c); else s.add(c); }
 function applyMuteSolo() {
   audio.setMuteSolo(V.mute, V.solo);
   document.querySelectorAll('.btn.mini.mute').forEach((b) => { const on = V.mute.has(b.dataset.comp); b.classList.toggle('active', on); b.setAttribute('aria-pressed', on); });
   document.querySelectorAll('.btn.mini.solo').forEach((b) => { const on = V.solo.has(b.dataset.comp); b.classList.toggle('active', on); b.setAttribute('aria-pressed', on); });
+  updateSettingsSummary();
 }
 function refreshComponents() {
   document.querySelectorAll('.comp-btn').forEach((b) => {
     const on = V.comps.indexOf(b.dataset.comp) >= 0;
     b.classList.toggle('active', on); b.setAttribute('aria-pressed', on);
   });
-  ensureLayers(); loadValueMaps(); draw(); updateNote(); renderKey();
+  // Mute and Solo apply to the components that are on: turning one off clears its Mute and Solo (a Solo left on a
+  // component that is off would silence every voice, with its pressed button out of sight); the buttons of the
+  // components that are off are hidden, not removed
+  let cleared = false;
+  for (const set of [V.mute, V.solo]) for (const c of Array.from(set)) if (V.comps.indexOf(c) < 0) { set.delete(c); cleared = true; }
+  if (cleared) applyMuteSolo();
+  document.querySelectorAll('.btn.mini').forEach((b) => { b.hidden = V.comps.indexOf(b.dataset.comp) < 0; });
+  document.querySelectorAll('.voice').forEach((w) => { w.hidden = V.comps.indexOf(w.dataset.voice) < 0; });
+  $('voiceNone').hidden = V.comps.length > 0;
+  $('empty').hidden = V.comps.length > 0;
+  loadValueMaps(); ensureLayers(); draw(); updateNote(); renderKey(); renderLegend(); refreshReadout();   // the sound's data first
   if (audio.scanning) audio.scanSetComps(orderedComps());
 }
 function buildBandButtons() {
@@ -553,8 +695,9 @@ function buildBandButtons() {
   for (const b of C.bandList(V.meta)) {
     const name = C.bandGroup(b);
     if (!groups[name]) {
-      groups[name] = document.createElement('div'); groups[name].className = 'freq-group';
-      groups[name].innerHTML = '<span class="clabel">' + name + '</span>'; g.appendChild(groups[name]);
+      groups[name] = document.createElement('div'); groups[name].className = 'freq-group';    // (site.css: the band component)
+      groups[name].setAttribute('role', 'group'); groups[name].setAttribute('aria-label', name);
+      groups[name].innerHTML = '<span class="freq-group-label" aria-hidden="true">' + name + '</span>'; g.appendChild(groups[name]);
     }
     const btn = document.createElement('button');
     btn.className = 'btn freq-btn'; btn.dataset.band = String(b); btn.textContent = String(b);
@@ -567,68 +710,204 @@ function refreshBand() {
   document.querySelectorAll('.freq-btn').forEach((x) => {
     const on = x.dataset.band === V.band; x.classList.toggle('active', on); x.setAttribute('aria-pressed', on);
   });
-  updateScales(); ensureLayers(); loadValueMaps(); draw(); updateNote(); renderKey();
+  updateScales(); loadValueMaps(); ensureLayers(); updateDemoCue(); draw(); updateNote(); renderKey(); renderLegend(); refreshReadout();
 }
 function setToggle(id, on) { const b = $(id); b.classList.toggle('active', on); b.setAttribute('aria-pressed', on); }
 $('zoomIn').addEventListener('click', () => zoomAt(V.cw / 2, V.ch / 2, 1.4));
 $('zoomOut').addEventListener('click', () => zoomAt(V.cw / 2, V.ch / 2, 1 / 1.4));
-$('zoomReset').addEventListener('click', () => { V.scale = V.minScale; V.panX = (V.cw - V.dispW * V.scale) / 2; clampView(); draw(); });
+$('zoomReset').addEventListener('click', () => { V.viewMode = 'whole'; openView(true); clampView(); draw(); });
+$('haloBtn').addEventListener('click', () => { V.showHalos = !V.showHalos; setToggle('haloBtn', V.showHalos); draw(); renderLegend(); refreshReadout(); });
+$('emptyCmb').addEventListener('click', () => { V.comps = ['dT_cmblens']; refreshComponents(); });
+$('emptyTsz').addEventListener('click', () => { V.comps = ['dT_tsz']; refreshComponents(); });
 $('scanBtn').addEventListener('click', () => {
   V.scan = !V.scan; setToggle('scanBtn', V.scan);
   canvas.classList.toggle('scan', V.scan);
   if (V.scan) { audio.ensure(); loadValueMaps(); } else audio.scanStop();
 });
-$('refBtn').addEventListener('click', () => { const on = !audio.state.ref; audio.setRef(on); setToggle('refBtn', on); renderKey(); });
-$('eqBtn').addEventListener('click', () => { const on = !audio.state.eq; audio.setEq(on); setToggle('eqBtn', on); renderKey(); });
-$('scaleSel').addEventListener('change', (e) => { V.scaleMode = e.target.value; updateScales(); updateNote(); renderKey(); });
-$('haloSel').addEventListener('change', (e) => { audio.setArtistic(e.target.value === 'artistic'); renderKey(); });
-$('vol').addEventListener('input', (e) => audio.setVolume(e.target.value / 100));
+$('refBtn').addEventListener('click', () => { const on = !audio.state.ref; audio.setRef(on); setToggle('refBtn', on); renderKey(); updateSettingsSummary(); });
+$('eqBtn').addEventListener('click', () => { const on = !audio.state.eq; audio.setEq(on); setToggle('eqBtn', on); renderKey(); updateSettingsSummary(); });
+$('scaleSel').addEventListener('change', (e) => { V.scaleMode = e.target.value; updateScales(); updateNote(); renderKey(); updateSettingsSummary(); });
+$('haloSel').addEventListener('change', (e) => { audio.setArtistic(e.target.value === 'artistic'); renderKey(); updateSettingsSummary(); });
+$('vol').addEventListener('input', (e) => { audio.setVolume(e.target.value / 100); updateSettingsSummary(); });
 $('haloRecBtn').addEventListener('click', () => audio.recordClip((st) => {
   const b = $('haloRecBtn');
   if (st === 'recording') { b.innerHTML = '&#9632; recording…'; b.classList.add('active'); }
   else { b.classList.remove('active'); b.innerHTML = st === 'nomic' ? 'no mic' : st === 'denied' ? 'mic denied' : '&#127908; record'; }
-  if (st === 'idle') { $('haloSel').value = 'artistic'; audio.setArtistic(true); renderKey(); }
+  if (st === 'idle') { $('haloSel').value = 'artistic'; audio.setArtistic(true); renderKey(); updateSettingsSummary(); }
 }));
-$('keyBtn').addEventListener('click', () => {
-  const k = $('key'), open = k.hidden; k.hidden = !open; $('keyBtn').setAttribute('aria-expanded', open);
-  setToggle('keyBtn', open); if (open) renderKey();
+/** The Sound key panel: the toolbar button, its x button and Escape (focus back on the toolbar button). */
+function setKey(open, refocus) {
+  const k = $('key'); k.hidden = !open; $('keyBtn').setAttribute('aria-expanded', open); setToggle('keyBtn', open);
+  if (open) { renderKey(); showMap(); } else if (refocus) $('keyBtn').focus();
+}
+$('keyBtn').addEventListener('click', () => setKey($('key').hidden));
+$('key').addEventListener('click', (e) => { if (e.target && e.target.id === 'keyClose') setKey(false, true); });
+/** On a phone the controls are below the map: bring the map (where the Sound key opens) into view. */
+function showMap() {
+  const w = $('wrap'), r = w.getBoundingClientRect();
+  if (w.scrollIntoView && (r.top < 0 || r.bottom > (window.innerHeight || r.bottom))) w.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+// Sound settings (a details popover; a bottom sheet on phones): Escape, Done, or a press anywhere outside it (a tap
+// on the map or the dimmed page too) closes it; its summary badges list what differs from the defaults
+function closeSettings(refocus) { $('moreSet').open = false; if (refocus) $('moreSum').focus(); }
+$('moreDone').addEventListener('click', () => closeSettings(true));
+document.addEventListener('pointerdown', (e) => {
+  const t = e.target;
+  if ($('moreSet').open && !(t && t.closest && t.closest('.more__panel, #moreSum'))) closeSettings(false);
 });
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if ($('moreSet').open) closeSettings(true);
+  else if (!$('key').hidden) setKey(false, true);
+});
+function updateSettingsSummary() {
+  const r = C.settingsSummary({ scaleMode: V.scaleMode, solo: V.solo, mute: V.mute, ref: audio.state.ref, eq: audio.state.eq,
+    artistic: audio.state.artistic, vol: $('vol').value, vol0: V.vol0 });
+  $('moreChips').innerHTML = r.html; $('moreSum').title = r.title;
+}
 window.addEventListener('resize', resize);
 
 // ============================== text: polarity note + sound key ==============================
 function updateNote() {
-  $('note').innerHTML = C.noteHTML({ meta: V.meta, band: V.band, comps: V.comps, scaleMode: V.scaleMode });
+  $('note').innerHTML = C.noteShortHTML({ meta: V.meta, band: V.band, comps: V.comps, scaleMode: V.scaleMode });
 }
+/** The colour bar of each displayed map (component, band, the display range in muK from sky_img.json, cold to hot;
+ *  overlaid maps in their component colours), the tSZ sign at this band, and the cluster marker, bottom left on the
+ *  map (SkyCore.legendRows, legendHTML). */
+// phones (480 px or narrower): a short legend ('clusters': size and the rest are in the Sound key), re-rendered when the
+// width crosses the breakpoint
+const PHONE = window.matchMedia ? window.matchMedia('(max-width: 480px)') : null;
+if (PHONE && PHONE.addEventListener) PHONE.addEventListener('change', () => renderLegend());
+function renderLegend() {
+  const html = V.meta ? C.legendHTML(C.legendRows(V.meta, V.comps, V.band),
+    { clusters: V.showHalos && V.halos ? (PHONE && PHONE.matches ? 'clusters' : 'clusters (bigger = heavier)') : '' }) : '';   // phones: short
+  $('legend').innerHTML = html; $('legend').hidden = !html;
+}
+const KEY_CLOSE = '<button class="btn key__close" id="keyClose" aria-label="Close the Sound key" title="Close (Esc)">&times;</button>';
 function renderKey() {
   const k = $('key'); if (k.hidden || !V.meta) return;
-  k.innerHTML = C.keyHTML({ meta: V.meta, band: V.band, comps: V.comps, scales: V.scales, scaleMode: V.scaleMode,
+  k.innerHTML = KEY_CLOSE + C.keyHTML({ meta: V.meta, band: V.band, comps: V.comps, scales: V.scales, scaleMode: V.scaleMode,
     ref: audio.state.ref, eq: audio.state.eq, artistic: audio.state.artistic, pickPx: PICK_PX, pickMode: 'angle', scanPx: SCAN_PX,
-    controlRate: SkyAudio.CONTROL_RATE, stagger: SkyAudio.STAGGER, maxLagS: SCAN_QUEUE / SkyAudio.CONTROL_RATE, view: 'map' });
+    controlRate: SkyAudio.CONTROL_RATE, stagger: SkyAudio.STAGGER, maxLagS: SCAN_QUEUE / SkyAudio.CONTROL_RATE, view: 'map', note: true });
+}
+
+// ============================== the paper's cluster demo ==============================
+// sky.html#demo=cluster (the hub links it) sets up the paper's sky demo without playing it: tSZ on, CMB off, 143 GHz,
+// zoomed in (V.maxScale, as the contract test's click) and centred on the most massive cluster of halos.json (the one
+// the paper's demo clicks), whose ring is drawn at that zoom, with a note on the map. The view stays centred on the
+// cluster when the box changes size until the visitor moves it (viewMode 'demo'), and Enter on the focused map plays
+// it (V.target). Nothing plays until the visitor clicks. Without the hash, or with any other #demo value, the page
+// opens as always.
+const DEMO = (() => {
+  let v = null;
+  try { v = new URLSearchParams(String(location.hash || '').replace(/^#/, '')).get('demo'); } catch (e) { v = null; }
+  return v === 'cluster' ? v : null;
+})();
+const DEMO_NOTE = "The paper's cluster demo: click the ringed cluster, then try 225 and 353 GHz.";
+function heaviestHalo(H) { let k = 0; for (let i = 1; i < H.log_mass.length; i++) if (H.log_mass[i] > H.log_mass[k]) k = i; return k; }
+function demoView() {
+  const H = V.halos, i = V.demoHalo;
+  V.scale = V.maxScale;
+  V.panX = V.cw / 2 - (H.phi[i] / 360) * V.dispW * V.scale;
+  V.panY = V.ch / 2 - (H.theta[i] / 180) * V.dispH * V.scale;
+}
+function setDemoNote(on) {
+  $('demoNote').hidden = !on; $('wrap').classList.toggle('is-demo', on);
+  $('demoNoteText').textContent = on ? DEMO_NOTE : '';     // a status region: announced when it appears
+  V.demoOn = on; updateDemoCue();                           // dismissing the note ends the cues too
+}
+$('demoNoteClose').addEventListener('click', () => { setDemoNote(false); canvas.focus({ preventScroll: true }); });
+// 'Skip to the map' (the first Tab stop): focus the map without touching the address (#demo=cluster lives there)
+$('skipToMap').addEventListener('click', (e) => { e.preventDefault(); canvas.focus(); });
+// phones: the idle hint goes after the first touch on the map (a tap writes the readout as before)
+$('wrap').addEventListener('pointerdown', () => {
+  const r = $('readout');
+  if (window.matchMedia && window.matchMedia('(max-width: 480px)').matches && /for-touch/.test(r.innerHTML)) r.innerHTML = '';
+});
+// The demo's cue walks through the paper's steps: the light ring (.cue-ring) sits on the cluster at a demo band where it
+// has not been clicked yet, otherwise on the button of the next such band (143, then 225, then 353 GHz); once the
+// cluster has been heard at all three, the cues go. Nothing plays by itself: the visitor clicks and presses.
+const DEMO_BANDS = ['143', '225', '353'];
+/** 'cluster', a band ('225' or '353') or null: where the cue is. */
+function demoCueAt() {
+  if (!V.demoOn || V.demoHalo == null) return null;
+  const next = DEMO_BANDS.find((b) => !V.demoHeard.has(b));
+  if (!next) return null;
+  return DEMO_BANDS.indexOf(V.band) >= 0 && !V.demoHeard.has(V.band) ? 'cluster' : next;
+}
+function updateDemoCue() {
+  const at = demoCueAt();
+  document.querySelectorAll('.freq-btn').forEach((b) => {
+    const on = at === b.dataset.band;
+    b.classList.toggle('cue-ring', on);
+    if (on) b.setAttribute('aria-describedby', 'demoNoteText');      // the note is the ringed button's description
+    else if (b.getAttribute('aria-describedby') === 'demoNoteText') b.removeAttribute('aria-describedby');
+  });
+  V.demoCue = at === 'cluster';
+  placeDemoCue();
+}
+/** The cluster was clicked (or played with Enter) at this band. */
+function demoHeard() {
+  if (!V.demoOn || DEMO_BANDS.indexOf(V.band) < 0 || V.demoHeard.has(V.band)) return;
+  V.demoHeard.add(V.band); updateDemoCue();
+}
+/** The ring around the demo's cluster: centred on it, just outside its gold ring; hidden when off the view. */
+function placeDemoCue() {
+  const el = $('demoCue');
+  if (!el) return;
+  let show = !!V.demoCue && V.cw > 0 && !!V.halos;
+  if (show) {
+    const H = V.halos, i = V.demoHalo, s = skyToScreen(H.theta[i] * C.DEG, H.phi[i] * C.DEG);
+    const x = s.xs.find((v) => v >= 0 && v <= V.cw);
+    show = x !== undefined && s.y >= 0 && s.y <= V.ch;
+    if (show) {
+      const d = 2 * (haloRadius(H.log_mass[i], ringScale(V.dispW * V.scale)) + 6);
+      el.style.width = el.style.height = d + 'px';
+      el.style.transform = 'translate(' + (x - d / 2).toFixed(1) + 'px, ' + (s.y - d / 2).toFixed(1) + 'px)';
+    }
+  }
+  if (el.hidden === show) el.hidden = !show;
 }
 
 // ============================== init ==============================
 async function init() {
   setHint('loading…');
   try {
-    const [a, b] = await Promise.all([fetch('sky_img/sky_img.json'), fetch('halos.json')]);
+    // halos.json loads in parallel; the value maps (the sound) start as soon as sky_img.json names them
+    const halosP = fetch('halos.json').then((r) => (r.ok ? r.json() : null), () => null);
+    const a = await fetch('sky_img/sky_img.json');
     if (!a.ok) throw new Error('sky_img.json HTTP ' + a.status);
     V.meta = await a.json();
     if (V.meta.version !== 3) throw new Error('sky_img.json version ' + V.meta.version + ' (need 3: HEALPix value maps)');
-    V.halos = b.ok ? await b.json() : null;
-    if (V.halos) V.hidx = C.haloIndex(V.halos);
     V.dispW = V.meta.display.width; V.dispH = V.meta.display.height;
     const bands = C.bandList(V.meta).map(String);
     V.band = bands.indexOf('143') >= 0 ? '143' : bands[0];
+    if (DEMO && (V.meta.components || []).indexOf('dT_tsz') >= 0) V.comps = ['dT_tsz'];   // the cluster demo: tSZ on, CMB off
     V.scaleMode = $('scaleSel').value || C.DEFAULT_SCALE_MODE;
+    V.vol0 = Number($('vol').value);
     updateScales();
     V.store = C.createMapStore(V.meta, {     // a failed map is reported once (not per audio tick) and shown in the hint
       base: 'sky_img/', fetch: (u) => fetch(u), inflate: C.inflateStream,
-      onLoad: () => updateHint(), onError: () => updateHint(),
+      onLoad: () => { ensureLayers(); refreshReadout(); }, onError: () => ensureLayers(),   // then the large display images (and the hint)
     });
+    loadValueMaps();                          // first request after the index: the value maps of the active components
     buildComponentButtons(); buildBandButtons();
+    if (DEMO) {                               // the demo's first view is centred on a cluster: the catalogue first
+      V.halos = await halosP;
+      if (V.halos && V.halos.log_mass && V.halos.log_mass.length) { V.demoHalo = heaviestHalo(V.halos); V.viewMode = 'demo'; }
+    }
     resize();
-    refreshComponents(); refreshBand(); applyMuteSolo();
+    // the map follows its box, not only the window: the toolbar and the audio note change height with the
+    // components and the band, and on phones the page scrolls (sky.css)
+    if (typeof ResizeObserver === 'function') new ResizeObserver(() => resize()).observe($('wrap'));
+    refreshComponents(); refreshBand(); applyMuteSolo(); updateSettingsSummary();
     audio.loadStoredClip();
+    V.halos = await halosP;
+    if (V.halos) { V.hidx = C.haloIndex(V.halos); draw(); renderLegend(); }
+    if (V.demoHalo != null) {
+      V.target = { theta: V.halos.theta[V.demoHalo] * C.DEG, phi: V.halos.phi[V.demoHalo] * C.DEG };   // Enter plays it
+      setDemoNote(true);
+    }
   } catch (err) {
     setHint('Load failed: ' + err.message + (location.protocol === 'file:' ? ' (serve over http, not file://)' : ''));
     $('note').textContent = '';
